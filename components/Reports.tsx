@@ -329,7 +329,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                 if (data.column.index === 4) {
                     const rawVal = data.cell.raw as string;
                     // Check if it's expense or income based on the row data (index 3 is type)
-                    const type = data.row.raw[3];
+                    const type = (data.row.raw as any)[3];
                     if (type === 'Receita') {
                         data.cell.styles.textColor = [16, 185, 129]; // Green
                     } else {
