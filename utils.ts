@@ -1,0 +1,30 @@
+/**
+ * Retorna a data atual no formato YYYY-MM-DD baseada no fuso horário LOCAL do usuário.
+ * Evita o problema do toISOString() que converte para UTC e pode retornar o dia seguinte/anterior.
+ */
+export const getTodayLocalDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * Formata uma string YYYY-MM-DD para DD/MM/YYYY (Padrão BR).
+ * Faz o split manual da string para garantir que não haja conversão de timezone pelo objeto Date.
+ */
+export const formatDateDisplay = (dateString: string): string => {
+  if (!dateString) return '';
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year}`;
+};
+
+/**
+ * Retorna um objeto Date configurado para o início do dia (00:00:00) no horário local.
+ * Essencial para comparar datas de filtros com datas do banco.
+ */
+export const parseDateFromDB = (dateString: string): Date => {
+  // Adiciona T00:00:00 para forçar o parse como "Local Time" ao invés de UTC
+  return new Date(`${dateString}T00:00:00`);
+};
