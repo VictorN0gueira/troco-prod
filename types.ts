@@ -25,6 +25,7 @@ export interface Transaction {
   category: string;
   date: string;
   status: 'completed' | 'pending';
+  isRecurring?: boolean; // Nova flag para recorrência
 }
 
 // Chart types remain the same for UI visualization

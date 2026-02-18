@@ -3,6 +3,8 @@ import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
+import Reminders from './components/Reminders';
+import CalendarView from './components/CalendarView'; // Import Calendar
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import Login from './components/Login';
@@ -10,18 +12,21 @@ import { Transaction, UserProfile } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
+import { getTodayLocalDate } from './utils';
 
 // Tempo limite de inatividade: 15 minutos
 const INACTIVITY_LIMIT = 15 * 60 * 1000; 
 
-// Protected Layout Wrapper com suporte a animação de saída
+// Protected Layout Wrapper com suporte a animação de saída e Privacy Mode
 const ProtectedLayout = ({ 
   isAuthenticated, 
   darkMode, 
   toggleDarkMode, 
   onLogout,
   user,
-  isExiting
+  isExiting,
+  privacyMode,
+  togglePrivacyMode
 }: { 
   isAuthenticated: boolean;
   darkMode: boolean;
@@ -29,6 +34,8 @@ const ProtectedLayout = ({
   onLogout: () => void;
   user: UserProfile;
   isExiting: boolean;
+  privacyMode: boolean;
+  togglePrivacyMode: () => void;
 }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   
@@ -40,6 +47,8 @@ const ProtectedLayout = ({
         toggleDarkMode={toggleDarkMode}
         onLogout={onLogout}
         user={user}
+        privacyMode={privacyMode}
+        togglePrivacyMode={togglePrivacyMode}
         >
         <Outlet />
         </Layout>
@@ -61,7 +70,9 @@ const AppRoutes = ({
     deleteTransaction,
     updateUser,
     handleLoginSuccess,
-    isExiting
+    isExiting,
+    privacyMode,
+    togglePrivacyMode
 }: any) => {
     return (
       <Routes>
@@ -85,12 +96,15 @@ const AppRoutes = ({
             onLogout={handleLogout}
             user={user}
             isExiting={isExiting}
+            privacyMode={privacyMode}
+            togglePrivacyMode={togglePrivacyMode}
           />
         }>
           <Route path="/" element={
             <Dashboard 
               transactions={transactions} 
               user={user}
+              privacyMode={privacyMode}
             />
           } />
           
@@ -100,6 +114,21 @@ const AppRoutes = ({
               onAdd={addTransaction}
               onEdit={updateTransaction}
               onDelete={deleteTransaction}
+            />
+          } />
+
+          <Route path="/reminders" element={
+            <Reminders 
+              transactions={transactions} 
+              onAdd={addTransaction}
+              onEdit={updateTransaction}
+              onDelete={deleteTransaction}
+            />
+          } />
+
+          <Route path="/calendar" element={
+            <CalendarView 
+              transactions={transactions} 
             />
           } />
           
@@ -261,10 +290,15 @@ const RecoveryModal = ({ onSubmit, isOpen }: { onSubmit: (pass: string) => Promi
 
 const App: React.FC = () => {
   // Global State
+  // --- PRODUCTION MODE: Inicia deslogado e com array vazio ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(false); // Novo estado de privacidade
+  
+  // Transactions com array vazio inicial
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   
@@ -281,7 +315,7 @@ const App: React.FC = () => {
     email: '',
     telefone: '',
     avatarUrl: '',
-    status_assinatura: 'active'
+    status_assinatura: 'active',
   });
 
   // Initialize Theme
@@ -320,6 +354,8 @@ const App: React.FC = () => {
     setShowRecoveryModal(false);
     setRecoveryMode(false);
   };
+
+  const togglePrivacyMode = () => setPrivacyMode(!privacyMode);
 
   // --- AUTO-LOGOUT LOGIC ---
   const resetInactivityTimer = useCallback(() => {
@@ -369,8 +405,9 @@ const App: React.FC = () => {
             fetchUserProfileByEmail(session.user.email);
         }
       } else {
-        setLoading(false);
+        setIsAuthenticated(false);
       }
+      setLoading(false);
     });
 
     // 2. Listen for changes
@@ -388,8 +425,6 @@ const App: React.FC = () => {
             fetchUserProfileByEmail(session.user.email);
         }
       } else {
-        // Only force logout if not triggered by our manual handleLogout (which handles anims)
-        // If session expires naturally or storage clears:
         if (!isExiting) {
              setIsAuthenticated(false);
              setTransactions([]);
@@ -408,31 +443,37 @@ const App: React.FC = () => {
     if (user.id === 0) return;
 
     const formatTransaction = (t: any): Transaction => {
-      // HEURÍSTICA DE CORREÇÃO DE TIPO
-      // Se a descrição contém palavras chaves de receita, forçamos o tipo 'income'
-      // mesmo que o banco diga 'expense' (correção de erro da IA)
-      let finalType = t.tipo;
-      const descLower = (t.descricao || '').toLowerCase();
-      
-      const incomeKeywords = [
-        'salário', 'salario', 'recebimento', 'venda', 'pix recebido', 
-        'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
-      ];
-      
-      if (incomeKeywords.some(k => descLower.includes(k))) {
-        finalType = 'income';
+      // 1. Normalização de Tipo (Banco -> Frontend)
+      // O banco pode ter: 'Receita', 'Despesa', 'income', 'expense' (legado/bug)
+      // O frontend DEVE receber: 'income' ou 'expense'
+      let finalType: 'income' | 'expense' = 'expense'; // Default
+      const typeLower = (t.tipo || '').toLowerCase();
+
+      if (typeLower === 'receita' || typeLower === 'income') {
+          finalType = 'income';
+      } else if (typeLower === 'despesa' || typeLower === 'expense') {
+          finalType = 'expense';
+      } else {
+          // Heurística de Fallback (apenas se tipo estiver vazio/inválido)
+          const descLower = (t.descricao || '').toLowerCase();
+          const incomeKeywords = [
+            'salário', 'salario', 'recebimento', 'venda', 'pix recebido', 
+            'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
+          ];
+          if (incomeKeywords.some(k => descLower.includes(k))) {
+            finalType = 'income';
+          }
       }
 
       return {
-        // Prefer the alphanumeric code (identificador) if available for display, 
-        // otherwise fallback to the numeric ID.
         id: t.identificador || t.id.toString(),
         description: t.descricao,
         amount: Number(t.valor),
         type: finalType,
         category: t.categoria || 'Outros',
         date: t.data,
-        status: t.esta_pago ? 'completed' : 'pending'
+        status: t.esta_pago ? 'completed' : 'pending',
+        isRecurring: t.is_recurring // Map DB snake_case to Frontend camelCase
       };
     };
 
@@ -530,17 +571,25 @@ const App: React.FC = () => {
 
       if (data) {
         const formatted: Transaction[] = data.map((t: any) => {
-          // APLICAÇÃO DA MESMA HEURÍSTICA NO FETCH INICIAL
-          let finalType = t.tipo;
-          const descLower = (t.descricao || '').toLowerCase();
-          const incomeKeywords = [
-            'salário', 'salario', 'recebimento', 'venda', 'pix recebido', 
-            'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
-          ];
-          
-          if (incomeKeywords.some(k => descLower.includes(k))) {
-            finalType = 'income';
-          }
+            // 1. Normalização de Tipo (Duplicada para o fetch inicial)
+            let finalType: 'income' | 'expense' = 'expense';
+            const typeLower = (t.tipo || '').toLowerCase();
+      
+            if (typeLower === 'receita' || typeLower === 'income') {
+                finalType = 'income';
+            } else if (typeLower === 'despesa' || typeLower === 'expense') {
+                finalType = 'expense';
+            } else {
+                // Heurística fallback
+                const descLower = (t.descricao || '').toLowerCase();
+                const incomeKeywords = [
+                  'salário', 'salario', 'recebimento', 'venda', 'pix recebido', 
+                  'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
+                ];
+                if (incomeKeywords.some(k => descLower.includes(k))) {
+                  finalType = 'income';
+                }
+            }
 
           return {
             id: t.identificador || t.id.toString(),
@@ -549,7 +598,8 @@ const App: React.FC = () => {
             type: finalType,
             category: t.categoria || 'Outros',
             date: t.data,
-            status: t.esta_pago ? 'completed' : 'pending'
+            status: t.esta_pago ? 'completed' : 'pending',
+            isRecurring: t.is_recurring // Map DB snake_case to Frontend camelCase
           };
         });
         setTransactions(formatted);
@@ -561,6 +611,13 @@ const App: React.FC = () => {
 
   const updateUser = async (updatedUser: UserProfile) => {
     setUser(updatedUser);
+    
+    // MODO DEMO: Retorna sucesso fake se for o usuário demo
+    if (user.id === 99999) {
+        await new Promise(r => setTimeout(r, 500));
+        return;
+    }
+
     const { error } = await supabase.from('usuarios').update({
         nome: updatedUser.nome,
         telefone: updatedUser.telefone,
@@ -568,35 +625,37 @@ const App: React.FC = () => {
         notificacoes_email: updatedUser.notificacoes_email,
         notificacoes_push: updatedUser.notificacoes_push,
         notificacoes_marketing: updatedUser.notificacoes_marketing
-    }).eq('id', user.id); // SEGURANÇA: Usa ID da sessão (user.id) e não o do objeto recebido
+    }).eq('id', user.id); 
 
     if (error) {
         console.error("Erro no update do usuário:", error);
-        throw error; // Lança erro para ser tratado no Settings.tsx
+        throw error;
     }
   };
 
   const addTransaction = async (newTransaction: Transaction) => {
     setTransactions(prev => [newTransaction, ...prev]);
+    
     if (user.id !== 0) {
-        // CORREÇÃO PARA STATUS "Pago" vindo do N8N/AI
-        // Verifica se é 'completed', ou se a string é 'pago'/'Pago'
         const isPaid = newTransaction.status === 'completed' || String(newTransaction.status).toLowerCase() === 'pago';
+        
+        // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
+        const dbType = newTransaction.type === 'income' ? 'Receita' : 'Despesa';
 
         const { error } = await supabase.from('transacoes').insert({
             user_id: user.id,
             descricao: newTransaction.description,
             valor: newTransaction.amount,
-            tipo: newTransaction.type,
+            tipo: dbType,
             categoria: newTransaction.category,
             data: newTransaction.date,
-            esta_pago: isPaid, // Envia BOOLEANO garantido
-            identificador: newTransaction.id
+            esta_pago: isPaid,
+            identificador: newTransaction.id,
+            is_recurring: newTransaction.isRecurring // Salva flag no banco
         });
         
         if (error) {
             console.error("Erro ao salvar:", error);
-            // Extração segura da mensagem de erro
             const msg = error.message || error.details || JSON.stringify(error);
             alert(`Erro ao salvar no banco de dados: ${msg}`);
         }
@@ -604,48 +663,58 @@ const App: React.FC = () => {
   };
 
   const updateTransaction = async (updatedTransaction: Transaction) => {
-    setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
+    // Update Optimista - Força string para garantir match
+    setTransactions(prev => prev.map(t => String(t.id) === String(updatedTransaction.id) ? updatedTransaction : t));
     
-    const isNumericId = !isNaN(Number(updatedTransaction.id));
-    
-    // CORREÇÃO PARA STATUS "Pago"
-    const isPaid = updatedTransaction.status === 'completed' || String(updatedTransaction.status).toLowerCase() === 'pago';
+    if (user.id !== 0) {
+        const isNumericId = !isNaN(Number(updatedTransaction.id));
+        const isPaid = updatedTransaction.status === 'completed' || String(updatedTransaction.status).toLowerCase() === 'pago';
+        
+        // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
+        const dbType = updatedTransaction.type === 'income' ? 'Receita' : 'Despesa';
 
-    // SEGURANÇA: Adiciona filtro pelo ID do usuário
-    const updateQuery = supabase
-      .from('transacoes')
-      .update({
-        descricao: updatedTransaction.description,
-        valor: updatedTransaction.amount,
-        tipo: updatedTransaction.type,
-        categoria: updatedTransaction.category,
-        data: updatedTransaction.date,
-        esta_pago: isPaid // Envia BOOLEANO garantido
-      })
-      .eq('user_id', user.id); // <--- GARANTE QUE O USUÁRIO SÓ ATUALIZE O SEU DADO
-      
-    if (isNumericId) {
-        await updateQuery.eq('id', Number(updatedTransaction.id));
-    } else {
-        await updateQuery.eq('identificador', updatedTransaction.id);
+        // Constroi query segura usando chaining correto do Supabase
+        let query = supabase.from('transacoes').update({
+            descricao: updatedTransaction.description,
+            valor: updatedTransaction.amount,
+            tipo: dbType,
+            categoria: updatedTransaction.category,
+            data: updatedTransaction.date,
+            esta_pago: isPaid,
+            is_recurring: updatedTransaction.isRecurring
+        }).eq('user_id', user.id);
+          
+        if (isNumericId) {
+            query = query.eq('id', Number(updatedTransaction.id));
+        } else {
+            query = query.eq('identificador', updatedTransaction.id);
+        }
+
+        const { error } = await query;
+
+        if (error) {
+            console.error("Erro ao atualizar transação:", error);
+            alert("Não foi possível salvar a alteração. Por favor, recarregue a página.");
+        }
     }
   };
 
   const deleteTransaction = async (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
     
-    const isNumericId = !isNaN(Number(id));
-    
-    // SEGURANÇA: Adiciona filtro pelo ID do usuário
-    const deleteQuery = supabase
-        .from('transacoes')
-        .delete()
-        .eq('user_id', user.id); // <--- GARANTE QUE O USUÁRIO SÓ DELETE O SEU DADO
-    
-    if (isNumericId) {
-        await deleteQuery.eq('id', Number(id));
-    } else {
-        await deleteQuery.eq('identificador', id);
+    if (user.id !== 0) {
+        const isNumericId = !isNaN(Number(id));
+        
+        const deleteQuery = supabase
+            .from('transacoes')
+            .delete()
+            .eq('user_id', user.id);
+        
+        if (isNumericId) {
+            await deleteQuery.eq('id', Number(id));
+        } else {
+            await deleteQuery.eq('identificador', id);
+        }
     }
   };
 
@@ -674,6 +743,8 @@ const App: React.FC = () => {
             updateUser={updateUser}
             handleLoginSuccess={() => {}}
             isExiting={isExiting}
+            privacyMode={privacyMode}
+            togglePrivacyMode={togglePrivacyMode}
         />
     </HashRouter>
   );

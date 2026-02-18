@@ -11,17 +11,20 @@ declare global {
   }
 }
 
-// Safely access environment variables with fallback
-// Using optional chaining (?.) prevents crash if import.meta.env is undefined
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env?.VITE_SUPABASE_KEY || '';
+// --- CONFIGURAÇÃO DE CREDENCIAIS ---
+// Inseridas manualmente conforme solicitação.
+// A 'public key' (Anon Key) é segura para uso no frontend.
+// A 'secret key' foi omitida para segurança (deve ser usada apenas em servidores/backend).
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('Supabase URL ou Key não encontradas nas variáveis de ambiente. Verifique o arquivo .env ou as configurações da Vercel.');
+const HARDCODED_URL = 'https://jxwlttibcigihiyllhmz.supabase.co';
+const HARDCODED_KEY = 'sb_publishable_J6n8BuizmLDjbwUrxo2T-Q_qGh8B3qV';
+
+// Prioriza variáveis de ambiente (.env), fallback para os valores fornecidos
+const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || HARDCODED_URL;
+const supabaseKey = import.meta.env?.VITE_SUPABASE_KEY || HARDCODED_KEY;
+
+if (!supabaseUrl || !supabaseKey || supabaseUrl === 'https://placeholder.supabase.co') {
+  console.warn('Supabase URL ou Key não configuradas corretamente.');
 }
 
-// Use a placeholder if keys are missing to prevent initial crash, though auth will fail.
-const safeUrl = supabaseUrl || 'https://placeholder.supabase.co';
-const safeKey = supabaseKey || 'placeholder';
-
-export const supabase = createClient(safeUrl, safeKey);
+export const supabase = createClient(supabaseUrl, supabaseKey);

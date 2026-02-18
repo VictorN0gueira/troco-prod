@@ -18,7 +18,8 @@ import {
   TrendingUp,
   TrendingDown,
   HelpCircle,
-  XCircle
+  XCircle,
+  RefreshCw
 } from 'lucide-react';
 
 interface TransactionsProps {
@@ -49,7 +50,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
     category: CATEGORIES[0],
     date: getTodayLocalDate(), // Usa data local correta
     type: 'expense' as 'income' | 'expense',
-    status: 'pending' as 'completed' | 'pending'
+    status: 'pending' as 'completed' | 'pending',
+    isRecurring: false
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -151,7 +153,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
       category: t.category,
       date: t.date,
       type: t.type,
-      status: t.status
+      status: t.status,
+      isRecurring: t.isRecurring || false
     });
     setEditingId(t.id);
     setIsModalOpen(true);
@@ -173,7 +176,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
         category: formData.category,
         date: formData.date,
         type: formData.type,
-        status: formData.status
+        status: formData.status,
+        isRecurring: formData.isRecurring
       };
       onEdit(updatedTransaction);
     } else {
@@ -185,7 +189,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
         category: formData.category,
         date: formData.date,
         type: formData.type,
-        status: formData.status
+        status: formData.status,
+        isRecurring: formData.isRecurring
       };
       onAdd(newTransaction);
     }
@@ -294,8 +299,11 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
               {currentTransactions.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                       {t.description}
+                      {t.isRecurring && (
+                          <RefreshCw className="w-3 h-3 text-primary-500" title="Recorrente Mensalmente" />
+                      )}
                       <span className="block text-[10px] text-slate-400 font-mono mt-0.5">#{t.id}</span>
                     </div>
                   </td>
@@ -358,6 +366,9 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t.description}</h4>
+                        {t.isRecurring && (
+                            <RefreshCw className="w-3 h-3 text-primary-500" />
+                        )}
                         <span className="text-[10px] text-slate-400 font-mono">#{t.id}</span>
                     </div>
                     <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 gap-2 mt-1">
@@ -614,6 +625,20 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
                             {formData.type === 'income' ? 'Recebido' : 'Pago'}
                         </button>
                     </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <input 
+                        type="checkbox"
+                        id="isRecurring"
+                        checked={formData.isRecurring}
+                        onChange={(e) => setFormData({...formData, isRecurring: e.target.checked})}
+                        className="w-5 h-5 text-primary-500 rounded border-slate-300 focus:ring-primary-500"
+                    />
+                    <label htmlFor="isRecurring" className="text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer select-none">
+                        <RefreshCw className="w-4 h-4 text-slate-500" />
+                        Repetir mensalmente
+                    </label>
                 </div>
 
                 <div className="pt-2">

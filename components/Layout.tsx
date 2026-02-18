@@ -9,7 +9,11 @@ import {
   Moon, 
   Sun,
   Menu,
-  X
+  X,
+  BellRing,
+  Eye,
+  EyeOff,
+  CalendarDays // Importação do ícone de Calendário
 } from 'lucide-react';
 import { NavItem, UserProfile } from '../types';
 import { LOGO_URL } from '../constants';
@@ -20,16 +24,28 @@ interface LayoutProps {
   toggleDarkMode: () => void;
   onLogout: () => void;
   user: UserProfile;
+  privacyMode?: boolean;
+  togglePrivacyMode?: () => void;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Transações', path: '/transactions', icon: ArrowRightLeft },
+  { label: 'Lembretes', path: '/reminders', icon: BellRing },
+  { label: 'Calendário', path: '/calendar', icon: CalendarDays }, // Novo Item
   { label: 'Relatórios', path: '/reports', icon: PieChart },
   { label: 'Configurações', path: '/settings', icon: Settings },
 ];
 
-const Layout: React.FC<LayoutProps> = ({ children, darkMode, toggleDarkMode, onLogout, user }) => {
+const Layout: React.FC<LayoutProps> = ({ 
+  children, 
+  darkMode, 
+  toggleDarkMode, 
+  onLogout, 
+  user,
+  privacyMode = false,
+  togglePrivacyMode
+}) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
@@ -128,6 +144,30 @@ const Layout: React.FC<LayoutProps> = ({ children, darkMode, toggleDarkMode, onL
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+             {/* Privacy Toggle with Eye Animation */}
+             {togglePrivacyMode && (
+                <button
+                    onClick={togglePrivacyMode}
+                    className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative w-10 h-10 flex items-center justify-center overflow-hidden"
+                    title={privacyMode ? "Mostrar valores" : "Ocultar valores"}
+                >
+                    <div className="relative w-5 h-5">
+                      {/* Olho Aberto: Escala Y vai a 0 quando ativa privacy (fecha pálpebra) */}
+                      <Eye 
+                        className={`absolute inset-0 w-5 h-5 transition-all duration-300 ease-in-out origin-center ${
+                          privacyMode ? 'scale-y-0 opacity-0' : 'scale-y-100 opacity-100'
+                        }`} 
+                      />
+                      {/* Olho Fechado: Escala Y sobe de 0 a 1 quando ativa privacy */}
+                      <EyeOff 
+                        className={`absolute inset-0 w-5 h-5 transition-all duration-300 ease-in-out origin-center ${
+                          privacyMode ? 'scale-y-100 opacity-100 delay-75' : 'scale-y-0 opacity-0'
+                        }`} 
+                      />
+                    </div>
+                </button>
+             )}
+
             <button
               onClick={toggleDarkMode}
               className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
