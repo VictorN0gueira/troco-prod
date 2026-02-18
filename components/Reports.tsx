@@ -26,7 +26,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
   const formatPercentage = (val: number) => 
     `${val.toFixed(1)}%`;
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
@@ -39,35 +38,30 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     };
   }, []);
 
-  // --- 1. Filter Logic ---
-
   const { filteredTransactions, startDate } = useMemo(() => {
     const now = new Date();
     let start = new Date();
     
-    // Determine start date based on selection
     switch (dateRange) {
       case '6_months':
-        start.setMonth(now.getMonth() - 5); // Current month + 5 previous
+        start.setMonth(now.getMonth() - 5);
         start.setDate(1);
         break;
       case '1_year':
-        start.setMonth(now.getMonth() - 11); // Current month + 11 previous
+        start.setMonth(now.getMonth() - 11);
         start.setDate(1);
         break;
       case 'ytd':
-        start = new Date(now.getFullYear(), 0, 1); // Jan 1st of current year
+        start = new Date(now.getFullYear(), 0, 1);
         break;
       case 'all':
-        start = new Date(0); // Epoch
+        start = new Date(0);
         break;
     }
 
-    // Set start time to 00:00:00 to ensure correct comparison
     start.setHours(0, 0, 0, 0);
 
     const filtered = transactions.filter(t => {
-      // Fix timezone string parsing to ensure local date comparison works
       const tDate = parseDateFromDB(t.date); 
       return tDate >= start;
     });
@@ -75,29 +69,22 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     return { filteredTransactions: filtered, startDate: start };
   }, [transactions, dateRange]);
 
-  // --- 2. Chart Data Generation (Dynamic buckets) ---
-
   const monthlyData = useMemo(() => {
     const data: Record<string, { name: string; income: number; expense: number; dateObj: Date }> = {};
     const now = new Date();
     const iterator = new Date(startDate);
 
-    // If "All time", find the oldest transaction or default to 1 year ago
     if (dateRange === 'all') {
         if (transactions.length > 0) {
-            // Find minimum date
             const oldestStr = transactions.reduce((min, p) => p.date < min ? p.date : min, transactions[0].date);
             const oldest = parseDateFromDB(oldestStr);
             iterator.setTime(oldest.getTime());
-            // Reset to 1st of that month
             iterator.setDate(1);
         } else {
             iterator.setMonth(now.getMonth() - 11);
         }
     }
     
-    // Initialize buckets for every month in range
-    // We iterate month by month until we reach next month
     while (iterator <= now || iterator.getMonth() === now.getMonth()) {
       const key = `${iterator.getFullYear()}-${iterator.getMonth()}`;
       const monthName = iterator.toLocaleDateString('pt-BR', { month: 'short' });
@@ -110,13 +97,10 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         dateObj: new Date(iterator)
       };
       
-      // Move to next month safely
       iterator.setMonth(iterator.getMonth() + 1);
-      // Safety break to prevent infinite loops in edge cases
       if (iterator.getFullYear() > now.getFullYear() + 1) break; 
     }
 
-    // Populate buckets
     filteredTransactions.forEach(t => {
       const d = parseDateFromDB(t.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
@@ -133,22 +117,17 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     return Object.values(data);
   }, [filteredTransactions, startDate, dateRange, transactions]);
 
-  // --- 3. Status Breakdown ---
-  
   const statusData = useMemo(() => {
     const pending = filteredTransactions.filter(t => t.status === 'pending').reduce((acc, t) => acc + t.amount, 0);
     const completed = filteredTransactions.filter(t => t.status === 'completed').reduce((acc, t) => acc + t.amount, 0);
 
-    // Only return data if there is any, to avoid ugly empty charts
     if (pending === 0 && completed === 0) return [];
 
     return [
-      { name: 'Pago', value: completed, color: '#10B981' }, // Emerald 500
-      { name: 'Pendente', value: pending, color: '#F59E0B' }, // Amber 500
+      { name: 'Pago', value: completed, color: '#10B981' },
+      { name: 'Pendente', value: pending, color: '#F59E0B' },
     ];
   }, [filteredTransactions]);
-
-  // --- 4. KPIs Calculation ---
 
   const kpis = useMemo(() => {
     const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
@@ -168,41 +147,34 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     };
   }, [filteredTransactions]);
 
-  // --- 5. Export Functionality ---
-
   const handleExportCSV = () => {
     if (filteredTransactions.length === 0) {
       alert("Não há dados para exportar neste período.");
       return;
     }
     
-    // 1. Resumo no topo
     const summaryRows = [
         "RESUMO DO PERÍODO",
         `Receitas Totais;${kpis.totalIncome.toFixed(2).replace('.', ',')}`,
         `Despesas Totais;${kpis.totalExpense.toFixed(2).replace('.', ',')}`,
         `Resultado Líquido;${kpis.netResult.toFixed(2).replace('.', ',')}`,
         `Total Transações;${kpis.totalTransactions}`,
-        "" // Linha vazia
+        ""
     ];
 
-    // 2. Cabeçalho (Ponto e vírgula para Excel Brasil)
     const headers = ["ID;Data;Descrição;Categoria;Tipo;Valor;Status"];
     
-    // 3. Linhas de Dados
     const dataRows = filteredTransactions.map(t => {
-      // Use helper for clean export
       const formattedDate = formatDateDisplay(t.date);
       const formattedAmount = t.amount.toFixed(2).replace('.', ',');
       const typeLabel = t.type === 'income' ? 'Receita' : 'Despesa';
       const statusLabel = t.status === 'completed' ? 'Pago' : 'Pendente';
-      // Escape description
       const safeDesc = `"${t.description.replace(/"/g, '""')}"`;
 
       return `${t.id};${formattedDate};${safeDesc};${t.category};${typeLabel};${formattedAmount};${statusLabel}`;
     });
 
-    const csvContent = "\uFEFF" + summaryRows.concat(headers).concat(dataRows).join("\n"); // Add BOM for UTF-8
+    const csvContent = "\uFEFF" + summaryRows.concat(headers).concat(dataRows).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
@@ -223,13 +195,10 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     }
 
     const doc = new jsPDF();
-
-    // -- Header Styles --
     const pageWidth = doc.internal.pageSize.getWidth();
-    const primaryColor = '#10B981'; // Emerald 500
-    const slateColor = '#1e293b'; // Slate 800
+    const primaryColor = '#10B981';
+    const slateColor = '#1e293b';
 
-    // Title
     doc.setFontSize(22);
     doc.setTextColor(primaryColor);
     doc.text("Trocô Financial", 14, 20);
@@ -238,7 +207,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     doc.setTextColor(slateColor);
     doc.text("Relatório Analítico de Transações", 14, 30);
 
-    // Metadata
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 38);
@@ -251,47 +219,41 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     
     doc.text(`Período: ${periodoLabel}`, 14, 43);
 
-    // -- Summary Cards (Simulated) --
     const startY = 55;
     const cardWidth = 55;
     const cardHeight = 25;
     const gap = 10;
 
-    // Card Receitas
-    doc.setFillColor(236, 253, 245); // emerald-50
-    doc.setDrawColor(16, 185, 129); // emerald-500
+    doc.setFillColor(236, 253, 245);
+    doc.setDrawColor(16, 185, 129);
     doc.roundedRect(14, startY, cardWidth, cardHeight, 3, 3, 'FD');
     doc.setFontSize(10);
     doc.setTextColor(16, 185, 129);
     doc.text("Receitas Totais", 19, startY + 8);
     doc.setFontSize(14);
-    doc.setTextColor(6, 78, 59); // emerald-900
+    doc.setTextColor(6, 78, 59);
     doc.text(formatCurrency(kpis.totalIncome), 19, startY + 18);
 
-    // Card Despesas
-    doc.setFillColor(255, 241, 242); // rose-50
-    doc.setDrawColor(244, 63, 94); // rose-500
+    doc.setFillColor(255, 241, 242);
+    doc.setDrawColor(244, 63, 94);
     doc.roundedRect(14 + cardWidth + gap, startY, cardWidth, cardHeight, 3, 3, 'FD');
     doc.setFontSize(10);
     doc.setTextColor(244, 63, 94);
     doc.text("Despesas Totais", 19 + cardWidth + gap, startY + 8);
     doc.setFontSize(14);
-    doc.setTextColor(136, 19, 55); // rose-900
+    doc.setTextColor(136, 19, 55);
     doc.text(formatCurrency(kpis.totalExpense), 19 + cardWidth + gap, startY + 18);
 
-    // Card Saldo
-    doc.setFillColor(248, 250, 252); // slate-50
-    doc.setDrawColor(100, 116, 139); // slate-500
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(100, 116, 139);
     doc.roundedRect(14 + (cardWidth + gap) * 2, startY, cardWidth, cardHeight, 3, 3, 'FD');
     doc.setFontSize(10);
     doc.setTextColor(71, 85, 105);
     doc.text("Resultado Líquido", 19 + (cardWidth + gap) * 2, startY + 8);
     doc.setFontSize(14);
-    doc.setTextColor(15, 23, 42); // slate-900
+    doc.setTextColor(15, 23, 42);
     doc.text(formatCurrency(kpis.netResult), 19 + (cardWidth + gap) * 2, startY + 18);
 
-
-    // -- Table Data --
     const tableData = filteredTransactions.map(t => [
         formatDateDisplay(t.date),
         t.description,
@@ -307,7 +269,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         body: tableData,
         theme: 'striped',
         headStyles: {
-            fillColor: [30, 41, 59], // Slate 800
+            fillColor: [30, 41, 59],
             textColor: [255, 255, 255],
             fontStyle: 'bold'
         },
@@ -316,31 +278,29 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
             cellPadding: 3
         },
         columnStyles: {
-            0: { cellWidth: 25 }, // Data
-            1: { cellWidth: 'auto' }, // Descricao
-            2: { cellWidth: 30 }, // Categoria
-            3: { cellWidth: 20 }, // Tipo
-            4: { cellWidth: 30, halign: 'right' }, // Valor
-            5: { cellWidth: 25, halign: 'center' } // Status
+            0: { cellWidth: 25 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 20 },
+            4: { cellWidth: 30, halign: 'right' },
+            5: { cellWidth: 25, halign: 'center' }
         },
         didParseCell: function(data) {
-            // Colorir valores e status
             if (data.section === 'body') {
                 if (data.column.index === 4) {
-                    const rawVal = data.cell.raw as string;
-                    // Check if it's expense or income based on the row data (index 3 is type)
-                    const type = data.row.raw[3];
+                    // CORREÇÃO APLICADA AQUI:
+                    const rowRaw = data.row.raw as any;
+                    const type = rowRaw[3];
                     if (type === 'Receita') {
-                        data.cell.styles.textColor = [16, 185, 129]; // Green
+                        data.cell.styles.textColor = [16, 185, 129];
                     } else {
-                        data.cell.styles.textColor = [244, 63, 94]; // Red
+                        data.cell.styles.textColor = [244, 63, 94];
                     }
                 }
             }
         }
     });
 
-    // -- Footer --
     const pageCount = (doc as any).internal.getNumberOfPages();
     for(let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -356,7 +316,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header & Actions */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-850 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Relatórios Financeiros</h2>
@@ -410,7 +369,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -453,13 +411,9 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         </div>
       </div>
 
-      {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Bar Chart: Income vs Expense */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-6">Comparativo Financeiro</h3>
-          
           {monthlyData.length > 0 ? (
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -471,7 +425,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                     tickLine={false} 
                     tick={{ fill: '#64748b', fontSize: 11 }} 
                     dy={10}
-                    interval={dateRange === '1_year' || dateRange === 'all' ? 1 : 0} // Skip ticks if too many
+                    interval={dateRange === '1_year' || dateRange === 'all' ? 1 : 0}
                   />
                   <YAxis 
                     axisLine={false} 
@@ -495,18 +449,8 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                     labelStyle={{ fontWeight: 'bold', marginBottom: '8px' }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }}/>
-                  <Bar 
-                    dataKey="income" 
-                    name="Receitas" 
-                    fill="#10B981" 
-                    radius={[4, 4, 0, 0]} 
-                  />
-                  <Bar 
-                    dataKey="expense" 
-                    name="Despesas" 
-                    fill="#F43F5E" 
-                    radius={[4, 4, 0, 0]} 
-                  />
+                  <Bar dataKey="income" name="Receitas" fill="#10B981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expense" name="Despesas" fill="#F43F5E" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -517,7 +461,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
           )}
         </div>
 
-        {/* Donut Chart: Status (Paid vs Pending) */}
         <div className="lg:col-span-1 bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none flex flex-col">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Status de Pagamentos</h3>
           <p className="text-xs text-slate-500 mb-4">Proporção Pago vs Pendente</p>
