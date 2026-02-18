@@ -103,9 +103,15 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
       return matchesSearch && matchesDate;
     })
     .sort((a, b) => {
-      if (!sortConfig) return 0; // Default order (usually chronological from DB fetch)
-      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+      // ALTERAÇÃO APLICADA AQUI:
+      if (!sortConfig) return 0; 
+      
+      const { key, direction } = sortConfig;
+      const aVal = a[key] ?? '';
+      const bVal = b[key] ?? '';
+
+      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
       return 0;
     });
 
@@ -201,15 +207,12 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
   };
 
   const getCategoryColor = (cat: string) => {
-    // Simple hashing for colors (mock)
     const colors = ['bg-blue-100 text-blue-600', 'bg-green-100 text-green-600', 'bg-purple-100 text-purple-600', 'bg-orange-100 text-orange-600'];
     const index = cat.length % colors.length;
     return colors[index];
   };
 
-  // Helper para renderizar o ícone com segurança
   const CategoryIcon = ({ category, className }: { category: string, className?: string }) => {
-    // Tenta encontrar o ícone exato, ou fallback
     const IconComponent = CATEGORY_ICONS[category] || HelpCircle;
     return <IconComponent className={className} />;
   };
@@ -302,7 +305,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
                     <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                       {t.description}
                       {t.isRecurring && (
-                          <RefreshCw className="w-3 h-3 text-primary-500" title="Recorrente Mensalmente" />
+                          <RefreshCw className="w-3 h-3 text-primary-500" />
                       )}
                       <span className="block text-[10px] text-slate-400 font-mono mt-0.5">#{t.id}</span>
                     </div>
