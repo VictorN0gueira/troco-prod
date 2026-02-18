@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   CalendarClock,
   Wallet,
-  RefreshCw // Importação do ícone de recorrência
+  RefreshCw 
 } from 'lucide-react';
 
 interface RemindersProps {
@@ -39,9 +39,8 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'asc' }); // Default sort by date asc
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'asc' }); 
   
-  // Confirmação Modal State
   const [confirmPaymentTx, setConfirmPaymentTx] = useState<Transaction | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,7 +53,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
     date: today,
     type: 'expense' as 'income' | 'expense',
     status: 'pending' as 'completed' | 'pending',
-    isRecurring: false // Novo estado inicial
+    isRecurring: false 
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -91,29 +90,26 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
     return result;
   };
 
-  // --- LOGIC: Filter for PENDING transactions ---
   const filteredTransactions = transactions
     .filter(t => {
-      // Regra Principal: Apenas Status Pendente
       if (t.status !== 'pending') return false;
-
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             t.category.toLowerCase().includes(searchTerm.toLowerCase());
-      
       return matchesSearch;
     })
     .sort((a, b) => {
       if (!sortConfig) return 0;
-      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+      const { key, direction } = sortConfig;
+      const aVal = a[key] ?? '';
+      const bVal = b[key] ?? '';
+      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
       return 0;
     });
 
-  // Calculate stats for Reminders
   const totalPending = filteredTransactions.reduce((acc, t) => acc + t.amount, 0);
   const overdueCount = filteredTransactions.filter(t => t.date < today).length;
 
-  // Pagination Logic
   const totalItems = filteredTransactions.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -158,21 +154,18 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
       date: t.date,
       type: t.type,
       status: t.status,
-      isRecurring: t.isRecurring || false // Carrega estado existente
+      isRecurring: t.isRecurring || false 
     });
     setEditingId(t.id);
     setIsModalOpen(true);
   };
 
-  // Quick Action: Trigger Modal
   const handleMarkAsPaid = (t: Transaction) => {
     setConfirmPaymentTx(t);
   };
 
-  // Confirm Action
   const confirmPayment = async () => {
     if (confirmPaymentTx) {
-        // Atualiza status para completed.
         onEdit({ ...confirmPaymentTx, status: 'completed' });
         setConfirmPaymentTx(null);
     }
@@ -191,7 +184,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         date: formData.date,
         type: formData.type,
         status: formData.status,
-        isRecurring: formData.isRecurring // Envia flag
+        isRecurring: formData.isRecurring 
     };
 
     if (editingId) {
@@ -216,7 +209,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
     return <IconComponent className={className} />;
   };
 
-  // Helper para status de vencimento
   const getDueStatus = (date: string) => {
       if (date < today) return { label: 'Atrasado', color: 'text-rose-500 bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' };
       if (date === today) return { label: 'Vence Hoje', color: 'text-amber-500 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' };
@@ -225,8 +217,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
 
   return (
     <div className="space-y-6">
-      
-      {/* Header Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-850 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
@@ -257,7 +247,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         </div>
       </div>
 
-      {/* Action Bar */}
       <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div className="relative flex-1 w-full xl:max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -269,8 +258,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500 text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none transition-all"
             />
         </div>
-        
-        {/* Helper Text */}
         <div className="hidden md:flex items-center gap-4 text-xs text-slate-500">
             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-rose-500"></div>Atrasado</div>
             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div>Vence Hoje</div>
@@ -278,10 +265,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="bg-white dark:bg-slate-850 rounded-3xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col">
-        
-        {/* Desktop View: Table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -289,7 +273,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-primary-500" onClick={() => handleSort('date')}>
                   Vencimento
                 </th>
-                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-primary-500" onClick={() => handleSort('description')}>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-primary-500" onClick={() => handleSort('description')}>
                   Descrição
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -317,9 +301,8 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                         {t.description}
-                        {/* Indicador de Recorrência Desktop */}
                         {t.isRecurring && (
-                            <RefreshCw className="w-3 h-3 text-primary-500" title="Recorrente Mensalmente" />
+                            <RefreshCw className="w-3 h-3 text-primary-500" />
                         )}
                         <span className="block text-[10px] text-slate-400 font-mono mt-0.5">#{t.id}</span>
                       </div>
@@ -337,7 +320,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex justify-center items-center gap-2">
-                         <button 
+                        <button 
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -372,7 +355,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
           </table>
         </div>
 
-        {/* Mobile View: Cards */}
         <div className="md:hidden">
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {currentTransactions.map((t) => {
@@ -399,7 +381,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     <div className="flex justify-between items-center mb-1">
                          <div className="flex items-center gap-2">
                              <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.description}</h4>
-                             {/* Indicador de Recorrência Mobile */}
                              {t.isRecurring && <RefreshCw className="w-3 h-3 text-primary-500" />}
                          </div>
                          <span className={`text-base font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-200'}`}>
@@ -441,7 +422,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
           </div>
         )}
 
-        {/* Pagination Footer */}
         {filteredTransactions.length > 0 && (
           <div className="px-4 md:px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
             <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
@@ -451,7 +431,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
               <span className="text-slate-400 mx-1">/</span>
               <span className="font-semibold text-slate-700 dark:text-slate-200">{totalItems}</span>
             </p>
-            
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -460,7 +439,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              
               <button 
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -473,7 +451,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         )}
       </div>
 
-      {/* Payment Confirmation Modal */}
       {confirmPaymentTx && (
         <div className="fixed inset-0 z-[60] overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 text-center">
@@ -481,17 +458,14 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                 className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
                 onClick={() => setConfirmPaymentTx(null)}
             />
-            
             <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:w-full sm:max-w-sm animate-scale-in border border-slate-100 dark:border-slate-700">
                 <div className="p-6">
                     <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
                         <Wallet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
                         Confirmar Pagamento?
                     </h3>
-                    
                     <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mb-6">
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Você está marcando como pago:</p>
                         <p className="font-bold text-slate-800 dark:text-white text-lg">{confirmPaymentTx.description}</p>
@@ -499,11 +473,9 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                             {formatCurrency(confirmPaymentTx.amount)}
                         </p>
                     </div>
-                    
                     <p className="text-xs text-slate-400 mb-6">
                         Esta ação moverá o item para o histórico de transações concluídas.
                     </p>
-
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={() => setConfirmPaymentTx(null)}
@@ -524,7 +496,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         </div>
       )}
 
-      {/* Modal - Igual ao Transactions mas focado em agendamento */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
@@ -545,7 +516,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
               <form onSubmit={handleSubmit} className="p-6 space-y-5">
                 <div className="grid grid-cols-2 gap-4 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
                   <button
@@ -571,7 +541,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     A Pagar
                   </button>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Valor Previsto</label>
                   <input
@@ -583,7 +552,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     placeholder="R$ 0,00"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Descrição</label>
                   <input
@@ -595,7 +563,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     placeholder="Ex: Fatura do Cartão"
                   />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative z-10" ref={dropdownRef}>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Categoria</label>
@@ -630,7 +597,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                       </div>
                     )}
                   </div>
-                  
                   <div className="relative z-0">
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Data de Vencimento</label>
                     <input
@@ -642,9 +608,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     />
                   </div>
                 </div>
-
-                {/* Status Selection (Hidden or Simplified for Reminders) */}
-                {/* Lembretes são por definição 'pendentes', mas permitimos mudar para pago caso o usuário esteja editando para finalizar */}
                 {editingId && (
                     <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status Atual</label>
@@ -681,8 +644,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                         )}
                     </div>
                 )}
-                
-                {/* CHECKBOX DE RECORRÊNCIA ADICIONADO AQUI */}
                 <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                     <input 
                         type="checkbox"
@@ -696,7 +657,6 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                         Repetir mensalmente
                     </label>
                 </div>
-
                 <div className="pt-2">
                   <button
                     type="submit"
