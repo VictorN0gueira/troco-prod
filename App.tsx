@@ -129,6 +129,8 @@ const AppRoutes = ({
           <Route path="/calendar" element={
             <CalendarView 
               transactions={transactions} 
+              onAddTransaction={addTransaction}
+              onUpdateTransaction={updateTransaction}
             />
           } />
           
