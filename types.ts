@@ -26,6 +26,7 @@ export interface Transaction {
   date: string;
   status: 'completed' | 'pending';
   isRecurring?: boolean; // Nova flag para recorrência
+  cardId?: number; // ID do cartão de crédito (opcional)
 }
 
 // Chart types remain the same for UI visualization
@@ -46,4 +47,15 @@ export interface NavItem {
   label: string;
   path: string;
   icon: React.ElementType;
+}
+
+export interface CreditCard {
+  id: number;
+  user_id: number;
+  name: string;
+  limit_amount: number;
+  closing_day: number;
+  due_day: number;
+  color: string;
+  brand?: string;
 }

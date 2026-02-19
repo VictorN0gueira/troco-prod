@@ -5,10 +5,11 @@ import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
 import Reminders from './components/Reminders';
 import CalendarView from './components/CalendarView'; // Import Calendar
+import CreditCards from './components/CreditCards';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import Login from './components/Login';
-import { Transaction, UserProfile } from './types';
+import { Transaction, UserProfile, CreditCard } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
@@ -96,7 +97,9 @@ const AppRoutes = ({
   handleLoginSuccess,
   isExiting,
   privacyMode,
-  togglePrivacyMode
+  togglePrivacyMode,
+  cards,
+  fetchCards
 }: any) => {
   return (
     <Routes>
@@ -129,6 +132,7 @@ const AppRoutes = ({
             transactions={transactions}
             user={user}
             privacyMode={privacyMode}
+            cards={cards} // Pass cards to Dashboard
           />
         } />
 
@@ -138,6 +142,7 @@ const AppRoutes = ({
             onAdd={addTransaction}
             onEdit={updateTransaction}
             onDelete={deleteTransaction}
+            cards={cards}
           />
         } />
 
@@ -155,6 +160,15 @@ const AppRoutes = ({
             transactions={transactions}
             onAddTransaction={addTransaction}
             onUpdateTransaction={updateTransaction}
+          />
+        } />
+
+        <Route path="/cards" element={
+          <CreditCards
+            user={user}
+            cards={cards}
+            transactions={transactions}
+            fetchCards={fetchCards}
           />
         } />
 
@@ -547,6 +561,28 @@ const AppContent: React.FC = () => {
 
   // --- DATA FETCHING FUNCTIONS (With Retry) ---
 
+  // State for Cards
+  const [cards, setCards] = useState<CreditCard[]>([]);
+
+  // ... (existing state)
+
+  // Fetch Cards Function
+  const fetchCards = async (userId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('credit_cards')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setCards(data || []);
+    } catch (error) {
+      console.error('Error fetching cards:', error);
+    }
+  };
+
+  // Update fetchUserProfileByEmail to call fetchCards
   const fetchUserProfileByEmail = async (email: string, retries = 3) => {
     try {
       const { data, error } = await supabase
@@ -570,6 +606,7 @@ const AppContent: React.FC = () => {
 
         setUser(mappedUser);
         fetchTransactions(data.id);
+        fetchCards(data.id); // Fetch Cards too!
 
       } else {
         // Retry Logic para suportar delay do N8N
@@ -628,7 +665,8 @@ const AppContent: React.FC = () => {
             category: t.categoria || 'Outros',
             date: t.data,
             status: t.esta_pago ? 'completed' : 'pending',
-            isRecurring: t.is_recurring // Map DB snake_case to Frontend camelCase
+            isRecurring: t.is_recurring, // Map DB snake_case to Frontend camelCase
+            cardId: t.card_id // Map card_id
           };
         });
         setTransactions(formatted);
@@ -687,7 +725,8 @@ const AppContent: React.FC = () => {
         data: newTransaction.date,
         esta_pago: isPaid,
         identificador: newTransaction.id,
-        is_recurring: newTransaction.isRecurring // Salva flag no banco
+        is_recurring: newTransaction.isRecurring, // Salva flag no banco
+        card_id: newTransaction.cardId // Adiciona card_id
       });
 
       if (error) {
@@ -724,7 +763,8 @@ const AppContent: React.FC = () => {
         categoria: updatedTransaction.category,
         data: updatedTransaction.date,
         esta_pago: isPaid,
-        is_recurring: updatedTransaction.isRecurring
+        is_recurring: updatedTransaction.isRecurring,
+        card_id: updatedTransaction.cardId
       }).eq('user_id', user.id);
 
       if (isNumericId) {
@@ -795,6 +835,8 @@ const AppContent: React.FC = () => {
         isExiting={isExiting}
         privacyMode={privacyMode}
         togglePrivacyMode={togglePrivacyMode}
+        cards={cards}
+        fetchCards={() => fetchCards(user.id)}
       />
     </HashRouter>
   );

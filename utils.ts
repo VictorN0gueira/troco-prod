@@ -25,10 +25,30 @@ export const formatDateDisplay = (dateString: string): string => {
  * Essencial para comparar datas de filtros com datas do banco.
  */
 // ... existing code ...
+// ... existing code ...
 export const parseDateFromDB = (dateString: string): Date => {
   // Adiciona T00:00:00 para forçar o parse como "Local Time" ao invés de UTC
   return new Date(`${dateString}T00:00:00`);
 };
+
+/**
+ * Determina a qual "Mês de Referência" (Fatura) uma transação pertence.
+ * Se a compra foi feita DEPOIS ou NO DIA do fechamento, ela pertence à fatura do mês seguinte.
+ */
+export const getInvoiceReferenceDate = (transactionDate: string, closingDay: number): Date => {
+  const date = parseDateFromDB(transactionDate);
+  const day = date.getDate();
+
+  // Se passou do fechamento, joga para o mês seguinte (primeiro dia do mês)
+  if (day >= closingDay) {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 1);
+  }
+
+  // Senão, é do próprio mês da compra
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
+// ... existing code ...
 
 // --- LOGICA DE RECORRÊNCIA CENTRALIZADA ---
 

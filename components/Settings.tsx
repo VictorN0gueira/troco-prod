@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Shield, 
-  Bell, 
-  Save, 
-  Camera, 
+import {
+  User,
+  Mail,
+  Phone,
+  Shield,
+  Bell,
+  Save,
+  Camera,
   X,
   Lock,
   Eye,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../supabaseClient';
+import { PushManager } from './PushManager';
 
 interface SettingsProps {
   user: UserProfile;
@@ -24,10 +25,10 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   // --- States ---
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Local form state initialized from props
   const [formData, setFormData] = useState<UserProfile>(user);
-  
+
   // State to hold the actual file object for upload
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
@@ -86,102 +87,102 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-        let finalAvatarUrl = formData.avatarUrl;
+      let finalAvatarUrl = formData.avatarUrl;
 
-        // If there is a new file selected, upload it to Supabase Storage
-        if (avatarFile) {
-            const fileExt = avatarFile.name.split('.').pop();
-            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-            const filePath = `${fileName}`;
+      // If there is a new file selected, upload it to Supabase Storage
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
 
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, avatarFile);
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile);
 
-            if (uploadError) {
-                // Wrap storage error
-                throw new Error(`Erro no upload da imagem: ${uploadError.message}`);
-            }
-
-            // Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
-
-            finalAvatarUrl = publicUrl;
+        if (uploadError) {
+          // Wrap storage error
+          throw new Error(`Erro no upload da imagem: ${uploadError.message}`);
         }
 
-        // Prepare updated profile
-        const updatedProfile: UserProfile = {
-            ...formData,
-            avatarUrl: finalAvatarUrl,
-            // Include current notification state in full save
-            notificacoes_email: notifications.email,
-            notificacoes_push: notifications.push,
-            notificacoes_marketing: notifications.marketing
-        };
+        // Get Public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
 
-        // Call parent handler to update Database
-        await onUpdateUser(updatedProfile);
-        
-        alert('Perfil atualizado com sucesso!');
-        setAvatarFile(null); // Clear file state after success
+        finalAvatarUrl = publicUrl;
+      }
+
+      // Prepare updated profile
+      const updatedProfile: UserProfile = {
+        ...formData,
+        avatarUrl: finalAvatarUrl,
+        // Include current notification state in full save
+        notificacoes_email: notifications.email,
+        notificacoes_push: notifications.push,
+        notificacoes_marketing: notifications.marketing
+      };
+
+      // Call parent handler to update Database
+      await onUpdateUser(updatedProfile);
+
+      alert('Perfil atualizado com sucesso!');
+      setAvatarFile(null); // Clear file state after success
 
     } catch (error: any) {
-        console.error("Erro detalhado ao salvar perfil:", error);
-        
-        let displayMessage = "Ocorreu um erro desconhecido.";
-        
-        try {
-            if (typeof error === 'string') {
-                displayMessage = error;
-            } else if (error instanceof Error) {
-                displayMessage = error.message;
-            } else if (error && typeof error === 'object') {
-                // Tenta propriedades conhecidas
-                // Verifica se message é string antes de atribuir
-                const msg = error.message || error.error_description || (error.data && error.data.message);
-                
-                if (typeof msg === 'string') {
-                    displayMessage = msg;
-                } else {
-                    // Fallback para stringify se não encontrar mensagem texto
-                    displayMessage = JSON.stringify(error);
-                }
-            }
-        } catch (parseError) {
-            displayMessage = "Não foi possível detalhar o erro.";
-        }
+      console.error("Erro detalhado ao salvar perfil:", error);
 
-        alert(`Erro ao salvar: ${displayMessage}`);
+      let displayMessage = "Ocorreu um erro desconhecido.";
+
+      try {
+        if (typeof error === 'string') {
+          displayMessage = error;
+        } else if (error instanceof Error) {
+          displayMessage = error.message;
+        } else if (error && typeof error === 'object') {
+          // Tenta propriedades conhecidas
+          // Verifica se message é string antes de atribuir
+          const msg = error.message || error.error_description || (error.data && error.data.message);
+
+          if (typeof msg === 'string') {
+            displayMessage = msg;
+          } else {
+            // Fallback para stringify se não encontrar mensagem texto
+            displayMessage = JSON.stringify(error);
+          }
+        }
+      } catch (parseError) {
+        displayMessage = "Não foi possível detalhar o erro.";
+      }
+
+      alert(`Erro ao salvar: ${displayMessage}`);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   // 4. Toggles de Notificação (Autosave)
   const toggleNotification = async (key: keyof typeof notifications) => {
     const newVal = !notifications[key];
-    
+
     // 1. Update UI immediately (Optimistic)
     setNotifications(prev => ({ ...prev, [key]: newVal }));
 
     // 2. Trigger background save without blocking UI
     const updatedProfile: UserProfile = {
-        ...user,        
-        ...formData,    
-        notificacoes_email: key === 'email' ? newVal : notifications.email,
-        notificacoes_push: key === 'push' ? newVal : notifications.push,
-        notificacoes_marketing: key === 'marketing' ? newVal : notifications.marketing
+      ...user,
+      ...formData,
+      notificacoes_email: key === 'email' ? newVal : notifications.email,
+      notificacoes_push: key === 'push' ? newVal : notifications.push,
+      notificacoes_marketing: key === 'marketing' ? newVal : notifications.marketing
     };
 
     try {
-        await onUpdateUser(updatedProfile);
+      await onUpdateUser(updatedProfile);
     } catch (error) {
-        console.error("Erro ao salvar preferência", error);
-        setNotifications(prev => ({ ...prev, [key]: !newVal }));
+      console.error("Erro ao salvar preferência", error);
+      setNotifications(prev => ({ ...prev, [key]: !newVal }));
     }
   };
 
@@ -195,10 +196,10 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   const submitPasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
-    
+
     if (!passwordForm.current) {
-        setPasswordError("Por favor, informe sua senha atual.");
-        return;
+      setPasswordError("Por favor, informe sua senha atual.");
+      return;
     }
 
     if (passwordForm.new.length < 6) {
@@ -212,36 +213,36 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
     }
 
     if (passwordForm.current === passwordForm.new) {
-        setPasswordError("A nova senha deve ser diferente da atual.");
-        return;
+      setPasswordError("A nova senha deve ser diferente da atual.");
+      return;
     }
 
     setPasswordLoading(true);
-    
+
     try {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: user.email,
-            password: passwordForm.current
-        });
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordForm.current
+      });
 
-        if (signInError) {
-            throw new Error("A senha atual está incorreta.");
-        }
+      if (signInError) {
+        throw new Error("A senha atual está incorreta.");
+      }
 
-        const { error: updateError } = await supabase.auth.updateUser({ 
-            password: passwordForm.new 
-        });
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordForm.new
+      });
 
-        if (updateError) throw updateError;
-        
-        setIsPasswordModalOpen(false);
-        setPasswordForm({ current: '', new: '', confirm: '' });
-        alert("Senha alterada com sucesso!");
+      if (updateError) throw updateError;
+
+      setIsPasswordModalOpen(false);
+      setPasswordForm({ current: '', new: '', confirm: '' });
+      alert("Senha alterada com sucesso!");
 
     } catch (error: any) {
-        setPasswordError(error.message || "Erro ao alterar senha.");
+      setPasswordError(error.message || "Erro ao alterar senha.");
     } finally {
-        setPasswordLoading(false);
+      setPasswordLoading(false);
     }
   };
 
@@ -261,7 +262,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column: Profile Form */}
         <div className="lg:col-span-2 space-y-6">
           <form onSubmit={handleSave} className="bg-white dark:bg-slate-850 p-6 md:p-8 rounded-3xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
@@ -274,26 +275,26 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
             <div className="flex items-center gap-6 mb-8">
               <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
                 <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 p-1 border-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-primary-500 transition-colors overflow-hidden">
-                  <img 
-                    src={formData.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=random'} 
-                    alt="Avatar" 
-                    className="w-full h-full rounded-full object-cover" 
+                  <img
+                    src={formData.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=random'}
+                    alt="Avatar"
+                    className="w-full h-full rounded-full object-cover"
                   />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                   <Camera className="w-8 h-8 text-white" />
                 </div>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
                   accept="image/*"
                   onChange={handleFileChange}
                 />
               </div>
               <div>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleAvatarClick}
                   className="text-sm font-semibold text-primary-500 hover:text-primary-600"
                 >
@@ -349,8 +350,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
             </div>
 
             <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading}
                 className="flex items-center px-6 py-3 rounded-xl bg-primary-500 text-white font-bold hover:bg-primary-600 active:transform active:scale-95 transition-all shadow-lg shadow-primary-500/30 disabled:opacity-70"
               >
@@ -380,7 +381,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                 <p className="font-medium text-slate-700 dark:text-slate-200">Senha</p>
                 <p className="text-sm text-slate-500">Mantenha sua conta segura</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsPasswordModalOpen(true)}
                 className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
@@ -392,30 +393,31 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
 
         {/* Right Column: Notifications only */}
         <div className="space-y-6">
-          
+
           {/* Notifications */}
-          <div className="bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none">
-             <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none space-y-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
               <Bell className="w-5 h-5 text-primary-500" />
               Notificações
             </h3>
-            <div className="space-y-3">
+
+            {/* Push Manager Component */}
+            <PushManager userId={user.id} />
+
+            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               {[
                 { label: 'Alertas por Email', key: 'email' },
-                { label: 'Notificações Push', key: 'push' },
                 { label: 'Novidades e Ofertas', key: 'marketing' },
               ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between">
                   <span className="text-sm text-slate-600 dark:text-slate-400">{item.label}</span>
-                  <button 
+                  <button
                     onClick={() => toggleNotification(item.key as keyof typeof notifications)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                      notifications[item.key as keyof typeof notifications] ? 'bg-primary-500' : 'bg-slate-200 dark:bg-slate-700'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${notifications[item.key as keyof typeof notifications] ? 'bg-primary-500' : 'bg-slate-200 dark:bg-slate-700'
+                      }`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      notifications[item.key as keyof typeof notifications] ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications[item.key as keyof typeof notifications] ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
                   </button>
                 </div>
               ))}
@@ -428,15 +430,15 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
       {isPasswordModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-            <div 
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+            <div
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
               onClick={resetPasswordModal}
             />
-            
+
             <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:w-full sm:max-w-md animate-scale-in">
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white">Alterar Senha</h3>
-                <button 
+                <button
                   onClick={resetPasswordModal}
                   className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
                 >
@@ -446,38 +448,38 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
 
               <form onSubmit={submitPasswordChange} className="p-6 space-y-4">
                 <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
-                    Por segurança, confirme sua senha atual para continuar.
+                  Por segurança, confirme sua senha atual para continuar.
                 </div>
 
                 {/* Error Banner */}
                 {passwordError && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                        <p className="text-sm text-red-600 dark:text-red-300">{passwordError}</p>
-                    </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    <p className="text-sm text-red-600 dark:text-red-300">{passwordError}</p>
+                  </div>
                 )}
 
                 {/* Senha Atual */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Senha Atual</label>
                   <div className="relative">
-                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                     <input 
-                       type={showPassword ? "text" : "password"}
-                       name="current"
-                       value={passwordForm.current}
-                       onChange={handlePasswordChange}
-                       required
-                       className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                       placeholder="Sua senha atual"
-                     />
-                     <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                     >
-                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                     </button>
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="current"
+                      value={passwordForm.current}
+                      onChange={handlePasswordChange}
+                      required
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                      placeholder="Sua senha atual"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                 </div>
 
@@ -487,17 +489,17 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nova Senha</label>
                   <div className="relative">
-                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                     <input 
-                       type={showPassword ? "text" : "password"}
-                       name="new"
-                       value={passwordForm.new}
-                       onChange={handlePasswordChange}
-                       required
-                       minLength={6}
-                       className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                       placeholder="Nova senha segura"
-                     />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="new"
+                      value={passwordForm.new}
+                      onChange={handlePasswordChange}
+                      required
+                      minLength={6}
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                      placeholder="Nova senha segura"
+                    />
                   </div>
                 </div>
 
@@ -505,23 +507,23 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Confirmar Nova Senha</label>
                   <div className="relative">
-                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                     <input 
-                       type={showPassword ? "text" : "password"}
-                       name="confirm"
-                       value={passwordForm.confirm}
-                       onChange={handlePasswordChange}
-                       required
-                       minLength={6}
-                       className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                       placeholder="Repita a nova senha"
-                     />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="confirm"
+                      value={passwordForm.confirm}
+                      onChange={handlePasswordChange}
+                      required
+                      minLength={6}
+                      className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                      placeholder="Repita a nova senha"
+                    />
                   </div>
                 </div>
 
                 <div className="pt-4">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={passwordLoading}
                     className="w-full py-3 rounded-xl bg-primary-500 text-white font-bold hover:bg-primary-600 active:scale-95 transition-all shadow-lg shadow-primary-500/30 disabled:opacity-70"
                   >

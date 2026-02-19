@@ -1,0 +1,630 @@
+import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { supabase } from '../supabaseClient';
+import { CreditCard, UserProfile, Transaction } from '../types';
+import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle } from 'lucide-react';
+
+interface CreditCardsProps {
+    user: UserProfile;
+    cards: CreditCard[];
+    transactions: Transaction[];
+    fetchCards: (userId: number) => Promise<void>;
+}
+
+const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fetchCards }) => {
+    const [loading, setLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 6;
+
+    // Invoice Visual State
+    const [viewingInvoice, setViewingInvoice] = useState<CreditCard | null>(null);
+    const [currentInvoiceDate, setCurrentInvoiceDate] = useState(new Date());
+
+    // Form State
+    const [formData, setFormData] = useState({
+        name: '',
+        limit_amount: '',
+        closing_day: '',
+        due_day: '',
+        color: '#10B981', // Default Emerald
+        brand: 'Mastercard'
+    });
+
+    // Formatting Helper
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(value);
+    };
+
+    const handleLimitChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value.replace(/\D/g, "");
+        if (!rawValue) {
+            setFormData({ ...formData, limit_amount: '' });
+            return;
+        }
+        const numberValue = Number(rawValue) / 100;
+        setFormData({ ...formData, limit_amount: formatCurrency(numberValue) });
+    };
+
+    // Helper: Get Invoice Date for a transaction
+    const getTransactionInvoiceDate = (date: string, closingDay: number) => {
+        const tDate = new Date(date + 'T00:00:00');
+        const day = tDate.getDate();
+        // If transaction is on or after closing day, it belongs to next month's invoice
+        if (day >= closingDay) {
+            return new Date(tDate.getFullYear(), tDate.getMonth() + 1, 1);
+        }
+        return new Date(tDate.getFullYear(), tDate.getMonth(), 1);
+    }
+
+    // Calculate Metrics per Card (Current Open Invoice by default for the card view)
+    const getCardMetrics = (cardId: number, limit: number, closingDay: number) => {
+        const now = new Date();
+        const currentInvoiceMonth = now.getDate() >= closingDay
+            ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+            : new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const cardTransactions = transactions.filter(t => {
+            if (t.cardId !== cardId || t.status !== 'pending' || t.type !== 'expense') return false;
+
+            const tInvoiceDate = getTransactionInvoiceDate(t.date, closingDay);
+            return tInvoiceDate.getTime() === currentInvoiceMonth.getTime();
+        });
+
+        const invoiceAmount = cardTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+        // Available limit should consider ALL pending expenses, regardless of invoice month,
+        // because the limit is global.
+        const allPendingExpenses = transactions.filter(t => t.cardId === cardId && t.status === 'pending' && t.type === 'expense');
+        const totalUsedLimit = allPendingExpenses.reduce((sum, t) => sum + t.amount, 0);
+        const availableLimit = limit - totalUsedLimit;
+
+        return { invoiceAmount, availableLimit, currentInvoiceMonth };
+    };
+
+    const handleOpenModal = (card?: CreditCard) => {
+        if (card) {
+            setEditingCard(card);
+            setFormData({
+                name: card.name,
+                limit_amount: formatCurrency(card.limit_amount),
+                closing_day: card.closing_day.toString(),
+                due_day: card.due_day.toString(),
+                color: card.color,
+                brand: card.brand || 'Mastercard'
+            });
+        } else {
+            setEditingCard(null);
+            setFormData({
+                name: '',
+                limit_amount: '',
+                closing_day: '',
+                due_day: '',
+                color: '#10B981',
+                brand: 'Mastercard'
+            });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        const rawAmount = formData.limit_amount.toString().replace(/\D/g, "");
+        const limitFloat = rawAmount ? Number(rawAmount) / 100 : 0;
+
+        const payload = {
+            user_id: user.id,
+            name: formData.name,
+            limit_amount: limitFloat,
+            closing_day: parseInt(formData.closing_day),
+            due_day: parseInt(formData.due_day),
+            color: formData.color,
+            brand: formData.brand
+        };
+
+        try {
+            if (editingCard) {
+                const { error } = await supabase
+                    .from('credit_cards')
+                    .update(payload)
+                    .eq('id', editingCard.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('credit_cards')
+                    .insert([payload]);
+                if (error) throw error;
+            }
+            await fetchCards(user.id);
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Error saving card:', error);
+            alert('Erro ao salvar cartão');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Tem certeza que deseja excluir este cartão?")) return;
+
+        try {
+            const { error } = await supabase.from('credit_cards').delete().eq('id', id);
+            if (error) throw error;
+            fetchCards(user.id);
+        } catch (error) {
+            console.error("Error deleting:", error);
+        }
+    }
+
+    // Visual Helper for Gradient
+    const getGradient = (hexColor: string) => {
+        return `linear-gradient(135deg, ${hexColor} 0%, ${adjustColor(hexColor, -40)} 100%)`;
+    };
+
+    function adjustColor(color: string, amount: number) {
+        return '#' + color.replace(/^#/, '').replace(/../g, color => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+    }
+
+    const handleViewInvoice = (card: CreditCard) => {
+        setViewingInvoice(card);
+        // Set initial invoice date based on current date and closing date
+        const now = new Date();
+        const initialDate = now.getDate() >= card.closing_day
+            ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+            : new Date(now.getFullYear(), now.getMonth(), 1);
+        setCurrentInvoiceDate(initialDate);
+    };
+
+    // Invoice Navigation
+    const prevInvoice = () => {
+        setCurrentInvoiceDate(prev => {
+            const d = new Date(prev);
+            d.setMonth(d.getMonth() - 1);
+            return d;
+        });
+    };
+
+    const nextInvoice = () => {
+        setCurrentInvoiceDate(prev => {
+            const d = new Date(prev);
+            d.setMonth(d.getMonth() + 1);
+            return d;
+        });
+    };
+
+    return (
+        <div className="space-y-8 animate-fade-in-up">
+            <div className="flex justify-between items-center">
+                {/* ... (Header remains the same) ... */}
+                <div>
+                    <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Meus Cartões</h2>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Gerencie seus limites e vencimentos</p>
+                </div>
+                <button
+                    onClick={() => handleOpenModal()}
+                    className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-primary-500/20 active:scale-95"
+                >
+                    <Plus className="w-5 h-5" />
+                    Novo Cartão
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {cards.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((card) => {
+                    const { invoiceAmount, availableLimit, currentInvoiceMonth } = getCardMetrics(card.id, card.limit_amount, card.closing_day);
+
+                    // Usage is based on TOTAL used limit, not just this invoice
+                    // But for the "Invoice Bar" visualization, usually people want to see how much of the limit is taken
+                    // Here we show: invoiceAmount relative to limit (this invoice's impact) OR total usage?
+                    // Let's show Total Usage for the progress bar, but Text for Invoice Amount
+                    const totalUsed = card.limit_amount - availableLimit;
+                    const usagePercentage = Math.min(100, (totalUsed / card.limit_amount) * 100);
+
+                    const isInvoiceClosed = new Date() > currentInvoiceMonth; // Simplification
+
+                    return (
+                        <div
+                            key={card.id}
+                            className="relative group perspective-1000"
+                        >
+                            {/* 3D Card Visual */}
+                            <div
+                                className="h-64 w-full rounded-2xl p-6 text-white shadow-xl transition-transform duration-500 transform group-hover:-translate-y-2 relative overflow-hidden flex flex-col justify-between cursor-pointer"
+                                style={{ background: getGradient(card.color) }}
+                                onClick={() => handleViewInvoice(card)}
+                            >
+                                {/* ... (Card Visuals remain the same) ... */}
+                                {/* Background Pattern */}
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                                <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5"></div>
+
+                                <div className="flex justify-between items-start relative z-10">
+                                    <div>
+                                        <p className="text-xs font-medium opacity-80 uppercase tracking-wider">Nome do Cartão</p>
+                                        <h3 className="text-xl font-bold mt-1 tracking-wide">{card.name}</h3>
+                                    </div>
+                                    <CardIcon className="w-8 h-8 opacity-80" />
+                                </div>
+
+                                <div className="space-y-4 relative z-10">
+                                    <div>
+                                        <div className="flex justify-between text-xs mb-1 opacity-90">
+                                            <span>Fatura Atual</span>
+                                            <span className="font-bold">R$ {invoiceAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                                            <div
+                                                className="bg-white h-full rounded-full transition-all duration-1000"
+                                                style={{ width: `${usagePercentage}%` }}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-xs mt-1 opacity-90">
+                                            <span>Disponível</span>
+                                            <span className="font-bold">R$ {availableLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center text-sm pt-2 border-t border-white/20">
+                                        <div className="flex items-center gap-1.5">
+                                            <CalendarClock className="w-4 h-4 opacity-75" />
+                                            <span>Fecha dia {card.closing_day}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <Calendar className="w-4 h-4 opacity-75" />
+                                            <span>Vence dia {card.due_day}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 backdrop-blur-[2px] rounded-2xl z-20">
+                                    <span className="bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                                        Ver Fatura
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons (Visible on Hover/Focus - Outside Card Click Area) */}
+                            <div className="absolute -top-3 -right-3 flex gap-2 z-30">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
+                                    className="p-2 bg-white dark:bg-slate-800 text-blue-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(card.id); }}
+                                    className="p-2 bg-white dark:bg-slate-800 text-red-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* ... (Empty State) ... */}
+                {cards.length === 0 && (
+                    <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                        <CardIcon className="w-12 h-12 mb-4 opacity-50" />
+                        <p>Nenhum cartão cadastrado ainda.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Pagination Controls */}
+            {cards.length > ITEMS_PER_PAGE && (
+                <div className="flex justify-center items-center gap-4 mt-8">
+                    <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        <div className="w-5 h-5 flex items-center justify-center">←</div>
+                    </button>
+
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                        Página {currentPage} de {Math.ceil(cards.length / ITEMS_PER_PAGE)}
+                    </span>
+
+                    <button
+                        onClick={() => setCurrentPage(p => Math.min(Math.ceil(cards.length / ITEMS_PER_PAGE), p + 1))}
+                        disabled={currentPage === Math.ceil(cards.length / ITEMS_PER_PAGE)}
+                        className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        <div className="w-5 h-5 flex items-center justify-center">→</div>
+                    </button>
+                </div>
+            )}
+
+            {/* Create/Edit Modal with Portal */}
+            {isModalOpen && createPortal(
+                <div className="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                        <div
+                            className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity"
+                            aria-hidden="true"
+                            onClick={() => setIsModalOpen(false)}
+                        />
+                        <span className="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
+                        <div className="relative inline-block transform overflow-hidden rounded-3xl bg-white dark:bg-slate-850 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-slate-100 dark:border-slate-800 align-bottom sm:align-middle w-full">
+                            {/* ... (Existing Modal Content) ... */}
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 rounded-t-3xl">
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                                    {editingCard ? 'Editar Cartão' : 'Novo Cartão'}
+                                </h3>
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nome do Cartão</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.name}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder-slate-400"
+                                        placeholder="Ex: Nubank, XP Visa Infinite"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Limite do Cartão</label>
+                                    <input
+                                        type="text" // Type text for masking
+                                        required
+                                        value={formData.limit_amount}
+                                        onChange={handleLimitChange}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-mono"
+                                        placeholder="R$ 0,00"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dia Fechamento</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                min="1" max="31"
+                                                required
+                                                value={formData.closing_day}
+                                                onChange={e => setFormData({ ...formData, closing_day: e.target.value })}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                                placeholder="Ex: 5"
+                                            />
+                                            <CalendarClock className="absolute right-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dia Vencimento</label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                min="1" max="31"
+                                                required
+                                                value={formData.due_day}
+                                                onChange={e => setFormData({ ...formData, due_day: e.target.value })}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                                placeholder="Ex: 12"
+                                            />
+                                            <Calendar className="absolute right-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Cor do Cartão</label>
+                                    <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                                        {['#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1', '#EF4444', '#1F2937'].map(color => (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, color })}
+                                                className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all ${formData.color === color ? 'ring-2 ring-offset-2 ring-primary-500 scale-110 shadow-md' : 'hover:scale-105'}`}
+                                                style={{ background: color }}
+                                            >
+                                                {formData.color === color && <Check className="w-5 h-5 text-white drop-shadow-md" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full bg-primary-500 hover:bg-primary-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-500/25 active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingCard ? 'Atualizar Cartão' : 'Criar Cartão')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Invoice View Modal */}
+            {viewingInvoice && createPortal(
+                <div className="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                        <div
+                            className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity"
+                            aria-hidden="true"
+                            onClick={() => setViewingInvoice(null)}
+                        />
+                        <span className="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
+                        <div className="relative inline-block transform overflow-hidden rounded-3xl bg-white dark:bg-slate-850 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl border border-slate-100 dark:border-slate-800 align-bottom sm:align-middle w-full">
+
+                            {/* Header */}
+                            <div className="relative p-6 text-white overflow-hidden" style={{ background: getGradient(viewingInvoice.color) }}>
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                                <button
+                                    onClick={() => setViewingInvoice(null)}
+                                    className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/30 text-white rounded-full transition-colors z-20"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <CardIcon className="w-8 h-8 opacity-90" />
+                                        <h3 className="text-2xl font-bold tracking-tight">{viewingInvoice.name}</h3>
+                                    </div>
+
+                                    {/* Date Navigation */}
+                                    <div className="flex items-center gap-4 mt-4 bg-black/20 backdrop-blur-sm rounded-xl p-2 w-fit">
+                                        <button onClick={prevInvoice} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                                            <div className="w-6 h-6 flex items-center justify-center">←</div>
+                                        </button>
+                                        <div className="text-center min-w-[120px]">
+                                            <span className="text-xs uppercase tracking-wider opacity-80 block">Competência</span>
+                                            <span className="font-bold">
+                                                {currentInvoiceDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <button onClick={nextInvoice} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                                            <div className="w-6 h-6 flex items-center justify-center">→</div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6">
+                                {/* Metrics Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fatura de {currentInvoiceDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+                                        {(() => {
+                                            // Calculate invoice amount for specific month
+                                            const invoiceTxs = transactions.filter(t => {
+                                                if (t.cardId !== viewingInvoice.id || t.status !== 'pending' || t.type !== 'expense') return false;
+                                                const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                                return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
+                                            });
+                                            const invoiceTotal = invoiceTxs.reduce((sum, t) => sum + t.amount, 0);
+
+                                            // Calculate global limit usage
+                                            const allPendingExpenses = transactions.filter(t => t.cardId === viewingInvoice.id && t.status === 'pending' && t.type === 'expense');
+                                            const totalUsedLimit = allPendingExpenses.reduce((sum, t) => sum + t.amount, 0);
+                                            const usagePercentage = Math.min(100, (totalUsedLimit / viewingInvoice.limit_amount) * 100);
+
+                                            return (
+                                                <>
+                                                    <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                                                        R$ {invoiceTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-3 overflow-hidden">
+                                                        <div
+                                                            className="bg-primary-500 h-full rounded-full"
+                                                            style={{ width: `${usagePercentage}%` }}
+                                                        />
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 mt-2">
+                                                        {Math.round(usagePercentage)}% do limite total utilizado
+                                                    </p>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Limite Disponível Global</p>
+                                        {(() => {
+                                            const allPendingExpenses = transactions.filter(t => t.cardId === viewingInvoice.id && t.status === 'pending' && t.type === 'expense');
+                                            const totalUsedLimit = allPendingExpenses.reduce((sum, t) => sum + t.amount, 0);
+                                            const available = viewingInvoice.limit_amount - totalUsedLimit;
+
+                                            return (
+                                                <p className="text-2xl font-bold text-emerald-500">
+                                                    R$ {available.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </p>
+                                            )
+                                        })()}
+
+                                        <div className="flex items-center gap-2 mt-3 text-xs text-slate-400">
+                                            <Calendar className="w-3 h-3" />
+                                            <span>Fecha dia {viewingInvoice.closing_day}</span>
+                                            <span className="mx-1">•</span>
+                                            <CalendarClock className="w-3 h-3" />
+                                            <span>Vence dia {viewingInvoice.due_day}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Transaction List */}
+                                <div>
+                                    <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                        <TrendingUp className="w-5 h-5 text-primary-500" />
+                                        Transações nesta Fatura
+                                    </h4>
+
+                                    <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                        {(() => {
+                                            const invoiceTxs = transactions.filter(t => {
+                                                if (t.cardId !== viewingInvoice.id || t.status !== 'pending' || t.type !== 'expense') return false;
+                                                const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                                return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
+                                            })
+                                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                                            return (
+                                                <>
+                                                    {invoiceTxs.map((transaction) => (
+                                                        <div key={transaction.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-colors">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center text-red-500">
+                                                                    <TrendingUp className="w-5 h-5 transform rotate-180" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-semibold text-slate-800 dark:text-white">{transaction.description}</p>
+                                                                    <p className="text-xs text-slate-400">
+                                                                        {new Date(transaction.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {transaction.category}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <span className="font-bold text-red-500">
+                                                                - R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+
+                                                    {invoiceTxs.length === 0 && (
+                                                        <div className="text-center py-8 text-slate-400">
+                                                            <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                                <Check className="w-8 h-8 opacity-50" />
+                                                            </div>
+                                                            <p>Nenhuma transação nesta fatura.</p>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </div>
+    );
+};
+
+export default CreditCards;

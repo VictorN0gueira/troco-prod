@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Transaction, UserProfile } from '../types';
-import { parseDateFromDB, getProjectedTransactions } from '../utils';
+import { Transaction, UserProfile, CreditCard } from '../types';
+import { parseDateFromDB, getProjectedTransactions, getInvoiceReferenceDate } from '../utils'; // Added getInvoiceReferenceDate
 import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, Calendar, ChevronLeft, ChevronRight, AlertCircle, GripVertical } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,10 +10,11 @@ import {
 interface DashboardProps {
   transactions: Transaction[];
   user: UserProfile;
-  privacyMode: boolean; // Recebe estado de privacidade
+  privacyMode: boolean;
+  cards: CreditCard[]; // Added cards prop
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode, cards = [] }) => {
   // State for Month Selection
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -106,14 +107,51 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
   // --- Data Processing ---
 
+  // 0. Pre-process Transactions for Credit Cards (Invoice Shifting)
+  const effectiveTransactions = useMemo(() => {
+    if (!cards || cards.length === 0) return transactions;
+
+    return transactions.map(t => {
+      // If not expense or not associated with card, return as is
+      // Note: We only shift expenses. ID checking handles both number and string types from legacy
+      if (t.type !== 'expense' || !t.cardId) return t;
+
+      const card = cards.find(c => c.id === t.cardId);
+      if (!card) return t;
+
+      // Calculate Invoice "Reference Month"
+      const invoiceRefDate = getInvoiceReferenceDate(t.date, card.closing_day);
+
+      // Calculate Due Date (effective cash flow date)
+      const year = invoiceRefDate.getFullYear();
+      const month = invoiceRefDate.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const effectiveDay = Math.min(card.due_day, daysInMonth);
+
+      const effectiveDate = new Date(year, month, effectiveDay);
+
+      // Format back to YYYY-MM-DD
+      const y = effectiveDate.getFullYear();
+      const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
+      const d = String(effectiveDate.getDate()).padStart(2, '0');
+
+      const newDateStr = `${y}-${m}-${d}`;
+
+      return {
+        ...t,
+        date: newDateStr
+      };
+    });
+  }, [transactions, cards]);
+
   // 1. Filter Transactions for Selected Month (Includes Projected)
   const monthlyTransactions = useMemo(() => {
     const viewYear = currentDate.getFullYear();
     const viewMonth = currentDate.getMonth();
 
     // Usa a função centralizada para mesclar Reais + Recorrentes
-    return getProjectedTransactions(transactions, viewMonth, viewYear);
-  }, [transactions, currentDate]);
+    return getProjectedTransactions(effectiveTransactions, viewMonth, viewYear);
+  }, [effectiveTransactions, currentDate]);
 
   // 2. Calculate Totals (Consolidated vs Expected)
   const stats = useMemo(() => {
@@ -166,7 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
       // Usa a projeção também para o gráfico (importante para meses futuros se o gráfico mostrasse futuro, 
       // mas como é histórico (last 6 months), a projeção serve para garantir que se visualizarmos o mês atual ele bata com o card)
-      const monthTxs = getProjectedTransactions(transactions, month, year);
+      const monthTxs = getProjectedTransactions(effectiveTransactions, month, year);
 
       const income = monthTxs.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
       const expense = monthTxs.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
@@ -179,7 +217,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
       });
     }
     return data;
-  }, [transactions]);
+  }, [effectiveTransactions]);
 
   // 4. Process Category Data (Pie Chart) - Based on Selected Month
   const categoryData = useMemo(() => {
