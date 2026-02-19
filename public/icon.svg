@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Clean White Circle Background -->
+  <circle cx="256" cy="256" r="240" fill="white"/>
+  
+  <!-- Piggy Body -->
+  <path d="M380 280C380 346.274 326.274 400 260 400H160C137.909 400 120 382.091 120 360V320C120 253.726 173.726 200 240 200C306.274 200 360 253.726 360 320V360" fill="#10B981"/> <!-- Teal-500 -->
+  <path d="M380 280C380 346.274 326.274 400 260 400H160C137.909 400 120 382.091 120 360V320H360V360" fill="#059669"/> <!-- Shadow attempt (darker teal) -->
+  <ellipse cx="240" cy="300" rx="120" ry="100" fill="#34D399"/> <!-- Highlight -->
+
+  <!-- Ear -->
+  <path d="M340 220L380 180C391.046 168.954 408.954 168.954 420 180V180C431.046 191.046 431.046 208.954 420 220L380 260" fill="#10B981"/>
+
+  <!-- Snout -->
+  <ellipse cx="380" cy="320" rx="40" ry="30" fill="#FBBF24"/> <!-- Goldish Snout or keeping teal? Maybe darker teal -->
+  <ellipse cx="380" cy="320" rx="40" ry="30" fill="#047857"/> <!-- Dark Teal Snout -->
+  <circle cx="370" cy="320" r="8" fill="#064E3B"/> <!-- Nostril -->
+  <circle cx="390" cy="320" r="8" fill="#064E3B"/> <!-- Nostril -->
+
+  <!-- Eye -->
+  <circle cx="320" cy="260" r="12" fill="#064E3B"/>
+
+  <!-- Coin Slot -->
+  <rect x="220" y="200" width="40" height="10" rx="5" fill="#064E3B"/>
+
+  <!-- Coin with T -->
+  <circle cx="240" cy="160" r="50" fill="#FBBF24"/> <!-- Gold -->
+  <circle cx="240" cy="160" r="40" fill="#F59E0B"/> <!-- Inner Gold -->
+  <!-- Letter T -->
+  <rect x="225" y="135" width="30" height="10" fill="#78350F"/>
+  <rect x="235" y="135" width="10" height="50" fill="#78350F"/>
+
+  <!-- Legs -->
+  <path d="M160 380V420C160 431.046 168.954 440 180 440H200C211.046 440 220 431.046 220 420V400" fill="#059669"/>
+  <path d="M280 380V420C280 431.046 288.954 440 300 440H320C331.046 440 340 431.046 340 420V400" fill="#059669"/>
+
+  <!-- Tail -->
+  <path d="M120 300C100 300 100 280 120 280C140 280 140 300 120 300" stroke="#10B981" stroke-width="10" stroke-linecap="round"/>
+</svg>
