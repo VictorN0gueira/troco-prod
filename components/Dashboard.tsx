@@ -162,7 +162,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
       const year = d.getFullYear();
       const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
 
-      const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
+
 
       // Usa a projeção também para o gráfico (importante para meses futuros se o gráfico mostrasse futuro, 
       // mas como é histórico (last 6 months), a projeção serve para garantir que se visualizarmos o mês atual ele bata com o card)

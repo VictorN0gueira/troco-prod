@@ -121,7 +121,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ transactions, onAddTransact
             await onAddTransaction(newRealTx);
         } else {
             // Atualização normal de transação existente
-            const updatedTx = { ...tx, status: newStatus };
+            const updatedTx: Transaction = { ...tx, status: newStatus as 'completed' | 'pending' };
             await onUpdateTransaction(updatedTx);
         }
     };
