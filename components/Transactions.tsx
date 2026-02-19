@@ -21,6 +21,7 @@ import {
   XCircle,
   RefreshCw
 } from 'lucide-react';
+import ConfirmationModal from './ConfirmationModal';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -43,6 +44,10 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Confirmation Modal State
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Form State
   const initialFormState = {
@@ -418,9 +423,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
                     </span>
                     <button
                       onClick={() => {
-                        if (window.confirm('Tem certeza que deseja excluir esta transação?')) {
-                          onDelete(t.id);
-                        }
+                        setTransactionToDelete(t.id);
+                        setIsDeleteModalOpen(true);
                       }}
                       className="p-2 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
                     >
@@ -688,6 +692,23 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
           </div>
         </div>
       )}
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          if (transactionToDelete) {
+            onDelete(transactionToDelete);
+            setIsDeleteModalOpen(false);
+            setTransactionToDelete(null);
+          }
+        }}
+        title="Excluir Transação"
+        message="Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   );
 };

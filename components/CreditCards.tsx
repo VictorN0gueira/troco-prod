@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { CreditCard, UserProfile, Transaction } from '../types';
 import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle } from 'lucide-react';
+import ConfirmationModal from './ConfirmationModal';
 
 interface CreditCardsProps {
     user: UserProfile;
@@ -15,6 +16,10 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+
+    // Confirmation Modal State
+    const [cardToDelete, setCardToDelete] = useState<number | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -153,17 +158,25 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Tem certeza que deseja excluir este cartão?")) return;
+    const handleDeleteClick = (id: number) => {
+        setCardToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!cardToDelete) return;
 
         try {
-            const { error } = await supabase.from('credit_cards').delete().eq('id', id);
+            const { error } = await supabase.from('credit_cards').delete().eq('id', cardToDelete);
             if (error) throw error;
             fetchCards(user.id);
+            setIsDeleteModalOpen(false);
+            setCardToDelete(null);
         } catch (error) {
             console.error("Error deleting:", error);
+            alert("Erro ao excluir cartão"); // Fallback simple alert for error
         }
-    }
+    };
 
     // Visual Helper for Gradient
     const getGradient = (hexColor: string) => {
@@ -294,13 +307,12 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                             {/* Action Buttons (Visible on Hover/Focus - Outside Card Click Area) */}
                             <div className="absolute -top-3 -right-3 flex gap-2 z-30">
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
                                     className="p-2 bg-white dark:bg-slate-800 text-blue-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
                                 >
                                     <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(card.id); }}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(card.id); }}
                                     className="p-2 bg-white dark:bg-slate-800 text-red-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
                                 >
                                     <Trash2 className="w-4 h-4" />
@@ -623,6 +635,17 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 </div>,
                 document.body
             )}
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Excluir Cartão"
+                message="Tem certeza que deseja excluir este cartão? Todas as transações associadas perderão o vínculo, mas não serão apagadas."
+                confirmText="Excluir"
+                cancelText="Cancelar"
+                type="danger"
+            />
         </div>
     );
 };
