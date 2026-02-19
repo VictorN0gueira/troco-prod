@@ -13,21 +13,45 @@ import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
 import { getTodayLocalDate } from './utils';
+import { OfflineProvider, useOffline } from './components/OfflineContext';
+import { RefreshCw, WifiOff } from 'lucide-react';
+
+const OfflineIndicator = () => {
+  const { isOnline, isSyncing, queueSize } = useOffline();
+  if (isOnline && queueSize === 0) return null;
+
+  return (
+    <div className={`fixed bottom-4 right-4 z-[100] px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 transition-all ${isOnline ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-white'
+      }`}>
+      {isOnline ? (
+        <>
+          <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+          {isSyncing ? 'Sincronizando...' : 'Online'}
+        </>
+      ) : (
+        <>
+          <WifiOff className="w-3 h-3" />
+          Offline ({queueSize} pendentes)
+        </>
+      )}
+    </div>
+  );
+};
 
 // Tempo limite de inatividade: 15 minutos
-const INACTIVITY_LIMIT = 15 * 60 * 1000; 
+const INACTIVITY_LIMIT = 15 * 60 * 1000;
 
 // Protected Layout Wrapper com suporte a animação de saída e Privacy Mode
-const ProtectedLayout = ({ 
-  isAuthenticated, 
-  darkMode, 
-  toggleDarkMode, 
+const ProtectedLayout = ({
+  isAuthenticated,
+  darkMode,
+  toggleDarkMode,
   onLogout,
   user,
   isExiting,
   privacyMode,
   togglePrivacyMode
-}: { 
+}: {
   isAuthenticated: boolean;
   darkMode: boolean;
   toggleDarkMode: () => void;
@@ -38,117 +62,117 @@ const ProtectedLayout = ({
   togglePrivacyMode: () => void;
 }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  
+
   return (
     // O container aplica a animação de entrada por padrão, ou a de saída se isExiting for true
     <div className={isExiting ? "animate-fade-out-scale origin-center" : "animate-fade-in-up"}>
-        <Layout 
-        darkMode={darkMode} 
+      <Layout
+        darkMode={darkMode}
         toggleDarkMode={toggleDarkMode}
         onLogout={onLogout}
         user={user}
         privacyMode={privacyMode}
         togglePrivacyMode={togglePrivacyMode}
-        >
+      >
         <Outlet />
-        </Layout>
+      </Layout>
     </div>
   );
 };
 
 // Componente interno para gerenciar navegação baseada em eventos
 const AppRoutes = ({
-    isAuthenticated,
-    loading,
-    darkMode,
-    setDarkMode,
-    handleLogout,
-    user,
-    transactions,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
-    updateUser,
-    handleLoginSuccess,
-    isExiting,
-    privacyMode,
-    togglePrivacyMode
+  isAuthenticated,
+  loading,
+  darkMode,
+  setDarkMode,
+  handleLogout,
+  user,
+  transactions,
+  addTransaction,
+  updateTransaction,
+  deleteTransaction,
+  updateUser,
+  handleLoginSuccess,
+  isExiting,
+  privacyMode,
+  togglePrivacyMode
 }: any) => {
-    return (
-      <Routes>
-        <Route 
-          path="/login" 
-          element={
-            isAuthenticated ? <Navigate to="/" replace /> : (
-                // Wrapper animado para a tela de login
-                <div className="animate-fade-in">
-                    <Login onLogin={handleLoginSuccess} />
-                </div>
-            )
-          } 
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          isAuthenticated ? <Navigate to="/" replace /> : (
+            // Wrapper animado para a tela de login
+            <div className="animate-fade-in">
+              <Login onLogin={handleLoginSuccess} />
+            </div>
+          )
+        }
+      />
+
+      <Route element={
+        <ProtectedLayout
+          isAuthenticated={isAuthenticated}
+          darkMode={darkMode}
+          toggleDarkMode={() => setDarkMode(!darkMode)}
+          onLogout={handleLogout}
+          user={user}
+          isExiting={isExiting}
+          privacyMode={privacyMode}
+          togglePrivacyMode={togglePrivacyMode}
         />
-        
-        <Route element={
-          <ProtectedLayout 
-            isAuthenticated={isAuthenticated} 
-            darkMode={darkMode} 
-            toggleDarkMode={() => setDarkMode(!darkMode)}
-            onLogout={handleLogout}
+      }>
+        <Route path="/" element={
+          <Dashboard
+            transactions={transactions}
             user={user}
-            isExiting={isExiting}
             privacyMode={privacyMode}
-            togglePrivacyMode={togglePrivacyMode}
           />
-        }>
-          <Route path="/" element={
-            <Dashboard 
-              transactions={transactions} 
-              user={user}
-              privacyMode={privacyMode}
-            />
-          } />
-          
-          <Route path="/transactions" element={
-            <Transactions 
-              transactions={transactions} 
-              onAdd={addTransaction}
-              onEdit={updateTransaction}
-              onDelete={deleteTransaction}
-            />
-          } />
+        } />
 
-          <Route path="/reminders" element={
-            <Reminders 
-              transactions={transactions} 
-              onAdd={addTransaction}
-              onEdit={updateTransaction}
-              onDelete={deleteTransaction}
-            />
-          } />
+        <Route path="/transactions" element={
+          <Transactions
+            transactions={transactions}
+            onAdd={addTransaction}
+            onEdit={updateTransaction}
+            onDelete={deleteTransaction}
+          />
+        } />
 
-          <Route path="/calendar" element={
-            <CalendarView 
-              transactions={transactions} 
-              onAddTransaction={addTransaction}
-              onUpdateTransaction={updateTransaction}
-            />
-          } />
-          
-          <Route path="/reports" element={
-            <Reports transactions={transactions} />
-          } />
-          
-          <Route path="/settings" element={
-            <Settings 
-              user={user} 
-              onUpdateUser={updateUser} 
-            />
-          } />
-        </Route>
+        <Route path="/reminders" element={
+          <Reminders
+            transactions={transactions}
+            onAdd={addTransaction}
+            onEdit={updateTransaction}
+            onDelete={deleteTransaction}
+          />
+        } />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    );
+        <Route path="/calendar" element={
+          <CalendarView
+            transactions={transactions}
+            onAddTransaction={addTransaction}
+            onUpdateTransaction={updateTransaction}
+          />
+        } />
+
+        <Route path="/reports" element={
+          <Reports transactions={transactions} />
+        } />
+
+        <Route path="/settings" element={
+          <Settings
+            user={user}
+            onUpdateUser={updateUser}
+          />
+        } />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 };
 
 // --- Componente Modal de Recuperação de Senha ---
@@ -188,26 +212,26 @@ const RecoveryModal = ({ onSubmit, isOpen }: { onSubmit: (pass: string) => Promi
   };
 
   if (success) {
-      return (
-        <div className="fixed inset-0 z-[100] overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" />
-            
-            <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:w-full sm:max-w-md animate-scale-in border border-slate-200 dark:border-slate-700 p-8 text-center">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-6 animate-bounce">
-                    <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Senha Atualizada!</h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-6">
-                    Sua conta está segura novamente. Você já está logado e pode acessar o sistema.
-                </p>
-                <div className="animate-pulse text-sm text-primary-500 font-medium">
-                    Redirecionando para o Dashboard...
-                </div>
+    return (
+      <div className="fixed inset-0 z-[100] overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" />
+
+          <div className="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:w-full sm:max-w-md animate-scale-in border border-slate-200 dark:border-slate-700 p-8 text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-6 animate-bounce">
+              <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
             </div>
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Senha Atualizada!</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-6">
+              Sua conta está segura novamente. Você já está logado e pode acessar o sistema.
+            </p>
+            <div className="animate-pulse text-sm text-primary-500 font-medium">
+              Redirecionando para o Dashboard...
             </div>
+          </div>
         </div>
-      );
+      </div>
+    );
   }
 
   return (
@@ -219,9 +243,9 @@ const RecoveryModal = ({ onSubmit, isOpen }: { onSubmit: (pass: string) => Promi
           <div className="p-8">
             {/* Substituído o ícone de Wallet pela Logo real para consistência com o email */}
             <div className="flex justify-center mb-6">
-               <img src={LOGO_URL} alt="Trocô" className="h-16 w-auto object-contain" />
+              <img src={LOGO_URL} alt="Trocô" className="h-16 w-auto object-contain" />
             </div>
-            
+
             <h3 className="text-2xl font-bold text-center text-slate-800 dark:text-white mb-2">
               Redefinir Senha
             </h3>
@@ -240,42 +264,42 @@ const RecoveryModal = ({ onSubmit, isOpen }: { onSubmit: (pass: string) => Promi
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nova Senha</label>
                 <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input 
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      placeholder="Mínimo 6 caracteres"
-                      className="w-full pl-10 pr-10 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full pl-10 pr-10 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Confirmar Senha</label>
                 <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input 
-                      type={showPassword ? "text" : "password"}
-                      value={confirm}
-                      onChange={(e) => setConfirm(e.target.value)}
-                      required
-                      placeholder="Repita a senha"
-                      className="w-full pl-10 pr-10 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                    />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required
+                    placeholder="Repita a senha"
+                    className="w-full pl-10 pr-10 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  />
                 </div>
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={loading}
                 className="w-full py-4 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-500/30 disabled:opacity-70 mt-4"
               >
@@ -290,26 +314,26 @@ const RecoveryModal = ({ onSubmit, isOpen }: { onSubmit: (pass: string) => Promi
 };
 
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   // Global State
   // --- PRODUCTION MODE: Inicia deslogado e com array vazio ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false); // Novo estado de privacidade
-  
+
   // Transactions com array vazio inicial
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
-  
+
   // State to control exit animation on logout
   const [isExiting, setIsExiting] = useState(false);
-  
+
   // Auto-Logout State
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
+
   // User State
   const [user, setUser] = useState<UserProfile>({
     id: 0,
@@ -319,6 +343,9 @@ const App: React.FC = () => {
     avatarUrl: '',
     status_assinatura: 'active',
   });
+
+  // Offline Hook
+  const { addToQueue, isOnline } = useOffline();
 
   // Initialize Theme
   useEffect(() => {
@@ -337,22 +364,22 @@ const App: React.FC = () => {
 
     // Wait for animation to finish before destroying the session
     setTimeout(async () => {
-        await supabase.auth.signOut();
-        setIsAuthenticated(false);
-        setTransactions([]);
-        setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'active' });
-        setIsExiting(false); // Reset exiting state
-        console.log("Sessão encerrada com animação.");
+      await supabase.auth.signOut();
+      setIsAuthenticated(false);
+      setTransactions([]);
+      setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'active' });
+      setIsExiting(false); // Reset exiting state
+      console.log("Sessão encerrada com animação.");
     }, 400); // 400ms matches CSS animation duration
   }, []);
 
   const handleRecoveryPasswordSubmit = async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
-    
+
     // Sucesso - Aguarda um pouco para mostrar a tela de sucesso antes de fechar
     await new Promise(resolve => setTimeout(resolve, 2500));
-    
+
     setShowRecoveryModal(false);
     setRecoveryMode(false);
   };
@@ -404,7 +431,7 @@ const App: React.FC = () => {
       if (session) {
         setIsAuthenticated(true);
         if (session.user.email) {
-            fetchUserProfileByEmail(session.user.email);
+          fetchUserProfileByEmail(session.user.email);
         }
       } else {
         setIsAuthenticated(false);
@@ -415,22 +442,22 @@ const App: React.FC = () => {
     // 2. Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth Event:", event);
-      
+
       if (event === 'PASSWORD_RECOVERY') {
-          setRecoveryMode(true);
-          setShowRecoveryModal(true);
+        setRecoveryMode(true);
+        setShowRecoveryModal(true);
       }
 
       if (session) {
         setIsAuthenticated(true);
         if (user.id === 0 && session.user.email) {
-            fetchUserProfileByEmail(session.user.email);
+          fetchUserProfileByEmail(session.user.email);
         }
       } else {
         if (!isExiting) {
-             setIsAuthenticated(false);
-             setTransactions([]);
-             setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'active' });
+          setIsAuthenticated(false);
+          setTransactions([]);
+          setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'active' });
         }
       }
       setLoading(false);
@@ -452,19 +479,19 @@ const App: React.FC = () => {
       const typeLower = (t.tipo || '').toLowerCase();
 
       if (typeLower === 'receita' || typeLower === 'income') {
-          finalType = 'income';
+        finalType = 'income';
       } else if (typeLower === 'despesa' || typeLower === 'expense') {
-          finalType = 'expense';
+        finalType = 'expense';
       } else {
-          // Heurística de Fallback (apenas se tipo estiver vazio/inválido)
-          const descLower = (t.descricao || '').toLowerCase();
-          const incomeKeywords = [
-            'salário', 'salario', 'recebimento', 'venda', 'pix recebido', 
-            'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
-          ];
-          if (incomeKeywords.some(k => descLower.includes(k))) {
-            finalType = 'income';
-          }
+        // Heurística de Fallback (apenas se tipo estiver vazio/inválido)
+        const descLower = (t.descricao || '').toLowerCase();
+        const incomeKeywords = [
+          'salário', 'salario', 'recebimento', 'venda', 'pix recebido',
+          'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
+        ];
+        if (incomeKeywords.some(k => descLower.includes(k))) {
+          finalType = 'income';
+        }
       }
 
       return {
@@ -486,7 +513,7 @@ const App: React.FC = () => {
       .on(
         'postgres_changes',
         {
-          event: '*', 
+          event: '*',
           schema: 'public',
           table: 'transacoes',
           filter: `user_id=eq.${user.id}`,
@@ -495,16 +522,16 @@ const App: React.FC = () => {
           if (payload.eventType === 'INSERT') {
             const newTx = formatTransaction(payload.new);
             setTransactions((prev) => [newTx, ...prev]);
-          } 
+          }
           else if (payload.eventType === 'UPDATE') {
             const updatedTx = formatTransaction(payload.new);
-            setTransactions((prev) => 
+            setTransactions((prev) =>
               prev.map((t) => t.id === updatedTx.id ? updatedTx : t)
             );
-          } 
+          }
           else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.identificador || payload.old.id.toString();
-            setTransactions((prev) => 
+            setTransactions((prev) =>
               prev.filter((t) => t.id !== deletedId)
             );
           }
@@ -540,17 +567,17 @@ const App: React.FC = () => {
           notificacoes_push: data.notificacoes_push ?? false,
           notificacoes_marketing: data.notificacoes_marketing ?? false
         };
-        
+
         setUser(mappedUser);
         fetchTransactions(data.id);
-        
+
       } else {
         // Retry Logic para suportar delay do N8N
         if (retries > 0) {
-            console.warn(`Perfil não encontrado para ${email}. Tentando novamente em 2s... (${retries} tentativas restantes)`);
-            setTimeout(() => fetchUserProfileByEmail(email, retries - 1), 2000);
+          console.warn(`Perfil não encontrado para ${email}. Tentando novamente em 2s... (${retries} tentativas restantes)`);
+          setTimeout(() => fetchUserProfileByEmail(email, retries - 1), 2000);
         } else {
-            console.error('Perfil não encontrado após várias tentativas. Verifique o N8N.');
+          console.error('Perfil não encontrado após várias tentativas. Verifique o N8N.');
         }
       }
     } catch (error) {
@@ -573,25 +600,25 @@ const App: React.FC = () => {
 
       if (data) {
         const formatted: Transaction[] = data.map((t: any) => {
-            // 1. Normalização de Tipo (Duplicada para o fetch inicial)
-            let finalType: 'income' | 'expense' = 'expense';
-            const typeLower = (t.tipo || '').toLowerCase();
-      
-            if (typeLower === 'receita' || typeLower === 'income') {
-                finalType = 'income';
-            } else if (typeLower === 'despesa' || typeLower === 'expense') {
-                finalType = 'expense';
-            } else {
-                // Heurística fallback
-                const descLower = (t.descricao || '').toLowerCase();
-                const incomeKeywords = [
-                  'salário', 'salario', 'recebimento', 'venda', 'pix recebido', 
-                  'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
-                ];
-                if (incomeKeywords.some(k => descLower.includes(k))) {
-                  finalType = 'income';
-                }
+          // 1. Normalização de Tipo (Duplicada para o fetch inicial)
+          let finalType: 'income' | 'expense' = 'expense';
+          const typeLower = (t.tipo || '').toLowerCase();
+
+          if (typeLower === 'receita' || typeLower === 'income') {
+            finalType = 'income';
+          } else if (typeLower === 'despesa' || typeLower === 'expense') {
+            finalType = 'expense';
+          } else {
+            // Heurística fallback
+            const descLower = (t.descricao || '').toLowerCase();
+            const incomeKeywords = [
+              'salário', 'salario', 'recebimento', 'venda', 'pix recebido',
+              'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
+            ];
+            if (incomeKeywords.some(k => descLower.includes(k))) {
+              finalType = 'income';
             }
+          }
 
           return {
             id: t.identificador || t.id.toString(),
@@ -613,142 +640,172 @@ const App: React.FC = () => {
 
   const updateUser = async (updatedUser: UserProfile) => {
     setUser(updatedUser);
-    
+
     // MODO DEMO: Retorna sucesso fake se for o usuário demo
     if (user.id === 99999) {
-        await new Promise(r => setTimeout(r, 500));
-        return;
+      await new Promise(r => setTimeout(r, 500));
+      return;
     }
 
     const { error } = await supabase.from('usuarios').update({
-        nome: updatedUser.nome,
-        telefone: updatedUser.telefone,
-        avatar_url: updatedUser.avatarUrl,
-        notificacoes_email: updatedUser.notificacoes_email,
-        notificacoes_push: updatedUser.notificacoes_push,
-        notificacoes_marketing: updatedUser.notificacoes_marketing
-    }).eq('id', user.id); 
+      nome: updatedUser.nome,
+      telefone: updatedUser.telefone,
+      avatar_url: updatedUser.avatarUrl,
+      notificacoes_email: updatedUser.notificacoes_email,
+      notificacoes_push: updatedUser.notificacoes_push,
+      notificacoes_marketing: updatedUser.notificacoes_marketing
+    }).eq('id', user.id);
 
     if (error) {
-        console.error("Erro no update do usuário:", error);
-        throw error;
+      console.error("Erro no update do usuário:", error);
+      throw error;
     }
   };
 
   const addTransaction = async (newTransaction: Transaction) => {
     setTransactions(prev => [newTransaction, ...prev]);
-    
-    if (user.id !== 0) {
-        const isPaid = newTransaction.status === 'completed' || String(newTransaction.status).toLowerCase() === 'pago';
-        
-        // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
-        const dbType = newTransaction.type === 'income' ? 'Receita' : 'Despesa';
 
-        const { error } = await supabase.from('transacoes').insert({
-            user_id: user.id,
-            descricao: newTransaction.description,
-            valor: newTransaction.amount,
-            tipo: dbType,
-            categoria: newTransaction.category,
-            data: newTransaction.date,
-            esta_pago: isPaid,
-            identificador: newTransaction.id,
-            is_recurring: newTransaction.isRecurring // Salva flag no banco
-        });
-        
-        if (error) {
-            console.error("Erro ao salvar:", error);
-            const msg = error.message || error.details || JSON.stringify(error);
-            alert(`Erro ao salvar no banco de dados: ${msg}`);
-        }
+    if (user.id !== 0) {
+      // --- OFFLINE LOGIC START ---
+      if (!isOnline) {
+        addToQueue('ADD', newTransaction);
+        return; // Interrompe para não tentar Supabase
+      }
+      // --- OFFLINE LOGIC END ---
+
+      const isPaid = newTransaction.status === 'completed' || String(newTransaction.status).toLowerCase() === 'pago';
+
+      // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
+      const dbType = newTransaction.type === 'income' ? 'Receita' : 'Despesa';
+
+      const { error } = await supabase.from('transacoes').insert({
+        user_id: user.id,
+        descricao: newTransaction.description,
+        valor: newTransaction.amount,
+        tipo: dbType,
+        categoria: newTransaction.category,
+        data: newTransaction.date,
+        esta_pago: isPaid,
+        identificador: newTransaction.id,
+        is_recurring: newTransaction.isRecurring // Salva flag no banco
+      });
+
+      if (error) {
+        console.error("Erro ao salvar:", error);
+        const msg = error.message || error.details || JSON.stringify(error);
+        alert(`Erro ao salvar no banco de dados: ${msg}`);
+      }
     }
   };
 
   const updateTransaction = async (updatedTransaction: Transaction) => {
     // Update Optimista - Força string para garantir match
     setTransactions(prev => prev.map(t => String(t.id) === String(updatedTransaction.id) ? updatedTransaction : t));
-    
+
     if (user.id !== 0) {
-        const isNumericId = !isNaN(Number(updatedTransaction.id));
-        const isPaid = updatedTransaction.status === 'completed' || String(updatedTransaction.status).toLowerCase() === 'pago';
-        
-        // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
-        const dbType = updatedTransaction.type === 'income' ? 'Receita' : 'Despesa';
+      // --- OFFLINE LOGIC START ---
+      if (!isOnline) {
+        addToQueue('UPDATE', updatedTransaction);
+        return;
+      }
+      // --- OFFLINE LOGIC END ---
 
-        // Constroi query segura usando chaining correto do Supabase
-        let query = supabase.from('transacoes').update({
-            descricao: updatedTransaction.description,
-            valor: updatedTransaction.amount,
-            tipo: dbType,
-            categoria: updatedTransaction.category,
-            data: updatedTransaction.date,
-            esta_pago: isPaid,
-            is_recurring: updatedTransaction.isRecurring
-        }).eq('user_id', user.id);
-          
-        if (isNumericId) {
-            query = query.eq('id', Number(updatedTransaction.id));
-        } else {
-            query = query.eq('identificador', updatedTransaction.id);
-        }
+      const isNumericId = !isNaN(Number(updatedTransaction.id));
+      const isPaid = updatedTransaction.status === 'completed' || String(updatedTransaction.status).toLowerCase() === 'pago';
 
-        const { error } = await query;
+      // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
+      const dbType = updatedTransaction.type === 'income' ? 'Receita' : 'Despesa';
 
-        if (error) {
-            console.error("Erro ao atualizar transação:", error);
-            alert("Não foi possível salvar a alteração. Por favor, recarregue a página.");
-        }
+      // Constroi query segura usando chaining correto do Supabase
+      let query = supabase.from('transacoes').update({
+        descricao: updatedTransaction.description,
+        valor: updatedTransaction.amount,
+        tipo: dbType,
+        categoria: updatedTransaction.category,
+        data: updatedTransaction.date,
+        esta_pago: isPaid,
+        is_recurring: updatedTransaction.isRecurring
+      }).eq('user_id', user.id);
+
+      if (isNumericId) {
+        query = query.eq('id', Number(updatedTransaction.id));
+      } else {
+        query = query.eq('identificador', updatedTransaction.id);
+      }
+
+      const { error } = await query;
+
+      if (error) {
+        console.error("Erro ao atualizar transação:", error);
+        alert("Não foi possível salvar a alteração. Por favor, recarregue a página.");
+      }
     }
   };
 
   const deleteTransaction = async (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
-    
+
     if (user.id !== 0) {
-        const isNumericId = !isNaN(Number(id));
-        
-        const deleteQuery = supabase
-            .from('transacoes')
-            .delete()
-            .eq('user_id', user.id);
-        
-        if (isNumericId) {
-            await deleteQuery.eq('id', Number(id));
-        } else {
-            await deleteQuery.eq('identificador', id);
-        }
+      // --- OFFLINE LOGIC START ---
+      if (!isOnline) {
+        addToQueue('DELETE', id);
+        return;
+      }
+      // --- OFFLINE LOGIC END ---
+
+      const isNumericId = !isNaN(Number(id));
+
+      const deleteQuery = supabase
+        .from('transacoes')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (isNumericId) {
+        await deleteQuery.eq('id', Number(id));
+      } else {
+        await deleteQuery.eq('identificador', id);
+      }
     }
   };
 
   if (loading) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-          </div>
-      );
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    );
   }
 
   return (
     <HashRouter>
-        <RecoveryModal isOpen={showRecoveryModal} onSubmit={handleRecoveryPasswordSubmit} />
-        <AppRoutes 
-            isAuthenticated={isAuthenticated}
-            loading={loading}
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-            handleLogout={handleLogout}
-            user={user}
-            transactions={transactions}
-            addTransaction={addTransaction}
-            updateTransaction={updateTransaction}
-            deleteTransaction={deleteTransaction}
-            updateUser={updateUser}
-            handleLoginSuccess={() => {}}
-            isExiting={isExiting}
-            privacyMode={privacyMode}
-            togglePrivacyMode={togglePrivacyMode}
-        />
+      <RecoveryModal isOpen={showRecoveryModal} onSubmit={handleRecoveryPasswordSubmit} />
+      <AppRoutes
+        isAuthenticated={isAuthenticated}
+        loading={loading}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        handleLogout={handleLogout}
+        user={user}
+        transactions={transactions}
+        addTransaction={addTransaction}
+        updateTransaction={updateTransaction}
+        deleteTransaction={deleteTransaction}
+        updateUser={updateUser}
+        handleLoginSuccess={() => { }}
+        isExiting={isExiting}
+        privacyMode={privacyMode}
+        togglePrivacyMode={togglePrivacyMode}
+      />
     </HashRouter>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <OfflineProvider>
+      <AppContent />
+      <OfflineIndicator />
+    </OfflineProvider>
   );
 };
 
