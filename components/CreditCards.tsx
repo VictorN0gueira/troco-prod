@@ -279,8 +279,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     <div>
                                         {/* Usage header row */}
                                         <div className="flex justify-between text-xs mb-1 opacity-90">
-                                            <span>Fatura Atual</span>
-                                            <span className="font-bold">R$ {invoiceAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            <span>Valor Consumido</span>
+                                            <span className="font-bold">R$ {totalUsedLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                         </div>
 
                                         {/* Colour-coded limit progress bar */}
@@ -566,8 +566,6 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fatura de {currentInvoiceDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
                                         {(() => {
-                                            // Calculate invoice amount for specific month
-                                            // Calculate invoice amount for specific month
                                             const invoiceTxs = transactions.filter(t => {
                                                 if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
                                                 const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
@@ -575,20 +573,25 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                             });
                                             const invoiceTotal = invoiceTxs.reduce((sum, t) => sum + t.amount, 0);
 
-                                            // Calculate global limit usage
-                                            const allPendingExpenses = transactions.filter(t => t.cardId === viewingInvoice.id && t.status === 'pending' && t.type === 'expense');
-                                            const totalUsedLimit = allPendingExpenses.reduce((sum, t) => sum + t.amount, 0);
+                                            // Global limit usage — MAX of DB-stored or computed from transactions
+                                            const allPending = transactions.filter(t => t.cardId === viewingInvoice.id && t.status === 'pending' && t.type === 'expense');
+                                            const computedUsage = allPending.reduce((sum, t) => sum + t.amount, 0);
+                                            const totalUsedLimit = Math.max(viewingInvoice.current_usage || 0, computedUsage);
                                             const usagePercentage = Math.min(100, (totalUsedLimit / viewingInvoice.limit_amount) * 100);
+                                            const barClr = usagePercentage >= 100 ? '#EF4444' : usagePercentage >= 75 ? '#F59E0B' : '#10B981';
 
                                             return (
                                                 <>
                                                     <p className="text-2xl font-bold text-slate-800 dark:text-white">
-                                                        R$ {invoiceTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        R$ {totalUsedLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </p>
-                                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-3 overflow-hidden">
+                                                    {invoiceTotal > 0 && invoiceTotal !== totalUsedLimit && (
+                                                        <p className="text-xs text-slate-400 mt-0.5">Fatura do mês: R$ {invoiceTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                    )}
+                                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mt-3 overflow-hidden">
                                                         <div
-                                                            className="bg-primary-500 h-full rounded-full"
-                                                            style={{ width: `${usagePercentage}%` }}
+                                                            className="h-full rounded-full transition-all duration-700"
+                                                            style={{ width: `${usagePercentage}%`, background: barClr }}
                                                         />
                                                     </div>
                                                     <p className="text-xs text-slate-400 mt-2">
@@ -601,13 +604,15 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
                                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Limite Disponível Global</p>
                                         {(() => {
-                                            const allPendingExpenses = transactions.filter(t => t.cardId === viewingInvoice.id && t.status === 'pending' && t.type === 'expense');
-                                            const totalUsedLimit = allPendingExpenses.reduce((sum, t) => sum + t.amount, 0);
+                                            const allPending = transactions.filter(t => t.cardId === viewingInvoice.id && t.status === 'pending' && t.type === 'expense');
+                                            const computedUsage = allPending.reduce((sum, t) => sum + t.amount, 0);
+                                            const totalUsedLimit = Math.max(viewingInvoice.current_usage || 0, computedUsage);
                                             const available = viewingInvoice.limit_amount - totalUsedLimit;
+                                            const isOver = available < 0;
 
                                             return (
-                                                <p className="text-2xl font-bold text-emerald-500">
-                                                    R$ {available.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                <p className={`text-2xl font-bold ${isOver ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                    {isOver ? '-' : ''}R$ {Math.abs(available).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </p>
                                             )
                                         })()}
