@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+// ... imports
 import {
   LayoutDashboard,
   ArrowRightLeft,
@@ -13,9 +14,11 @@ import {
   BellRing,
   Eye,
   EyeOff,
-  CalendarDays, // Importação do ícone de Calendário
-  CreditCard // Importação do ícone de Cartão
+  CalendarDays,
+  CreditCard,
+  TrendingUp // Importado para Investimentos
 } from 'lucide-react';
+// ... other imports
 import { NavItem, UserProfile } from '../types';
 import { LOGO_URL } from '../constants';
 
@@ -34,7 +37,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Transações', path: '/transactions', icon: ArrowRightLeft },
   { label: 'Lembretes', path: '/reminders', icon: BellRing },
   { label: 'Calendário', path: '/calendar', icon: CalendarDays },
-  { label: 'Cartões', path: '/cards', icon: CreditCard }, // Novo Item
+  { label: 'Cartões', path: '/cards', icon: CreditCard },
+  { label: 'Investimentos', path: '/investments', icon: TrendingUp, disabled: true }, // Novo Item
   { label: 'Relatórios', path: '/reports', icon: PieChart },
   { label: 'Configurações', path: '/settings', icon: Settings },
 ];
@@ -95,6 +99,22 @@ const Layout: React.FC<LayoutProps> = ({
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
+
+            if (item.disabled) {
+              return (
+                <div
+                  key={item.path}
+                  className="flex items-center px-4 py-3.5 rounded-xl text-slate-400 dark:text-slate-600 cursor-not-allowed group relative"
+                >
+                  <Icon className="w-5 h-5 mr-3 opacity-50" />
+                  <span className="font-medium text-base opacity-50">{item.label}</span>
+                  <span className="absolute right-4 text-[10px] uppercase font-bold tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded-full">
+                    Em Breve
+                  </span>
+                </div>
+              );
+            }
+
             return (
               <NavLink
                 key={item.path}

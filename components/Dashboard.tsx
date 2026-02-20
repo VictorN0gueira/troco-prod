@@ -18,6 +18,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
   // State for Month Selection
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // State for View Mode: 'cash' (Vencimento/Caixa) vs 'accrual' (Compra/Competência)
+  const [viewMode, setViewMode] = useState<'cash' | 'accrual'>('cash');
+
   // State for Drag & Drop Order
   // Default Order: ['balance', 'income', 'expense', 'chart', 'categories']
   const [cardsOrder, setCardsOrder] = useState<string[]>([]);
@@ -109,6 +112,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
   // 0. Pre-process Transactions for Credit Cards (Invoice Shifting)
   const effectiveTransactions = useMemo(() => {
+    // If Accrual mode (Competência), return transactions AS IS (Purchase Date)
+    if (viewMode === 'accrual') return transactions;
+
     if (!cards || cards.length === 0) return transactions;
 
     return transactions.map(t => {
@@ -142,7 +148,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
         date: newDateStr
       };
     });
-  }, [transactions, cards]);
+  }, [transactions, cards, viewMode]);
 
   // 1. Filter Transactions for Selected Month (Includes Projected)
   const monthlyTransactions = useMemo(() => {
@@ -473,17 +479,42 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
           </p>
         </div>
 
-        <div className="flex items-center bg-white dark:bg-slate-850 p-1.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-          <button onClick={prevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2 px-4 min-w-[160px] justify-center text-slate-700 dark:text-white font-semibold">
-            <Calendar className="w-4 h-4 text-primary-500" />
-            {displayMonth}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex items-center">
+            <button
+              onClick={() => setViewMode('cash')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === 'cash'
+                  ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+            >
+              Caixa
+            </button>
+            <button
+              onClick={() => setViewMode('accrual')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === 'accrual'
+                  ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+            >
+              Competência
+            </button>
           </div>
-          <button onClick={nextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
-            <ChevronRight className="w-5 h-5" />
-          </button>
+
+          {/* Date Navigation */}
+          <div className="flex items-center bg-white dark:bg-slate-850 p-1.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <button onClick={prevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2 px-4 min-w-[160px] justify-center text-slate-700 dark:text-white font-semibold">
+              <Calendar className="w-4 h-4 text-primary-500" />
+              {displayMonth}
+            </div>
+            <button onClick={nextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 

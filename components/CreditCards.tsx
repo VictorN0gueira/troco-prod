@@ -76,7 +76,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
             : new Date(now.getFullYear(), now.getMonth(), 1);
 
         const cardTransactions = transactions.filter(t => {
-            if (t.cardId !== cardId || t.status !== 'pending' || t.type !== 'expense') return false;
+            if (t.cardId !== cardId || t.type !== 'expense') return false;
 
             const tInvoiceDate = getTransactionInvoiceDate(t.date, closingDay);
             return tInvoiceDate.getTime() === currentInvoiceMonth.getTime();
@@ -525,8 +525,9 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fatura de {currentInvoiceDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
                                         {(() => {
                                             // Calculate invoice amount for specific month
+                                            // Calculate invoice amount for specific month
                                             const invoiceTxs = transactions.filter(t => {
-                                                if (t.cardId !== viewingInvoice.id || t.status !== 'pending' || t.type !== 'expense') return false;
+                                                if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
                                                 const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
                                                 return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
                                             });
@@ -589,7 +590,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
                                         {(() => {
                                             const invoiceTxs = transactions.filter(t => {
-                                                if (t.cardId !== viewingInvoice.id || t.status !== 'pending' || t.type !== 'expense') return false;
+                                                if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
                                                 const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
                                                 return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
                                             })

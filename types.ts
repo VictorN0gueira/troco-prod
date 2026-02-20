@@ -46,7 +46,8 @@ export interface CategoryDataPoint {
 export interface NavItem {
   label: string;
   path: string;
-  icon: React.ElementType;
+  icon: any; // Using any for simplicity as Lucide icons are valid React components
+  disabled?: boolean;
 }
 
 export interface CreditCard {
