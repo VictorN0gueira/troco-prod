@@ -62,16 +62,26 @@ const COINGECKO_IDS: Record<string, string> = {
 // ─── Types that can be auto-updated ──────────────────────────────────────────
 
 export const UPDATABLE_TYPES: InvestmentType[] = [
-    'Ações', 'FII', 'ETF', 'Crypto', 'Internacional',
+    'Ações', 'FII', 'ETF', 'BDR', 'Stocks EUA', 'REITs', 'Crypto',
 ];
 
 export const TYPE_SOURCE: Record<InvestmentType, 'brapi' | 'coingecko' | 'manual'> = {
+    // Auto-update via Brapi
     'Ações': 'brapi',
     'FII': 'brapi',
     'ETF': 'brapi',
-    'Internacional': 'brapi',
+    'BDR': 'brapi',
+    'Stocks EUA': 'brapi',
+    'REITs': 'brapi',
+    // Auto-update via CoinGecko
     'Crypto': 'coingecko',
+    // Manual (no public ticker)
+    'Tesouro Direto': 'manual',
     'Renda Fixa': 'manual',
+    'Debêntures': 'manual',
+    'Imóvel': 'manual',
+    'Previdência': 'manual',
+    'Commodities': 'manual',
     'Outros': 'manual',
 };
 

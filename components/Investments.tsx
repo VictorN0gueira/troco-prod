@@ -5,7 +5,8 @@ import {
     DollarSign, BarChart2, Briefcase, AlertCircle, ChevronDown,
     Building2, Bitcoin, Globe, Landmark, LineChart, Package,
     ArrowUpRight, ArrowDownRight, Info, RefreshCw, CheckCircle2,
-    TrendingUp as TrendUp, Activity, Wifi, WifiOff, Clock
+    TrendingUp as TrendUp, Activity, Wifi, WifiOff, Clock,
+    Layers, Home, ShieldCheck, Coins, Flame, Star
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, Tooltip as PieTooltip, Legend, ResponsiveContainer,
@@ -30,20 +31,43 @@ interface InvestmentsProps {
 }
 
 const INVESTMENT_TYPES: InvestmentType[] = [
-    'Ações', 'FII', 'Renda Fixa', 'Crypto', 'ETF', 'Internacional', 'Outros'
+    // Brasil
+    'Ações', 'FII', 'ETF', 'BDR', 'Tesouro Direto', 'Renda Fixa', 'Debêntures',
+    // Internacional
+    'Stocks EUA', 'REITs',
+    // Crypto
+    'Crypto',
+    // Alternativos
+    'Imóvel', 'Previdência', 'Commodities',
+    // Genérico
+    'Outros',
 ];
 
 const TYPE_META: Record<InvestmentType, { color: string; bg: string; darkBg: string; icon: React.FC<any> }> = {
+    // Brasil
     'Ações': { color: '#3B82F6', bg: 'bg-blue-50', darkBg: 'dark:bg-blue-500/10', icon: LineChart },
     'FII': { color: '#8B5CF6', bg: 'bg-violet-50', darkBg: 'dark:bg-violet-500/10', icon: Building2 },
-    'Renda Fixa': { color: '#10B981', bg: 'bg-emerald-50', darkBg: 'dark:bg-emerald-500/10', icon: Landmark },
-    'Crypto': { color: '#F59E0B', bg: 'bg-amber-50', darkBg: 'dark:bg-amber-500/10', icon: Bitcoin },
     'ETF': { color: '#06B6D4', bg: 'bg-cyan-50', darkBg: 'dark:bg-cyan-500/10', icon: BarChart2 },
-    'Internacional': { color: '#EC4899', bg: 'bg-pink-50', darkBg: 'dark:bg-pink-500/10', icon: Globe },
+    'BDR': { color: '#0EA5E9', bg: 'bg-sky-50', darkBg: 'dark:bg-sky-500/10', icon: Layers },
+    'Tesouro Direto': { color: '#10B981', bg: 'bg-emerald-50', darkBg: 'dark:bg-emerald-500/10', icon: ShieldCheck },
+    'Renda Fixa': { color: '#22C55E', bg: 'bg-green-50', darkBg: 'dark:bg-green-500/10', icon: Landmark },
+    'Debêntures': { color: '#84CC16', bg: 'bg-lime-50', darkBg: 'dark:bg-lime-500/10', icon: Briefcase },
+    // Internacional
+    'Stocks EUA': { color: '#EC4899', bg: 'bg-pink-50', darkBg: 'dark:bg-pink-500/10', icon: Globe },
+    'REITs': { color: '#F43F5E', bg: 'bg-rose-50', darkBg: 'dark:bg-rose-500/10', icon: Home },
+    // Crypto
+    'Crypto': { color: '#F59E0B', bg: 'bg-amber-50', darkBg: 'dark:bg-amber-500/10', icon: Bitcoin },
+    // Alternativos
+    'Imóvel': { color: '#F97316', bg: 'bg-orange-50', darkBg: 'dark:bg-orange-500/10', icon: Home },
+    'Previdência': { color: '#A855F7', bg: 'bg-purple-50', darkBg: 'dark:bg-purple-500/10', icon: Star },
+    'Commodities': { color: '#EF4444', bg: 'bg-red-50', darkBg: 'dark:bg-red-500/10', icon: Flame },
     'Outros': { color: '#64748B', bg: 'bg-slate-50', darkBg: 'dark:bg-slate-500/10', icon: Package },
 };
 
-const PIE_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#06B6D4', '#EC4899', '#64748B'];
+const PIE_COLORS = [
+    '#3B82F6', '#8B5CF6', '#06B6D4', '#0EA5E9', '#10B981', '#22C55E', '#84CC16',
+    '#EC4899', '#F43F5E', '#F59E0B', '#F97316', '#A855F7', '#EF4444', '#64748B',
+];
 
 const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -584,10 +608,10 @@ const Investments: React.FC<InvestmentsProps> = ({
                             disabled={updatingPrices}
                             title={`Atualizar preços de ${updatableCount} ativo(s) via Brapi/CoinGecko`}
                             className={`flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${updatingPrices
-                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                                    : updateSuccess
-                                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
-                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 shadow-sm'
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                                : updateSuccess
+                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
+                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 shadow-sm'
                                 }`}
                         >
                             {updatingPrices ? (

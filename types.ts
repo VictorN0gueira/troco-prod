@@ -2,7 +2,26 @@ import React from 'react';
 
 export type TransactionType = 'income' | 'expense';
 
-export type InvestmentType = 'Ações' | 'FII' | 'Renda Fixa' | 'Crypto' | 'ETF' | 'Internacional' | 'Outros';
+export type InvestmentType =
+  // Brasil
+  | 'Ações'
+  | 'FII'
+  | 'ETF'
+  | 'BDR'
+  | 'Tesouro Direto'
+  | 'Renda Fixa'
+  | 'Debêntures'
+  // Internacional
+  | 'Stocks EUA'
+  | 'REITs'
+  // Crypto
+  | 'Crypto'
+  // Alternativos
+  | 'Imóvel'
+  | 'Previdência'
+  | 'Commodities'
+  // Genérico
+  | 'Outros';
 
 export interface Investment {
   id: string;
