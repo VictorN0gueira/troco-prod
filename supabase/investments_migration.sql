@@ -10,7 +10,11 @@ CREATE TABLE IF NOT EXISTS public.investments (
     user_id         BIGINT NOT NULL REFERENCES public.usuarios(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     ticker          TEXT,
-    type            TEXT NOT NULL CHECK (type IN ('Ações', 'FII', 'Renda Fixa', 'Crypto', 'ETF', 'Internacional', 'Outros')),
+    type            TEXT NOT NULL CHECK (type IN (
+                        'Ações', 'FII', 'ETF', 'BDR', 'Tesouro Direto', 'Renda Fixa', 'Debêntures',
+                        'Stocks EUA', 'REITs', 'Crypto',
+                        'Imóvel', 'Previdência', 'Commodities', 'Outros'
+                    )),
     quantity        NUMERIC(18, 8) NOT NULL CHECK (quantity > 0),
     purchase_price  NUMERIC(18, 4) NOT NULL CHECK (purchase_price > 0),
     current_price   NUMERIC(18, 4) NOT NULL CHECK (current_price > 0),

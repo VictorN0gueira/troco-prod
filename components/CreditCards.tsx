@@ -307,6 +307,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                             {/* Action Buttons (Visible on Hover/Focus - Outside Card Click Area) */}
                             <div className="absolute -top-3 -right-3 flex gap-2 z-30">
                                 <button
+                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
                                     className="p-2 bg-white dark:bg-slate-800 text-blue-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
                                 >
                                     <Edit2 className="w-4 h-4" />
