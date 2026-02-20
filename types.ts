@@ -2,6 +2,23 @@ import React from 'react';
 
 export type TransactionType = 'income' | 'expense';
 
+export type InvestmentType = 'Ações' | 'FII' | 'Renda Fixa' | 'Crypto' | 'ETF' | 'Internacional' | 'Outros';
+
+export interface Investment {
+  id: string;
+  user_id: number;
+  name: string;
+  ticker?: string;
+  type: InvestmentType;
+  quantity: number;
+  purchase_price: number;
+  current_price: number;
+  purchase_date: string;
+  broker?: string;
+  notes?: string;
+  created_at?: string;
+}
+
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due';
 
 export interface UserProfile {

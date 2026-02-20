@@ -9,7 +9,8 @@ import CreditCards from './components/CreditCards';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import Login from './components/Login';
-import { Transaction, UserProfile, CreditCard } from './types';
+import Investments from './components/Investments';
+import { Transaction, UserProfile, CreditCard, Investment } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
@@ -99,7 +100,12 @@ const AppRoutes = ({
   privacyMode,
   togglePrivacyMode,
   cards,
-  fetchCards
+  fetchCards,
+  investments,
+  addInvestment,
+  updateInvestment,
+  deleteInvestment,
+  updateInvestmentPrices
 }: any) => {
   return (
     <Routes>
@@ -174,6 +180,18 @@ const AppRoutes = ({
 
         <Route path="/reports" element={
           <Reports transactions={transactions} />
+        } />
+
+        <Route path="/investments" element={
+          <Investments
+            investments={investments}
+            onAdd={addInvestment}
+            onEdit={updateInvestment}
+            onDelete={deleteInvestment}
+            onUpdatePrices={updateInvestmentPrices}
+            user={user}
+            privacyMode={privacyMode}
+          />
         } />
 
         <Route path="/settings" element={
@@ -564,7 +582,38 @@ const AppContent: React.FC = () => {
   // State for Cards
   const [cards, setCards] = useState<CreditCard[]>([]);
 
-  // ... (existing state)
+  // State for Investments
+  const [investments, setInvestments] = useState<Investment[]>([]);
+
+  // Fetch Investments Function
+  const fetchInvestments = async (userId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('investments')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setInvestments(
+        (data || []).map((i: any): Investment => ({
+          id: i.id.toString(),
+          user_id: i.user_id,
+          name: i.name,
+          ticker: i.ticker || undefined,
+          type: i.type,
+          quantity: Number(i.quantity),
+          purchase_price: Number(i.purchase_price),
+          current_price: Number(i.current_price),
+          purchase_date: i.purchase_date,
+          broker: i.broker || undefined,
+          notes: i.notes || undefined,
+          created_at: i.created_at,
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching investments:', error);
+    }
+  };
 
   // Fetch Cards Function
   const fetchCards = async (userId: number) => {
@@ -607,6 +656,7 @@ const AppContent: React.FC = () => {
         setUser(mappedUser);
         fetchTransactions(data.id);
         fetchCards(data.id); // Fetch Cards too!
+        fetchInvestments(data.id); // Fetch Investments too!
 
       } else {
         // Retry Logic para suportar delay do N8N
@@ -808,6 +858,94 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // ── Investment CRUD ──────────────────────────────────────────────────────────
+
+  const addInvestment = async (inv: Investment) => {
+    setInvestments(prev => [inv, ...prev]);
+    if (user.id !== 0) {
+      const { error } = await supabase.from('investments').insert({
+        user_id: user.id,
+        name: inv.name,
+        ticker: inv.ticker || null,
+        type: inv.type,
+        quantity: inv.quantity,
+        purchase_price: inv.purchase_price,
+        current_price: inv.current_price,
+        purchase_date: inv.purchase_date,
+        broker: inv.broker || null,
+        notes: inv.notes || null,
+      });
+      if (error) {
+        console.error('Erro ao adicionar investimento:', error);
+        setInvestments(prev => prev.filter(i => i.id !== inv.id));
+        throw error;
+      }
+      // Refresh to get the real DB id
+      await fetchInvestments(user.id);
+    }
+  };
+
+  const updateInvestment = async (inv: Investment) => {
+    setInvestments(prev => prev.map(i => i.id === inv.id ? inv : i));
+    if (user.id !== 0) {
+      const { error } = await supabase.from('investments').update({
+        name: inv.name,
+        ticker: inv.ticker || null,
+        type: inv.type,
+        quantity: inv.quantity,
+        purchase_price: inv.purchase_price,
+        current_price: inv.current_price,
+        purchase_date: inv.purchase_date,
+        broker: inv.broker || null,
+        notes: inv.notes || null,
+      }).eq('user_id', user.id).eq('id', Number(inv.id));
+      if (error) {
+        console.error('Erro ao atualizar investimento:', error);
+        throw error;
+      }
+    }
+  };
+
+  const deleteInvestment = async (id: string) => {
+    setInvestments(prev => prev.filter(i => i.id !== id));
+    if (user.id !== 0) {
+      const { error } = await supabase.from('investments').delete()
+        .eq('user_id', user.id).eq('id', Number(id));
+      if (error) {
+        console.error('Erro ao excluir investimento:', error);
+        throw error;
+      }
+    }
+  };
+
+  const updateInvestmentPrices = async (updates: { id: string; current_price: number }[]) => {
+    // Optimistic local update
+    setInvestments(prev =>
+      prev.map(inv => {
+        const u = updates.find(x => x.id === inv.id);
+        return u ? { ...inv, current_price: u.current_price } : inv;
+      })
+    );
+
+    if (user.id !== 0) {
+      // Supabase does not support batch upsert with different values per row in one call,
+      // so we fire individual updates in parallel (fast for typical portfolio sizes)
+      const promises = updates.map(({ id, current_price }) =>
+        supabase
+          .from('investments')
+          .update({ current_price })
+          .eq('user_id', user.id)
+          .eq('id', Number(id))
+      );
+      const results = await Promise.all(promises);
+      const firstError = results.find(r => r.error)?.error;
+      if (firstError) {
+        console.error('Erro ao salvar preços atualizados:', firstError);
+        throw firstError;
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -837,6 +975,11 @@ const AppContent: React.FC = () => {
         togglePrivacyMode={togglePrivacyMode}
         cards={cards}
         fetchCards={() => fetchCards(user.id)}
+        investments={investments}
+        addInvestment={addInvestment}
+        updateInvestment={updateInvestment}
+        deleteInvestment={deleteInvestment}
+        updateInvestmentPrices={updateInvestmentPrices}
       />
     </HashRouter>
   );

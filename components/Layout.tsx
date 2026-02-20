@@ -38,7 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Lembretes', path: '/reminders', icon: BellRing },
   { label: 'Calendário', path: '/calendar', icon: CalendarDays },
   { label: 'Cartões', path: '/cards', icon: CreditCard },
-  { label: 'Investimentos', path: '/investments', icon: TrendingUp, disabled: true }, // Novo Item
+  { label: 'Investimentos', path: '/investments', icon: TrendingUp },
   { label: 'Relatórios', path: '/reports', icon: PieChart },
   { label: 'Configurações', path: '/settings', icon: Settings },
 ];
