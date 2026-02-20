@@ -91,6 +91,7 @@ export interface CreditCard {
   user_id: number;
   name: string;
   limit_amount: number;
+  current_usage: number;   // valor consumido do limite (DB-stored)
   closing_day: number;
   due_day: number;
   color: string;

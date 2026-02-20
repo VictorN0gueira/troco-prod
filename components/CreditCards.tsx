@@ -35,8 +35,9 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         limit_amount: '',
         closing_day: '',
         due_day: '',
-        color: '#10B981', // Default Emerald
-        brand: 'Mastercard'
+        color: '#10B981',
+        brand: 'Mastercard',
+        current_usage: '',
     });
 
     // Formatting Helper
@@ -68,8 +69,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         return new Date(tDate.getFullYear(), tDate.getMonth(), 1);
     }
 
-    // Calculate Metrics per Card (Current Open Invoice by default for the card view)
-    const getCardMetrics = (cardId: number, limit: number, closingDay: number) => {
+    const getCardMetrics = (card: CreditCard) => {
+        const { id: cardId, limit_amount: limit, closing_day: closingDay, current_usage: dbUsage } = card;
         const now = new Date();
         const currentInvoiceMonth = now.getDate() >= closingDay
             ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
@@ -84,13 +85,16 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
 
         const invoiceAmount = cardTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-        // Available limit should consider ALL pending expenses, regardless of invoice month,
-        // because the limit is global.
+        // Available limit should consider ALL pending expenses
         const allPendingExpenses = transactions.filter(t => t.cardId === cardId && t.status === 'pending' && t.type === 'expense');
-        const totalUsedLimit = allPendingExpenses.reduce((sum, t) => sum + t.amount, 0);
-        const availableLimit = limit - totalUsedLimit;
+        const computedUsage = allPendingExpenses.reduce((sum, t) => sum + t.amount, 0);
 
-        return { invoiceAmount, availableLimit, currentInvoiceMonth };
+        // Use the higher of DB-stored usage or computed from transactions
+        const totalUsedLimit = Math.max(dbUsage || 0, computedUsage);
+        const availableLimit = limit - totalUsedLimit;
+        const usagePercentage = Math.min(150, (totalUsedLimit / limit) * 100); // cap at 150% for visual
+
+        return { invoiceAmount, availableLimit, currentInvoiceMonth, totalUsedLimit, usagePercentage };
     };
 
     const handleOpenModal = (card?: CreditCard) => {
@@ -102,7 +106,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 closing_day: card.closing_day.toString(),
                 due_day: card.due_day.toString(),
                 color: card.color,
-                brand: card.brand || 'Mastercard'
+                brand: card.brand || 'Mastercard',
+                current_usage: card.current_usage ? formatCurrency(card.current_usage) : '',
             });
         } else {
             setEditingCard(null);
@@ -112,7 +117,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 closing_day: '',
                 due_day: '',
                 color: '#10B981',
-                brand: 'Mastercard'
+                brand: 'Mastercard',
+                current_usage: '',
             });
         }
         setIsModalOpen(true);
@@ -125,10 +131,14 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         const rawAmount = formData.limit_amount.toString().replace(/\D/g, "");
         const limitFloat = rawAmount ? Number(rawAmount) / 100 : 0;
 
+        const rawUsage = formData.current_usage.toString().replace(/\D/g, "");
+        const usageFloat = rawUsage ? Number(rawUsage) / 100 : 0;
+
         const payload = {
             user_id: user.id,
             name: formData.name,
             limit_amount: limitFloat,
+            current_usage: usageFloat,
             closing_day: parseInt(formData.closing_day),
             due_day: parseInt(formData.due_day),
             color: formData.color,
@@ -233,16 +243,13 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {cards.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((card) => {
-                    const { invoiceAmount, availableLimit, currentInvoiceMonth } = getCardMetrics(card.id, card.limit_amount, card.closing_day);
+                    const { invoiceAmount, availableLimit, currentInvoiceMonth, totalUsedLimit, usagePercentage } = getCardMetrics(card);
 
-                    // Usage is based on TOTAL used limit, not just this invoice
-                    // But for the "Invoice Bar" visualization, usually people want to see how much of the limit is taken
-                    // Here we show: invoiceAmount relative to limit (this invoice's impact) OR total usage?
-                    // Let's show Total Usage for the progress bar, but Text for Invoice Amount
-                    const totalUsed = card.limit_amount - availableLimit;
-                    const usagePercentage = Math.min(100, (totalUsed / card.limit_amount) * 100);
-
-                    const isInvoiceClosed = new Date() > currentInvoiceMonth; // Simplification
+                    const isOverLimit = totalUsedLimit > card.limit_amount;
+                    const barColor = usagePercentage >= 100 ? '#EF4444'
+                        : usagePercentage >= 75 ? '#F59E0B'
+                            : '#34D399';
+                    const clampedPct = Math.min(100, usagePercentage);
 
                     return (
                         <div
@@ -270,19 +277,35 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
 
                                 <div className="space-y-4 relative z-10">
                                     <div>
+                                        {/* Usage header row */}
                                         <div className="flex justify-between text-xs mb-1 opacity-90">
                                             <span>Fatura Atual</span>
                                             <span className="font-bold">R$ {invoiceAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                         </div>
-                                        <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+
+                                        {/* Colour-coded limit progress bar */}
+                                        <div className="relative w-full bg-black/30 rounded-full h-3 overflow-hidden">
                                             <div
-                                                className="bg-white h-full rounded-full transition-all duration-1000"
-                                                style={{ width: `${usagePercentage}%` }}
+                                                className="h-full rounded-full transition-all duration-700 ease-out"
+                                                style={{ width: `${clampedPct}%`, background: barColor, boxShadow: `0 0 8px ${barColor}99` }}
                                             />
+                                            {/* Overflow flash when over limit */}
+                                            {isOverLimit && (
+                                                <div className="absolute inset-0 rounded-full animate-pulse bg-red-500/30" />
+                                            )}
                                         </div>
-                                        <div className="flex justify-between text-xs mt-1 opacity-90">
-                                            <span>Disponível</span>
-                                            <span className="font-bold">R$ {availableLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+
+                                        {/* Bottom row */}
+                                        <div className="flex justify-between text-xs mt-1.5 opacity-90">
+                                            <span className="flex items-center gap-1">
+                                                {isOverLimit
+                                                    ? <span className="font-black text-red-300 animate-pulse">⚠ ESTOURADO</span>
+                                                    : <span>Disponível</span>
+                                                }
+                                            </span>
+                                            <span className="font-bold" style={{ color: isOverLimit ? '#FCA5A5' : 'white' }}>
+                                                R$ {Math.abs(availableLimit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </span>
                                         </div>
                                     </div>
 
@@ -401,6 +424,24 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                         required
                                         value={formData.limit_amount}
                                         onChange={handleLimitChange}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-mono"
+                                        placeholder="R$ 0,00"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                        Valor Já Consumido
+                                        <span className="ml-2 text-xs text-slate-400 font-normal">(quanto já foi gasto no limite)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.current_usage}
+                                        onChange={e => {
+                                            const raw = e.target.value.replace(/\D/g, '');
+                                            const num = raw ? Number(raw) / 100 : 0;
+                                            setFormData({ ...formData, current_usage: raw ? formatCurrency(num) : '' });
+                                        }}
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-mono"
                                         placeholder="R$ 0,00"
                                     />
