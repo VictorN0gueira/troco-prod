@@ -43,6 +43,12 @@ const INVESTMENT_TYPES: InvestmentType[] = [
     'Outros',
 ];
 
+// Types that don't have individual units/prices — user just enters total invested amount
+const SIMPLE_TYPES: InvestmentType[] = [
+    'Renda Fixa', 'Tesouro Direto', 'Debêntures', 'Previdência', 'Imóvel', 'Commodities',
+];
+const isSimpleType = (t: InvestmentType) => SIMPLE_TYPES.includes(t);
+
 const TYPE_META: Record<InvestmentType, { color: string; bg: string; darkBg: string; icon: React.FC<any> }> = {
     // Brasil
     'Ações': { color: '#3B82F6', bg: 'bg-blue-50', darkBg: 'dark:bg-blue-500/10', icon: LineChart },
@@ -209,6 +215,10 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
         quantity: numToBR(investment?.quantity),
         purchase_price: numToBR(investment?.purchase_price),
         current_price: numToBR(investment?.current_price),
+        // For simple types: total invested amount
+        invested_amount: investment && isSimpleType(investment.type)
+            ? numToBR(investment.purchase_price * (investment.quantity || 1))
+            : '',
         purchase_date: investment?.purchase_date || new Date().toISOString().split('T')[0],
         broker: investment?.broker || '',
         notes: investment?.notes || '',
@@ -216,10 +226,12 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
 
     const set = (field: string, val: string) => setForm(prev => ({ ...prev, [field]: val }));
 
-    // Use parseNumberBR for live preview calculations
-    const qtyNum = parseNumberBR(form.quantity);
-    const buyNum = parseNumberBR(form.purchase_price);
-    const curNum = parseNumberBR(form.current_price);
+    const isSimple = isSimpleType(form.type);
+
+    // For simple types, we track just a single monetary amount (quantity=1, purchase=current=amount)
+    const qtyNum = isSimple ? 1 : parseNumberBR(form.quantity);
+    const buyNum = isSimple ? parseNumberBR(form.invested_amount) : parseNumberBR(form.purchase_price);
+    const curNum = isSimple ? parseNumberBR(form.invested_amount) : parseNumberBR(form.current_price);
     const currentValue = qtyNum * curNum;
     const cost = qtyNum * buyNum;
     const pnl = currentValue - cost;
@@ -229,14 +241,17 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
         e.preventDefault();
         setError(null);
 
-        const qty = parseNumberBR(form.quantity);
-        const buyPrice = parseNumberBR(form.purchase_price);
-        const curPrice = parseNumberBR(form.current_price);
+        const simple = isSimpleType(form.type);
+        const investedAmt = parseNumberBR(form.invested_amount);
+        const qty = simple ? 1 : parseNumberBR(form.quantity);
+        const buyPrice = simple ? investedAmt : parseNumberBR(form.purchase_price);
+        const curPrice = simple ? investedAmt : parseNumberBR(form.current_price);
 
         if (!form.name.trim()) { setError('Nome do ativo é obrigatório.'); return; }
-        if (qty <= 0) { setError('Quantidade deve ser maior que zero.'); return; }
-        if (buyPrice <= 0) { setError('Preço de compra deve ser maior que zero.'); return; }
-        if (curPrice <= 0) { setError('Preço atual deve ser maior que zero.'); return; }
+        if (simple && investedAmt <= 0) { setError('Valor investido deve ser maior que zero.'); return; }
+        if (!simple && qty <= 0) { setError('Quantidade deve ser maior que zero.'); return; }
+        if (!simple && buyPrice <= 0) { setError('Preço de compra deve ser maior que zero.'); return; }
+        if (!simple && curPrice <= 0) { setError('Preço atual deve ser maior que zero.'); return; }
 
         setLoading(true);
         try {
@@ -246,9 +261,9 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
                 name: form.name.trim(),
                 ticker: form.ticker.trim() || undefined,
                 type: form.type,
-                quantity: parseNumberBR(form.quantity),
-                purchase_price: parseNumberBR(form.purchase_price),
-                current_price: parseNumberBR(form.current_price),
+                quantity: qty,
+                purchase_price: buyPrice,
+                current_price: curPrice,
                 purchase_date: form.purchase_date,
                 broker: form.broker.trim() || undefined,
                 notes: form.notes.trim() || undefined,
@@ -351,42 +366,58 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
                             </div>
                         </div>
 
-                        {/* Row 3: Quantity + Purchase Price + Current Price */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label className={labelClass}>Quantidade *</label>
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    className={inputClass}
-                                    placeholder="0"
-                                    value={form.quantity}
-                                    onChange={e => set('quantity', formatNumberBR(e.target.value, true))}
-                                />
+                        {/* Row 3: Qty + Prices — only for non-simple types */}
+                        {!isSimple ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label className={labelClass}>Quantidade *</label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        className={inputClass}
+                                        placeholder="0"
+                                        value={form.quantity}
+                                        onChange={e => set('quantity', formatNumberBR(e.target.value, true))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Preço de Compra (R$) *</label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        className={inputClass}
+                                        placeholder="0,00"
+                                        value={form.purchase_price}
+                                        onChange={e => set('purchase_price', formatNumberBR(e.target.value, true))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Preço Atual (R$) *</label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        className={inputClass}
+                                        placeholder="0,00"
+                                        value={form.current_price}
+                                        onChange={e => set('current_price', formatNumberBR(e.target.value, true))}
+                                    />
+                                </div>
                             </div>
+                        ) : (
+                            /* Simple type: just total amount invested */
                             <div>
-                                <label className={labelClass}>Preço de Compra (R$) *</label>
+                                <label className={labelClass}>Valor Investido (R$) *</label>
                                 <input
                                     type="text"
                                     inputMode="decimal"
                                     className={inputClass}
                                     placeholder="0,00"
-                                    value={form.purchase_price}
-                                    onChange={e => set('purchase_price', formatNumberBR(e.target.value, true))}
+                                    value={form.invested_amount}
+                                    onChange={e => set('invested_amount', formatNumberBR(e.target.value, true))}
                                 />
+                                <p className="text-xs text-slate-400 mt-1.5">💡 Para {form.type}, basta o valor total aplicado. Sem necessidade de cotas ou preço unitário.</p>
                             </div>
-                            <div>
-                                <label className={labelClass}>Preço Atual (R$) *</label>
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    className={inputClass}
-                                    placeholder="0,00"
-                                    value={form.current_price}
-                                    onChange={e => set('current_price', formatNumberBR(e.target.value, true))}
-                                />
-                            </div>
-                        </div>
+                        )}
 
                         {/* Row 4: Date + Notes */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -832,8 +863,8 @@ const Investments: React.FC<InvestmentsProps> = ({
                             {/* Filters */}
                             <div className="flex flex-col sm:flex-row gap-3">
                                 {/* Search */}
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <div className="relative flex-1 min-w-0">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                     <input
                                         type="text"
                                         placeholder="Buscar por nome ou ticker..."
