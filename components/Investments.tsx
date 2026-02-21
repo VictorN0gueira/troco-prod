@@ -861,9 +861,9 @@ const Investments: React.FC<InvestmentsProps> = ({
                     {activeTab === 'list' && (
                         <div className="p-6 space-y-4">
                             {/* Filters */}
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                {/* Search */}
-                                <div className="relative flex-1 min-w-0">
+                            <div className="space-y-3">
+                                {/* Search — always full width */}
+                                <div className="relative w-full">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                     <input
                                         type="text"
@@ -874,7 +874,7 @@ const Investments: React.FC<InvestmentsProps> = ({
                                     />
                                 </div>
 
-                                {/* Type Filter */}
+                                {/* Type Filter — wrapping pills below search */}
                                 <div className="flex gap-2 flex-wrap">
                                     {(['Todos', ...INVESTMENT_TYPES] as const).map(t => (
                                         <button
