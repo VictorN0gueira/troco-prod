@@ -58,12 +58,12 @@ export function PushManager({ userId, isEnabled, onToggle }: { userId: number, i
             await onToggle(true);
 
             // Send to push_subscriptions table
-            const { error } = await supabase.from('push_subscriptions').upsert({
+            const { error } = await supabase.from('push_subscriptions').insert({
                 user_id: userId,
                 endpoint: subscription.endpoint,
                 p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')!) as any)),
                 auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')!) as any))
-            }, { onConflict: 'user_id' });
+            });
 
             if (error) throw error;
 
