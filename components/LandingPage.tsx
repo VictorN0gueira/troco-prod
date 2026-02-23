@@ -335,11 +335,6 @@ const LandingPage: React.FC = () => {
                             <h3 className="text-4xl font-black text-slate-900 dark:text-white">O que nossos usuários dizem sobre o Trocô.</h3>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2">
-                                {[1, 2, 3, 4].map(i => (
-                                    <img key={i} src={`https://i.pravatar.cc/100?u=${i}`} className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800" alt="Avatar" />
-                                ))}
-                            </div>
                             <div className="ml-2">
                                 <div className="flex text-amber-500 items-center">
                                     <Star className="w-3 h-3 fill-current" />
@@ -348,16 +343,16 @@ const LandingPage: React.FC = () => {
                                     <Star className="w-3 h-3 fill-current" />
                                     <Star className="w-3 h-3 fill-current" />
                                 </div>
-                                <span className="text-xs font-bold text-slate-500">+1.200 usuários</span>
+                                <span className="text-xs font-bold text-slate-500">+100 usuários</span>
                             </div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
-                            { name: 'Ricardo Santos', role: 'Investidor', text: 'O Trocô mudou minha relação com o dinheiro. O rebalanceamento de carteira é sensacional, economiza horas de planilhas.' },
-                            { name: 'Amanda Lima', role: 'Médica', text: 'Finalmente entendi para onde vai meu dinheiro. O agente de WhatsApp é muito prático para lançar despesas na hora.' },
-                            { name: 'Bruno Oliveira', role: 'Desenvolvedor', text: 'A interface é linda e rápida. O controle de cartões me ajudou a nunca mais pagar juros de atraso.' }
+                            { name: 'Maria Izabelly', role: 'Enfermeira', text: 'Trabalho em muitos plantões e não tenho tempo para planilhas chatas. Economizo um tempo absurdo que antes perdia registrando tudo manualmente.' },
+                            { name: 'Daniel Francisco', role: 'Designer', text: 'O bot do WhatsApp é genial. Consigo registrar tudo na hora que gasto, sem precisar abrir app nem nada. Facilitou demais minha rotina.' },
+                            { name: 'Adrian Gabriel', role: 'Desenvolvedor', text: 'O app é direto ao ponto e muito bonito. O controle dos cartões finalmente me deu paz de espírito pra não perder nenhum vencimento.' }
                         ].map((f, i) => (
                             <div key={i} className="glass p-8 rounded-3xl relative">
                                 <div className="flex text-amber-500 mb-6">
@@ -365,9 +360,6 @@ const LandingPage: React.FC = () => {
                                 </div>
                                 <p className="text-slate-600 dark:text-slate-400 mb-8 italic">"{f.text}"</p>
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                                        <img src={`https://i.pravatar.cc/100?u=${f.name}`} alt={f.name} />
-                                    </div>
                                     <div>
                                         <h5 className="font-bold text-slate-900 dark:text-white text-sm">{f.name}</h5>
                                         <p className="text-xs text-slate-500">{f.role}</p>
