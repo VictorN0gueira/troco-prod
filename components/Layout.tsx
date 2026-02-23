@@ -33,7 +33,7 @@ interface LayoutProps {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Transações', path: '/transactions', icon: ArrowRightLeft },
   { label: 'Lembretes', path: '/reminders', icon: BellRing },
   { label: 'Calendário', path: '/calendar', icon: CalendarDays },

@@ -9,7 +9,9 @@ import CreditCards from './components/CreditCards';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import Login from './components/Login';
+import LandingPage from './components/LandingPage';
 import Investments from './components/Investments';
+import Legal from './components/Legal';
 import { Transaction, UserProfile, CreditCard, Investment } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
@@ -110,9 +112,16 @@ const AppRoutes = ({
   return (
     <Routes>
       <Route
+        path="/"
+        element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />
+        }
+      />
+
+      <Route
         path="/login"
         element={
-          isAuthenticated ? <Navigate to="/" replace /> : (
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : (
             // Wrapper animado para a tela de login
             <div className="animate-fade-in">
               <Login onLogin={handleLoginSuccess} />
@@ -120,6 +129,8 @@ const AppRoutes = ({
           )
         }
       />
+
+      <Route path="/legal/:section?" element={<Legal />} />
 
       <Route element={
         <ProtectedLayout
@@ -133,7 +144,7 @@ const AppRoutes = ({
           togglePrivacyMode={togglePrivacyMode}
         />
       }>
-        <Route path="/" element={
+        <Route path="/dashboard" element={
           <Dashboard
             transactions={transactions}
             user={user}

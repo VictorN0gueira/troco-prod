@@ -255,7 +255,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
     switch (type) {
       case 'balance':
         return (
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-emerald-900 dark:to-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden group h-full">
+          <div className="bg-slate-900 dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden group h-full">
+            {/* Border Beam */}
+            <div className="border-beam" />
+
+            {/* Background Glow */}
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.15),transparent_70%)] pointer-events-none" />
+
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
               <Wallet className="w-24 h-24 md:w-32 md:h-32" />
             </div>
@@ -285,46 +291,52 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
         );
       case 'income':
         return (
-          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 transition-transform hover:-translate-y-1 duration-300 h-full">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl">
-                <ArrowUpRight className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
+          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 transition-transform hover:-translate-y-1 duration-300 h-full relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(16,185,129,0.05),transparent_50%)] pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl">
+                  <ArrowUpRight className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
+                </div>
+                {stats.income.pending > 0 && (
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
+                    +<BlurText>{formatCurrency(stats.income.pending)}</BlurText> pendente
+                  </span>
+                )}
               </div>
-              {stats.income.pending > 0 && (
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                  +<BlurText>{formatCurrency(stats.income.pending)}</BlurText> pendente
-                </span>
-              )}
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Receitas Totais</p>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
+                <BlurText>{formatCurrency(stats.income.total)}</BlurText>
+              </h3>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                <BlurText>{formatCurrency(stats.income.paid)}</BlurText> recebidos
+              </p>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Receitas Totais</p>
-            <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
-              <BlurText>{formatCurrency(stats.income.total)}</BlurText>
-            </h3>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-              <BlurText>{formatCurrency(stats.income.paid)}</BlurText> recebidos
-            </p>
           </div>
         );
       case 'expense':
         return (
-          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 transition-transform hover:-translate-y-1 duration-300 h-full">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-rose-50 dark:bg-rose-500/10 rounded-2xl">
-                <ArrowDownRight className="w-5 h-5 md:w-6 md:h-6 text-rose-500" />
+          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 transition-transform hover:-translate-y-1 duration-300 h-full relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(244,63,94,0.05),transparent_50%)] pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-rose-50 dark:bg-rose-500/10 rounded-2xl">
+                  <ArrowDownRight className="w-5 h-5 md:w-6 md:h-6 text-rose-500" />
+                </div>
+                {stats.expense.pending > 0 && (
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
+                    +<BlurText>{formatCurrency(stats.expense.pending)}</BlurText> pendente
+                  </span>
+                )}
               </div>
-              {stats.expense.pending > 0 && (
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                  +<BlurText>{formatCurrency(stats.expense.pending)}</BlurText> pendente
-                </span>
-              )}
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Despesas Totais</p>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
+                <BlurText>{formatCurrency(stats.expense.total)}</BlurText>
+              </h3>
+              <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-medium">
+                <BlurText>{formatCurrency(stats.expense.paid)}</BlurText> pagos
+              </p>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Despesas Totais</p>
-            <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
-              <BlurText>{formatCurrency(stats.expense.total)}</BlurText>
-            </h3>
-            <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-medium">
-              <BlurText>{formatCurrency(stats.expense.paid)}</BlurText> pagos
-            </p>
           </div>
         );
       case 'chart':
@@ -360,6 +372,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                     tick={{ fill: '#64748b', fontSize: 12 }}
                     dy={10}
                   />
+                  {/* The provided @keyframes float rule is CSS and cannot be directly inserted here in JSX.
+                      If you intend to add CSS animations, please place them in a CSS file or use a CSS-in-JS solution. */}
                   <YAxis
                     axisLine={false}
                     tickLine={false}
@@ -485,8 +499,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
             <button
               onClick={() => setViewMode('cash')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === 'cash'
-                  ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
             >
               Caixa
@@ -494,8 +508,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
             <button
               onClick={() => setViewMode('accrual')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === 'accrual'
-                  ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
             >
               Competência
