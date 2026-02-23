@@ -163,8 +163,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   };
 
   // 4. Toggles de Notificação (Autosave)
-  const toggleNotification = async (key: keyof typeof notifications) => {
-    const newVal = !notifications[key];
+  const toggleNotification = async (key: keyof typeof notifications, explicitVal?: boolean) => {
+    const newVal = explicitVal !== undefined ? explicitVal : !notifications[key];
 
     // 1. Update UI immediately (Optimistic)
     setNotifications(prev => ({ ...prev, [key]: newVal }));
@@ -402,7 +402,11 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
             </h3>
 
             {/* Push Manager Component */}
-            <PushManager userId={user.id} />
+            <PushManager
+              userId={user.id}
+              isEnabled={notifications.push}
+              onToggle={(val) => toggleNotification('push', val)}
+            />
 
             <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               {[
