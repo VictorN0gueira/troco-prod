@@ -26,9 +26,11 @@ export interface PriceResult {
 }
 
 export interface MarketOverview {
-    ibov?: { value: number; change: number };
     usdBrl?: { value: number; change: number };
+    eurBrl?: { value: number; change: number };
     btcBrl?: { value: number; change: number };
+    ethBrl?: { value: number; change: number };
+    goldBrl?: { value: number; change: number };
     updatedAt: Date;
 }
 
@@ -258,52 +260,54 @@ export async function fetchInvestmentPrices(
 //   USD/BRL → AwesomeAPI (economia.awesomeapi.com.br) — 100% free, no auth
 //   BTC     → Mercado Bitcoin ticker (price) + CoinGecko (24h change%)
 
+// JSONP helper — bypasses CORS for HG Brasil Finance (they support ?callback=)
+function fetchHGJsonp<T>(url: string, timeoutMs = 8000): Promise<T | null> {
+    return new Promise(resolve => {
+        const cbName = `_hg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const script = document.createElement('script');
+        const timer = setTimeout(() => { cleanup(); resolve(null); }, timeoutMs);
+        const cleanup = () => {
+            clearTimeout(timer);
+            delete (window as any)[cbName];
+            script.remove();
+        };
+        (window as any)[cbName] = (data: T) => { cleanup(); resolve(data); };
+        script.src = `${url}&callback=${cbName}`;
+        script.onerror = () => { cleanup(); resolve(null); };
+        document.head.appendChild(script);
+    });
+}
+
 export async function fetchMarketOverview(): Promise<MarketOverview> {
     const overview: MarketOverview = { updatedAt: new Date() };
 
     const safe = <T>(p: Promise<T>): Promise<T | null> =>
         p.catch(() => null);
 
-    const [ibovJson, usdJson, mbTickerJson, cgBtcJson] = await Promise.all([
-        // IBOV — %5E is URL-encoded ^ (required for Brapi index tickers)
+    const [awesomeJson, mbBtcJson, cgCryptoJson] = await Promise.all([
+        // USD/BRL + EUR/BRL + XAU/BRL — AwesomeAPI (free, CORS-friendly, no key)
         safe(
-            fetch(`${BRAPI_BASE}/quote/%5EBVSP`, { signal: AbortSignal.timeout(8_000) })
-                .then(r => r.ok ? r.json() : null)
-        ),
-        // USD/BRL — AwesomeAPI: completely free, CORS-friendly, no API key
-        safe(
-            fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL', {
+            fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,XAU-BRL', {
                 signal: AbortSignal.timeout(8_000),
             }).then(r => r.ok ? r.json() : null)
         ),
-        // BTC price — Mercado Bitcoin (Brazilian exchange, always available)
+        // BTC price — Mercado Bitcoin (Brazilian exchange, always available, CORS ok)
         safe(
             fetch('https://www.mercadobitcoin.net/api/BTC/ticker/', {
                 signal: AbortSignal.timeout(8_000),
             }).then(r => r.ok ? r.json() : null)
         ),
-        // BTC 24h change% — CoinGecko (free tier)
+        // BTC + ETH price & 24h change — CoinGecko free tier (CORS ok)
         safe(
             fetch(
-                `${COINGECKO_BASE}/simple/price?ids=bitcoin&vs_currencies=brl&include_24hr_change=true`,
+                `${COINGECKO_BASE}/simple/price?ids=bitcoin,ethereum&vs_currencies=brl&include_24hr_change=true`,
                 { signal: AbortSignal.timeout(8_000) },
             ).then(r => r.ok ? r.json() : null)
         ),
     ]);
 
-    // ── IBOV
-    // Brapi returns: { results: [{ symbol, regularMarketPrice, regularMarketChangePercent }] }
-    const ibovData = (ibovJson as any)?.results?.[0];
-    if (ibovData?.regularMarketPrice > 0) {
-        overview.ibov = {
-            value: Number(ibovData.regularMarketPrice),
-            change: Number(ibovData.regularMarketChangePercent ?? 0),
-        };
-    }
-
-    // ── USD/BRL
-    // AwesomeAPI returns: { USDBRL: { bid: "5.82", pctChange: "0.18" } }
-    const usdData = (usdJson as any)?.USDBRL;
+    // ── USD/BRL  { USDBRL: { bid, pctChange } }
+    const usdData = (awesomeJson as any)?.USDBRL;
     if (usdData?.bid) {
         overview.usdBrl = {
             value: Number(usdData.bid),
@@ -311,18 +315,41 @@ export async function fetchMarketOverview(): Promise<MarketOverview> {
         };
     }
 
-    // ── BTC
-    // Mercado Bitcoin returns: { ticker: { last: "349000.00", ... } }
-    // CoinGecko returns: { bitcoin: { brl: 349000, brl_24h_change: 0.36 } }
-    const mbPrice = Number((mbTickerJson as any)?.ticker?.last);
-    const cgChange = Number((cgBtcJson as any)?.bitcoin?.brl_24h_change ?? 0);
-    const cgPrice = Number((cgBtcJson as any)?.bitcoin?.brl);
+    // ── EUR/BRL  { EURBRL: { bid, pctChange } }
+    const eurData = (awesomeJson as any)?.EURBRL;
+    if (eurData?.bid) {
+        overview.eurBrl = {
+            value: Number(eurData.bid),
+            change: Number(eurData.pctChange ?? 0),
+        };
+    }
 
-    const btcPrice = mbPrice > 0 ? mbPrice : cgPrice;   // prefer MB, fallback CG
+    // ── Ouro (XAU/BRL)  { XAUBRL: { bid, pctChange } }
+    const goldData = (awesomeJson as any)?.XAUBRL;
+    if (goldData?.bid) {
+        overview.goldBrl = {
+            value: Number(goldData.bid),
+            change: Number(goldData.pctChange ?? 0),
+        };
+    }
+
+    // ── BTC — prefer Mercado Bitcoin price, fallback CoinGecko; change always from CoinGecko
+    const mbBtcPrice = Number((mbBtcJson as any)?.ticker?.last);
+    const cgBtcPrice = Number((cgCryptoJson as any)?.bitcoin?.brl);
+    const btcChange = Number((cgCryptoJson as any)?.bitcoin?.brl_24h_change ?? 0);
+    const btcPrice = mbBtcPrice > 0 ? mbBtcPrice : cgBtcPrice;
     if (btcPrice > 0) {
-        overview.btcBrl = { value: btcPrice, change: cgChange };
+        overview.btcBrl = { value: btcPrice, change: btcChange };
+    }
+
+    // ── ETH — CoinGecko
+    const ethPrice = Number((cgCryptoJson as any)?.ethereum?.brl);
+    const ethChange = Number((cgCryptoJson as any)?.ethereum?.brl_24h_change ?? 0);
+    if (ethPrice > 0) {
+        overview.ethBrl = { value: ethPrice, change: ethChange };
     }
 
     return overview;
 }
+
 

@@ -6,11 +6,13 @@ import {
     Building2, Bitcoin, Globe, Landmark, LineChart, Package,
     ArrowUpRight, ArrowDownRight, Info, RefreshCw, CheckCircle2,
     TrendingUp as TrendUp, Activity, Wifi, WifiOff, Clock,
-    Layers, Home, ShieldCheck, Coins, Flame, Star
+    Layers, Home, ShieldCheck, Coins, Flame, Star,
+    Download, ChevronsUpDown, ChevronUp
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, Tooltip as PieTooltip, Legend, ResponsiveContainer,
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+    BarChart, Bar, LabelList, ReferenceLine
 } from 'recharts';
 import ConfirmationModal from './ConfirmationModal';
 import {
@@ -137,12 +139,12 @@ const MarketTicker = ({
     label: string;
     value?: number;
     change?: number;
-    format?: 'currency' | 'points' | 'crypto';
+    format?: 'currency' | 'crypto' | 'gold';
     loading?: boolean;
 }) => {
     const formatVal = (v: number) => {
-        if (format === 'points') return v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-        if (format === 'crypto') return v >= 1_000 ? `R$\u00a0${(v / 1_000).toFixed(1)}k` : `R$\u00a0${v.toFixed(2)}`;
+        if (format === 'crypto' || format === 'gold')
+            return v >= 1_000 ? `R$\u00a0${(v / 1_000).toFixed(1)}k` : `R$\u00a0${v.toFixed(2)}`;
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
     };
     const isPositive = (change ?? 0) >= 0;
@@ -595,6 +597,87 @@ const Investments: React.FC<InvestmentsProps> = ({
         return months;
     }, [investments]);
 
+    // ── Sort state ─────────────────────────────────────────────────────────────
+    type SortKey = 'name' | 'type' | 'current' | 'pnlPct' | 'weight';
+    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortKey(key); setSortDir('desc'); }
+    };
+    const SortIcon = ({ k }: { k: SortKey }) =>
+        sortKey !== k ? <ChevronsUpDown className="w-3 h-3 ml-1 opacity-40" /> :
+            sortDir === 'asc' ? <ChevronUp className="w-3 h-3 ml-1 text-emerald-500" /> :
+                <ChevronDown className="w-3 h-3 ml-1 text-emerald-500" />;
+
+    // ── Sorted + filtered list with per-asset computed values
+    const sortedFiltered = useMemo(() => {
+        const rows = filtered.map(inv => {
+            const cost = inv.quantity * inv.purchase_price;
+            const current = inv.quantity * inv.current_price;
+            const pnl = current - cost;
+            const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+            const weight = stats.totalCurrent > 0 ? (current / stats.totalCurrent) * 100 : 0;
+            return { inv, cost, current, pnl, pnlPct, weight };
+        });
+        if (!sortKey) return rows;
+        return [...rows].sort((a, b) => {
+            let aa: number | string = 0, bb: number | string = 0;
+            if (sortKey === 'name') { aa = a.inv.name; bb = b.inv.name; }
+            if (sortKey === 'type') { aa = a.inv.type; bb = b.inv.type; }
+            if (sortKey === 'current') { aa = a.current; bb = b.current; }
+            if (sortKey === 'pnlPct') { aa = a.pnlPct; bb = b.pnlPct; }
+            if (sortKey === 'weight') { aa = a.weight; bb = b.weight; }
+            if (typeof aa === 'string') return sortDir === 'asc' ? aa.localeCompare(bb as string) : (bb as string).localeCompare(aa);
+            return sortDir === 'asc' ? (aa as number) - (bb as number) : (bb as number) - (aa as number);
+        });
+    }, [filtered, sortKey, sortDir, stats.totalCurrent]);
+
+    // ── Performance bar chart data (sorted by |return%|, max 12 assets)
+    const perfChartData = useMemo(() =>
+        [...investments]
+            .map(inv => {
+                const cost = inv.quantity * inv.purchase_price;
+                const pnlPct = cost > 0
+                    ? ((inv.quantity * inv.current_price - cost) / cost) * 100
+                    : 0;
+                return {
+                    name: inv.ticker || inv.name.slice(0, 10),
+                    pnlPct: Number(pnlPct.toFixed(2)),
+                };
+            })
+            .sort((a, b) => Math.abs(b.pnlPct) - Math.abs(a.pnlPct))
+            .slice(0, 12),
+        [investments]);
+
+    // ── CSV export ──────────────────────────────────────────────────────────────
+    const exportCSV = useCallback(() => {
+        const header = ['Nome', 'Ticker', 'Tipo', 'Corretora', 'Qtd', 'Pr.Compra', 'Pr.Atual', 'Custo Total', 'Valor Atual', 'Resultado R$', 'Resultado %', 'Data Compra'];
+        const rows = investments.map(inv => {
+            const cost = inv.quantity * inv.purchase_price;
+            const curr = inv.quantity * inv.current_price;
+            const pnl = curr - cost;
+            const pct = cost > 0 ? (pnl / cost) * 100 : 0;
+            return [
+                inv.name, inv.ticker || '', inv.type, inv.broker || '',
+                inv.quantity.toString().replace('.', ','),
+                inv.purchase_price.toFixed(2).replace('.', ','),
+                inv.current_price.toFixed(2).replace('.', ','),
+                cost.toFixed(2).replace('.', ','),
+                curr.toFixed(2).replace('.', ','),
+                pnl.toFixed(2).replace('.', ','),
+                pct.toFixed(2).replace('.', ','),
+                inv.purchase_date,
+            ].map(v => `"${v}"`).join(';');
+        });
+        const csv = '\uFEFF' + [header.join(';'), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `carteira_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+    }, [investments]);
+
     const openAdd = () => { setEditingInvestment(null); setShowModal(true); };
     const openEdit = (inv: Investment) => { setEditingInvestment(inv); setShowModal(true); };
 
@@ -654,6 +737,16 @@ const Investments: React.FC<InvestmentsProps> = ({
                             )}
                         </button>
                     )}
+                    {investments.length > 0 && (
+                        <button
+                            onClick={exportCSV}
+                            title="Exportar carteira em CSV (abre no Excel)"
+                            className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all text-sm whitespace-nowrap"
+                        >
+                            <Download className="w-4 h-4" />
+                            Exportar CSV
+                        </button>
+                    )}
                     <button
                         onClick={openAdd}
                         className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 active:scale-95 transition-all shadow-lg shadow-emerald-500/30 text-sm whitespace-nowrap"
@@ -666,9 +759,11 @@ const Investments: React.FC<InvestmentsProps> = ({
 
             {/* ── Market Overview Bar ──────────────────────── */}
             <div className="flex flex-wrap gap-3">
-                <MarketTicker label="IBOV" value={market?.ibov?.value} change={market?.ibov?.change} format="points" loading={marketLoading} />
+                <MarketTicker label="EUR/BRL" value={market?.eurBrl?.value} change={market?.eurBrl?.change} format="currency" loading={marketLoading} />
                 <MarketTicker label="USD/BRL" value={market?.usdBrl?.value} change={market?.usdBrl?.change} format="currency" loading={marketLoading} />
                 <MarketTicker label="BTC" value={market?.btcBrl?.value} change={market?.btcBrl?.change} format="crypto" loading={marketLoading} />
+                <MarketTicker label="ETH" value={market?.ethBrl?.value} change={market?.ethBrl?.change} format="crypto" loading={marketLoading} />
+                <MarketTicker label="Ouro" value={market?.goldBrl?.value} change={market?.goldBrl?.change} format="gold" loading={marketLoading} />
                 {lastUpdatedLabel && (
                     <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs text-slate-400 bg-white/60 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700">
                         <Clock className="w-3 h-3" />
@@ -854,6 +949,49 @@ const Investments: React.FC<InvestmentsProps> = ({
                                     </ResponsiveContainer>
                                 </div>
                             </div>
+
+                            {/* Bar: Performance by Asset */}
+                            <div className="lg:col-span-5 mt-4 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">Rentabilidade por Ativo (%)</h3>
+                                <p className="text-xs text-slate-500 mb-6">Performance total individual (Top 12 ativos)</p>
+                                <div className="h-80">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            data={perfChartData}
+                                            layout="vertical"
+                                            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" opacity={0.5} />
+                                            <XAxis type="number" hide />
+                                            <YAxis
+                                                dataKey="name"
+                                                type="category"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                                                width={100}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: 'transparent' }}
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px -2px rgb(0 0 0 / 0.15)' }}
+                                                formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val}%`, 'Retorno']}
+                                            />
+                                            <ReferenceLine x={0} stroke="#cbd5e1" strokeWidth={2} />
+                                            <Bar dataKey="pnlPct" radius={[0, 4, 4, 0]} barSize={20}>
+                                                {perfChartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.pnlPct >= 0 ? '#10B981' : '#EF4444'} />
+                                                ))}
+                                                <LabelList
+                                                    dataKey="pnlPct"
+                                                    position="right"
+                                                    formatter={(v: number) => `${v >= 0 ? '+' : ''}${v}%`}
+                                                    style={{ fontSize: '10px', fontWeight: 'bold', fill: '#64748b' }}
+                                                />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -898,23 +1036,34 @@ const Investments: React.FC<InvestmentsProps> = ({
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="bg-slate-50 dark:bg-slate-900">
-                                                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ativo</th>
-                                                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tipo</th>
+                                                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-600 transition-colors"
+                                                        onClick={() => handleSort('name')}>
+                                                        <div className="flex items-center">Ativo <SortIcon k="name" /></div>
+                                                    </th>
+                                                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-600 transition-colors"
+                                                        onClick={() => handleSort('type')}>
+                                                        <div className="flex items-center">Tipo <SortIcon k="type" /></div>
+                                                    </th>
                                                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Qtd</th>
                                                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Pr. Compra</th>
                                                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Pr. Atual</th>
-                                                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Custo Total</th>
-                                                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Valor Atual</th>
-                                                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Resultado</th>
+                                                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-600 transition-colors"
+                                                        onClick={() => handleSort('current')}>
+                                                        <div className="flex items-center justify-end">Valor Atual <SortIcon k="current" /></div>
+                                                    </th>
+                                                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-600 transition-colors"
+                                                        onClick={() => handleSort('pnlPct')}>
+                                                        <div className="flex items-center justify-end">Resultado <SortIcon k="pnlPct" /></div>
+                                                    </th>
+                                                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-600 transition-colors"
+                                                        onClick={() => handleSort('weight')}>
+                                                        <div className="flex items-center justify-end">Peso % <SortIcon k="weight" /></div>
+                                                    </th>
                                                     <th className="px-5 py-3.5"></th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                                                {filtered.map(inv => {
-                                                    const cost = inv.quantity * inv.purchase_price;
-                                                    const current = inv.quantity * inv.current_price;
-                                                    const pnl = current - cost;
-                                                    const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                                                {sortedFiltered.map(({ inv, cost, current, pnl, pnlPct, weight }) => {
                                                     return (
                                                         <tr key={inv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors group">
                                                             <td className="px-5 py-4">
@@ -951,9 +1100,6 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                                     })()}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-5 py-4 text-right text-slate-600 dark:text-slate-300">
-                                                                <BlurText privacyMode={privacyMode}>{formatCurrency(cost)}</BlurText>
-                                                            </td>
                                                             <td className="px-5 py-4 text-right font-semibold text-slate-800 dark:text-white">
                                                                 <BlurText privacyMode={privacyMode}>{formatCurrency(current)}</BlurText>
                                                             </td>
@@ -964,6 +1110,9 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                                 <div className={`text-xs font-semibold ${pnl >= 0 ? 'text-emerald-500' : 'text-rose-400'}`}>
                                                                     {formatPercent(pnlPct)}
                                                                 </div>
+                                                            </td>
+                                                            <td className="px-5 py-4 text-right font-bold text-slate-600 dark:text-slate-300">
+                                                                {weight.toFixed(1)}%
                                                             </td>
                                                             <td className="px-5 py-4">
                                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -986,17 +1135,16 @@ const Investments: React.FC<InvestmentsProps> = ({
 
                                     {/* Mobile Cards */}
                                     <div className="md:hidden space-y-3">
-                                        {filtered.map(inv => {
-                                            const cost = inv.quantity * inv.purchase_price;
-                                            const current = inv.quantity * inv.current_price;
-                                            const pnl = current - cost;
-                                            const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                                        {sortedFiltered.map(({ inv, cost, current, pnl, pnlPct, weight }) => {
                                             return (
                                                 <div key={inv.id} className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
                                                     <div className="flex items-start justify-between mb-3">
                                                         <div>
                                                             <p className="font-bold text-slate-800 dark:text-white">{inv.name}</p>
-                                                            {inv.ticker && <p className="text-xs font-mono text-slate-400">{inv.ticker}</p>}
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                {inv.ticker && <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1 rounded">{inv.ticker}</span>}
+                                                                <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-1 rounded">{weight.toFixed(1)}% peso</span>
+                                                            </div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <TypeBadge type={inv.type} />
@@ -1004,14 +1152,8 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-3 text-sm">
                                                         <div>
-                                                            <p className="text-xs text-slate-400">Valor Investido</p>
-                                                            <p className="font-semibold text-slate-700 dark:text-slate-200">
-                                                                <BlurText privacyMode={privacyMode}>{formatCurrency(cost)}</BlurText>
-                                                            </p>
-                                                        </div>
-                                                        <div>
                                                             <p className="text-xs text-slate-400">Valor Atual</p>
-                                                            <p className="font-semibold text-slate-800 dark:text-white">
+                                                            <p className="font-bold text-slate-800 dark:text-white">
                                                                 <BlurText privacyMode={privacyMode}>{formatCurrency(current)}</BlurText>
                                                             </p>
                                                             {(() => {
@@ -1019,7 +1161,7 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                                 if (!r || r.error) return null;
                                                                 const pos = r.change >= 0;
                                                                 return (
-                                                                    <p className={`text-xs font-bold mt-0.5 ${pos ? 'text-emerald-500' : 'text-rose-500'
+                                                                    <p className={`text-[10px] font-bold mt-0.5 ${pos ? 'text-emerald-500' : 'text-rose-500'
                                                                         }`}>
                                                                         {pos ? '+' : ''}{r.change.toFixed(2)}% hoje
                                                                     </p>
@@ -1031,10 +1173,9 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                             <p className={`font-bold ${pnl >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                                                                 <BlurText privacyMode={privacyMode}>{formatCurrency(pnl)}</BlurText>
                                                             </p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs text-slate-400">Rentabilidade</p>
-                                                            <p className={`font-bold ${pnl >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{formatPercent(pnlPct)}</p>
+                                                            <p className={`text-[10px] font-bold ${pnl >= 0 ? 'text-emerald-500' : 'text-rose-400'}`}>
+                                                                {formatPercent(pnlPct)}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
