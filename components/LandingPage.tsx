@@ -209,7 +209,7 @@ const LandingPage: React.FC = () => {
                                     </div>
                                     <div className="flex-1 overflow-hidden relative flex items-center justify-center bg-slate-50 dark:bg-slate-900 ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50">
                                         <img
-                                            src="/dashboard_preview.png"
+                                            src="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2Fdashboard_preview.png&version_id=null"
                                             alt="Dashboard Trocô"
                                             className="w-full h-full object-contain p-1 md:p-2 transition-transform duration-700 hover:scale-[1.01]"
                                         />
