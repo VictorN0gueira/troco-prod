@@ -650,7 +650,8 @@ const AppContent: React.FC = () => {
           status_assinatura: data.tem_plano ? 'active' : 'canceled',
           notificacoes_email: data.notificacoes_email ?? true,
           notificacoes_push: data.notificacoes_push ?? false,
-          notificacoes_marketing: data.notificacoes_marketing ?? false
+          notificacoes_marketing: data.notificacoes_marketing ?? false,
+          notificacoes_whatsapp: data.notificacoes_whatsapp ?? false
         };
 
         setUser(mappedUser);
@@ -741,7 +742,8 @@ const AppContent: React.FC = () => {
       avatar_url: updatedUser.avatarUrl,
       notificacoes_email: updatedUser.notificacoes_email,
       notificacoes_push: updatedUser.notificacoes_push,
-      notificacoes_marketing: updatedUser.notificacoes_marketing
+      notificacoes_marketing: updatedUser.notificacoes_marketing,
+      notificacoes_whatsapp: updatedUser.notificacoes_whatsapp
     }).eq('id', user.id);
 
     if (error) {

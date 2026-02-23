@@ -36,7 +36,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   const [notifications, setNotifications] = useState({
     email: user.notificacoes_email ?? true,
     push: user.notificacoes_push ?? false,
-    marketing: user.notificacoes_marketing ?? false
+    marketing: user.notificacoes_marketing ?? false,
+    whatsapp: user.notificacoes_whatsapp ?? false
   });
 
   // Keep formData in sync if user changes externally, but allow local edits
@@ -121,7 +122,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
         // Include current notification state in full save
         notificacoes_email: notifications.email,
         notificacoes_push: notifications.push,
-        notificacoes_marketing: notifications.marketing
+        notificacoes_marketing: notifications.marketing,
+        notificacoes_whatsapp: notifications.whatsapp
       };
 
       // Call parent handler to update Database
@@ -175,7 +177,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
       ...formData,
       notificacoes_email: key === 'email' ? newVal : notifications.email,
       notificacoes_push: key === 'push' ? newVal : notifications.push,
-      notificacoes_marketing: key === 'marketing' ? newVal : notifications.marketing
+      notificacoes_marketing: key === 'marketing' ? newVal : notifications.marketing,
+      notificacoes_whatsapp: key === 'whatsapp' ? newVal : (notifications as any).whatsapp
     };
 
     try {
@@ -407,6 +410,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
             <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               {[
                 { label: 'Alertas por Email', key: 'email' },
+                { label: 'Alertas por WhatsApp', key: 'whatsapp' },
                 { label: 'Novidades e Ofertas', key: 'marketing' },
               ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between">
