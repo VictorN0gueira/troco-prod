@@ -273,15 +273,29 @@ const LandingPage: React.FC = () => {
             {/* --- Market Radar Section --- */}
             <section id="news" className="py-24 relative overflow-hidden">
                 <div className="max-w-7xl mx-auto px-6">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-12">
                         <div className="max-w-2xl">
                             <h2 className="text-xs font-black text-primary-500 uppercase tracking-widest mb-4">Radar de Mercado</h2>
-                            <h3 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white mb-6">Fique por dentro do que move o seu dinheiro.</h3>
-                            <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">Notícias selecionadas e atualizadas em tempo real para sua tomada de decisão.</p>
+                            <div className="flex flex-col lg:flex-row lg:items-center gap-8">
+                                <h3 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight">
+                                    Fique por dentro do que <br className="hidden md:block" /> move o seu dinheiro.
+                                </h3>
+                                {/* Lottie Animation - Market Radar */}
+                                <div className="flex-shrink-0 animate-float">
+                                    {/* @ts-ignore */}
+                                    <dotlottie-wc
+                                        src="https://lottie.host/f445e385-9730-4773-8606-17da8789b62f/YI1LeYLZ3s.lottie"
+                                        style={{ width: '220px', height: '220px' }}
+                                        autoplay
+                                        loop
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-slate-500 dark:text-slate-400 text-lg font-medium mt-6">Notícias selecionadas e atualizadas em tempo real para sua tomada de decisão.</p>
                         </div>
                         <button
                             onClick={() => navigate('/login')}
-                            className="group flex items-center gap-2 text-primary-600 dark:text-primary-400 font-bold hover:gap-3 transition-all"
+                            className="group flex items-center gap-2 text-primary-600 dark:text-primary-400 font-bold hover:gap-3 transition-all pb-4"
                         >
                             Ver todos os insights
                             <ArrowRight className="w-5 h-5" />
