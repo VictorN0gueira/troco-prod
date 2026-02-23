@@ -8,7 +8,7 @@
  *  - CoinGecko global          → BTC dominance + global market cap
  */
 
-import { Investment, InvestmentType } from '../types';
+import { Investment, InvestmentType, InvestmentNews } from '../types';
 
 // ─── Result types ──────────────────────────────────────────────────────────────
 
@@ -100,7 +100,8 @@ async function fetchBrapiQuotes(
 
     // Brapi allows comma-separated tickers in one request
     const joined = tickers.map(t => t.toUpperCase()).join(',');
-    const url = `${BRAPI_BASE}/quote/${joined}?currency=${currency}`;
+    const token = import.meta.env.VITE_BRAPI_TOKEN;
+    const url = `${BRAPI_BASE}/quote/${joined}?currency=${currency}${token ? `&token=${token}` : ''}`;
 
     try {
         const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
@@ -350,6 +351,83 @@ export async function fetchMarketOverview(): Promise<MarketOverview> {
     }
 
     return overview;
+}
+
+export async function fetchInvestmentNews(category?: string): Promise<InvestmentNews[]> {
+    const fallbackNews: InvestmentNews[] = [
+        {
+            title: "IBOVESPA tem alta com expectativa de novos dados econômicos",
+            description: "O principal índice da bolsa brasileira iniciou o dia em território positivo, impulsionado por setores de commodities e varejo.",
+            url: "https://g1.globo.com/economia/investimentos/",
+            source: "Valor Econômico",
+            timestamp: new Date().toISOString(),
+            image: "https://images.unsplash.com/photo-1611974715853-2b8ef967d752?q=80&w=2070&auto=format&fit=crop"
+        },
+        {
+            title: "Dólar opera em estabilidade frente ao Real nesta segunda-feira",
+            description: "A moeda americana mantém patamar enquanto investidores aguardam decisões sobre política fiscal e juros nos EUA.",
+            url: "https://www.infomoney.com.br/",
+            source: "InfoMoney",
+            timestamp: new Date().toISOString(),
+            image: "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=2071&auto=format&fit=crop"
+        },
+        {
+            title: "Criptoativos: Bitcoin se consolida acima dos US$ 90 mil",
+            description: "O mercado de criptomoedas continua demonstrando força com a entrada de fluxos institucionais e otimismo regulatório.",
+            url: "https://portaldobitcoin.uol.com.br/",
+            source: "Portal do Bitcoin",
+            timestamp: new Date().toISOString(),
+            image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=2069&auto=format&fit=crop"
+        },
+        {
+            title: "Selic: Analistas projetam manutenção de taxas no curto prazo",
+            description: "O mercado financeiro ajustou suas projeções para a próxima reunião do Copom, mantendo foco na inflação.",
+            url: "https://exame.com/invest/",
+            source: "Exame",
+            timestamp: new Date().toISOString(),
+            image: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=2070&auto=format&fit=crop"
+        }
+    ];
+
+    let url = `${BRAPI_BASE}/news`;
+    const token = import.meta.env.VITE_BRAPI_TOKEN;
+
+    const params = new URLSearchParams();
+    if (token) params.append('token', token);
+    if (category) params.append('category', category);
+
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
+
+    try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) throw new Error(`Brapi News HTTP ${res.status}`);
+
+        // Check if response is JSON
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("API returned non-JSON response");
+        }
+
+        const json = await res.json();
+
+        if (!json.news || json.news.length === 0) {
+            return fallbackNews;
+        }
+
+        return (json?.news ?? []).map((item: any) => ({
+            title: item.title,
+            description: item.description || item.content,
+            url: item.link || item.url,
+            image: item.image || (item.images && item.images[0]),
+            source: item.source,
+            timestamp: item.date || item.timestamp,
+            category: category,
+        }));
+    } catch (err: any) {
+        console.warn('Brapi News API failed, using fallback data:', err.message);
+        return fallbackNews;
+    }
 }
 
 

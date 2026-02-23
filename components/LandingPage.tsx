@@ -14,10 +14,15 @@ import {
     Zap,
     ChevronRight,
     Mail,
-    Instagram
+    Instagram,
+    Newspaper,
+    Clock,
+    ExternalLink
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
+import { InvestmentNews } from '../types';
+import { fetchInvestmentNews } from '../services/priceApi';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
@@ -30,6 +35,23 @@ const LandingPage: React.FC = () => {
         };
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const [news, setNews] = useState<InvestmentNews[]>([]);
+    const [newsLoading, setNewsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadNews = async () => {
+            try {
+                const data = await fetchInvestmentNews();
+                setNews(data.slice(0, 3)); // Only top 3 for landing page
+            } catch (err) {
+                console.error('Landing news error', err);
+            } finally {
+                setNewsLoading(false);
+            }
+        };
+        loadNews();
     }, []);
 
     const scrollToSection = (id: string) => {
@@ -242,6 +264,58 @@ const LandingPage: React.FC = () => {
                                 </div>
                                 <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">{f.title}</h4>
                                 <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* --- Market Radar Section --- */}
+            <section id="news" className="py-24 relative overflow-hidden">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+                        <div className="max-w-2xl">
+                            <h2 className="text-xs font-black text-primary-500 uppercase tracking-widest mb-4">Radar de Mercado</h2>
+                            <h3 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white mb-6">Fique por dentro do que move o seu dinheiro.</h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">Notícias selecionadas e atualizadas em tempo real para sua tomada de decisão.</p>
+                        </div>
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="group flex items-center gap-2 text-primary-600 dark:text-primary-400 font-bold hover:gap-3 transition-all"
+                        >
+                            Ver todos os insights
+                            <ArrowRight className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {newsLoading ? (
+                            [1, 2, 3].map(i => (
+                                <div key={i} className="glass h-64 rounded-[2rem] animate-pulse" />
+                            ))
+                        ) : news.map((item, idx) => (
+                            <div key={idx} className="group glass p-8 rounded-[2rem] hover:shadow-2xl hover:shadow-primary-500/10 transition-all duration-500 flex flex-col border border-slate-100 dark:border-slate-800">
+                                <div className="flex items-start justify-between mb-6">
+                                    <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-lg">
+                                        {item.source}
+                                    </span>
+                                    <Clock className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                                </div>
+                                <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-4 line-clamp-2 leading-tight group-hover:text-primary-500 transition-colors">
+                                    {item.title}
+                                </h4>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-3 mb-8 flex-grow">
+                                    {item.description}
+                                </p>
+                                <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 text-xs font-bold text-primary-500 hover:gap-3 transition-all"
+                                >
+                                    Ler na íntegra
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
                             </div>
                         ))}
                     </div>

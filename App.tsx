@@ -12,6 +12,7 @@ import Login from './components/Login';
 import LandingPage from './components/LandingPage';
 import Investments from './components/Investments';
 import Legal from './components/Legal';
+import NewsFeed from './components/NewsFeed';
 import { Transaction, UserProfile, CreditCard, Investment } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
@@ -204,6 +205,8 @@ const AppRoutes = ({
             privacyMode={privacyMode}
           />
         } />
+
+        <Route path="/insights" element={<NewsFeed />} />
 
         <Route path="/settings" element={
           <Settings

@@ -16,7 +16,8 @@ import {
   EyeOff,
   CalendarDays,
   CreditCard,
-  TrendingUp // Importado para Investimentos
+  TrendingUp,
+  Newspaper
 } from 'lucide-react';
 // ... other imports
 import { NavItem, UserProfile } from '../types';
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Calendário', path: '/calendar', icon: CalendarDays },
   { label: 'Cartões', path: '/cards', icon: CreditCard },
   { label: 'Investimentos', path: '/investments', icon: TrendingUp },
+  { label: 'Insights', path: '/insights', icon: Newspaper },
   { label: 'Relatórios', path: '/reports', icon: PieChart },
   { label: 'Configurações', path: '/settings', icon: Settings },
 ];
