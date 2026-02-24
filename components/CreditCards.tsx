@@ -4,18 +4,23 @@ import { supabase } from '../supabaseClient';
 import { CreditCard, UserProfile, Transaction } from '../types';
 import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import { useNotification } from '../contexts/NotificationContext';
+
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface CreditCardsProps {
     user: UserProfile;
     cards: CreditCard[];
     transactions: Transaction[];
     fetchCards: (userId: number) => Promise<void>;
+    payCardInvoice: (cardId: number, amount: number, transactionIds: string[]) => void;
 }
 
-const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fetchCards }) => {
+const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fetchCards, payCardInvoice }) => {
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+    const { showNotification } = useNotification();
 
     // Confirmation Modal State
     const [cardToDelete, setCardToDelete] = useState<number | null>(null);
@@ -162,7 +167,11 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving card:', error);
-            alert('Erro ao salvar cartão');
+            showNotification({
+                title: 'Erro',
+                message: 'Erro ao salvar cartão.',
+                type: 'error'
+            });
         } finally {
             setLoading(false);
         }
@@ -184,7 +193,11 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
             setCardToDelete(null);
         } catch (error) {
             console.error("Error deleting:", error);
-            alert("Erro ao excluir cartão"); // Fallback simple alert for error
+            showNotification({
+                title: 'Erro',
+                message: 'Erro ao excluir o cartão.',
+                type: 'error'
+            });
         }
     };
 
@@ -222,6 +235,22 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
             d.setMonth(d.getMonth() + 1);
             return d;
         });
+    };
+
+    // Bank Logo Helper
+    const getBankLogo = (cardName: string) => {
+        const n = cardName.toLowerCase();
+        if (n.includes('nu') || n.includes('roxinho')) return <div className="w-8 h-8 rounded-lg bg-[#8A05BE] flex items-center justify-center font-bold text-white text-xs">nu</div>;
+        if (n.includes('itaú') || n.includes('itau')) return <div className="w-8 h-8 rounded-lg bg-[#EC7000] flex items-center justify-center font-bold text-blue-900 text-xs">itaú</div>;
+        if (n.includes('inter')) return <div className="w-8 h-8 rounded-lg bg-[#FF7A00] flex items-center justify-center font-bold text-white text-[10px]">inter</div>;
+        if (n.includes('c6')) return <div className="w-8 h-8 rounded-lg bg-[#242424] border border-white/20 flex items-center justify-center font-bold text-white text-xs">C6</div>;
+        if (n.includes('xp')) return <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center font-bold text-[#FFD700] text-xs">XP</div>;
+        if (n.includes('bradesco')) return <div className="w-8 h-8 rounded-lg bg-[#CC092F] flex items-center justify-center font-bold text-white text-[9px]">Bradesco</div>;
+        if (n.includes('bb') || n.includes('brasil')) return <div className="w-8 h-8 rounded-lg bg-[#F9D308] flex items-center justify-center font-bold text-[#003DA5] text-xs">bb</div>;
+        if (n.includes('santander')) return <div className="w-8 h-8 rounded-lg bg-[#EC0000] flex items-center justify-center font-bold text-white text-[8px]">Santander</div>;
+        if (n.includes('btg')) return <div className="w-8 h-8 rounded-lg bg-[#002D54] flex items-center justify-center font-bold text-white text-[10px]">BTG</div>;
+
+        return <CardIcon className="w-8 h-8 opacity-80" />;
     };
 
     return (
@@ -268,11 +297,34 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5"></div>
 
                                 <div className="flex justify-between items-start relative z-10">
-                                    <div>
-                                        <p className="text-xs font-medium opacity-80 uppercase tracking-wider">Nome do Cartão</p>
-                                        <h3 className="text-xl font-bold mt-1 tracking-wide">{card.name}</h3>
+                                    <div className="flex items-center gap-3">
+                                        {getBankLogo(card.name)}
+                                        <div>
+                                            <p className="text-xs font-medium opacity-80 uppercase tracking-wider">{card.brand || 'Cartão'}</p>
+                                            <h3 className="text-xl font-bold mt-0.5 tracking-wide">{card.name}</h3>
+                                        </div>
                                     </div>
-                                    <CardIcon className="w-8 h-8 opacity-80" />
+
+                                    {/* Smart Alerts */}
+                                    <div className="flex flex-col items-end gap-1">
+                                        {(() => {
+                                            const today = new Date().getDate();
+                                            // Melhor dia para compra: Logo após o fechamento, até uns 3 dias depois
+                                            const bestDay = today >= card.closing_day && today <= card.closing_day + 3;
+                                            // Vence em breve: 5 dias antes do vencimento
+                                            let daysToDue = card.due_day - today;
+                                            if (daysToDue < 0) daysToDue += 30; // aproximação simples
+                                            const dueSoon = daysToDue <= 5 && daysToDue >= 0;
+
+                                            if (bestDay) {
+                                                return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
+                                            }
+                                            if (dueSoon) {
+                                                return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4 relative z-10">
@@ -627,12 +679,141 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     </div>
                                 </div>
 
+                                {/* Charts & Analysis */}
+                                {(() => {
+                                    const invoiceTxs = transactions.filter(t => {
+                                        if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
+                                        const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                        return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
+                                    });
+
+                                    // Bar Chart Data (Last 6 months)
+                                    const barData = Array.from({ length: 6 }).map((_, i) => {
+                                        const d = new Date(currentInvoiceDate);
+                                        d.setMonth(d.getMonth() - (5 - i));
+
+                                        const mtxs = transactions.filter(t => {
+                                            if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
+                                            const tInvDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                            return tInvDate.getTime() === d.getTime();
+                                        });
+
+                                        return {
+                                            name: d.toLocaleDateString('pt-BR', { month: 'short' }),
+                                            amount: mtxs.reduce((sum, t) => sum + t.amount, 0)
+                                        };
+                                    });
+
+                                    // Pie Chart Data
+                                    const categoryTotals = invoiceTxs.reduce((acc, t) => {
+                                        acc[t.category] = (acc[t.category] || 0) + t.amount;
+                                        return acc;
+                                    }, {} as Record<string, number>);
+
+                                    const COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1'];
+                                    const pieData = Object.entries(categoryTotals)
+                                        .map(([name, value]) => ({ name, value }))
+                                        .sort((a, b) => b.value - a.value);
+
+                                    return invoiceTxs.length > 0 || barData.some(d => d.amount > 0) ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                            {/* Evolution Bar Chart */}
+                                            <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                                <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Evolução (6 meses)</h4>
+                                                <div className="h-40">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
+                                                            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                                                            <Tooltip
+                                                                cursor={{ fill: 'rgba(51, 65, 85, 0.1)' }}
+                                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                                formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Fatura']}
+                                                            />
+                                                            <Bar dataKey="amount" fill={viewingInvoice.color} radius={[4, 4, 0, 0]} />
+                                                        </BarChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                            </div>
+
+                                            {/* Category Pie Chart */}
+                                            <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                                <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Por Categoria</h4>
+                                                <div className="h-40 flex items-center justify-between">
+                                                    <div className="w-1/2 h-full">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <PieChart>
+                                                                <Pie
+                                                                    data={pieData}
+                                                                    innerRadius={30}
+                                                                    outerRadius={45}
+                                                                    paddingAngle={5}
+                                                                    dataKey="value"
+                                                                >
+                                                                    {pieData.map((entry, index) => (
+                                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                                    ))}
+                                                                </Pie>
+                                                                <Tooltip formatter={(val: number) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+                                                            </PieChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                    <div className="w-1/2 overflow-y-auto max-h-40 custom-scrollbar pr-1">
+                                                        {pieData.map((entry, index) => (
+                                                            <div key={entry.name} className="flex items-center justify-between text-xs mb-2 last:mb-0">
+                                                                <div className="flex items-center gap-1.5 truncate">
+                                                                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                                                                    <span className="text-slate-600 dark:text-slate-300 truncate" title={entry.name}>{entry.name}</span>
+                                                                </div>
+                                                                <span className="font-medium text-slate-800 dark:text-white ml-2">
+                                                                    {Math.round((entry.value / categoryTotals[entry.name]) * 100) || Math.round((entry.value / pieData.reduce((s, d) => s + d.value, 0)) * 100)}%
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null;
+                                })()}
+
                                 {/* Transaction List */}
                                 <div>
-                                    <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                        <TrendingUp className="w-5 h-5 text-primary-500" />
-                                        Transações nesta Fatura
-                                    </h4>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                            <TrendingUp className="w-5 h-5 text-primary-500" />
+                                            Transações nesta Fatura
+                                        </h4>
+
+                                        {(() => {
+                                            const invoiceTxs = transactions.filter(t => {
+                                                if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
+                                                const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                                return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
+                                            });
+                                            // Apenas permite pagar se tiver algo pendente nessa fatura
+                                            const pendingInInvoice = invoiceTxs.filter(t => t.status === 'pending');
+                                            const pendingAmount = pendingInInvoice.reduce((s, t) => s + t.amount, 0);
+
+                                            if (pendingInInvoice.length > 0) {
+                                                return (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm(`Deseja pagar a fatura no valor de R$ ${pendingAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}?`)) {
+                                                                payCardInvoice(viewingInvoice.id, pendingAmount, pendingInInvoice.map(t => t.id));
+                                                                setViewingInvoice(null);
+                                                            }
+                                                        }}
+                                                        className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm shadow-emerald-500/20 transition-all flex items-center gap-1"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" />
+                                                        Pagar Fatura
+                                                    </button>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
 
                                     <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
                                         {(() => {

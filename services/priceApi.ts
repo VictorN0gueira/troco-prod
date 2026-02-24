@@ -389,43 +389,54 @@ export async function fetchInvestmentNews(category?: string): Promise<Investment
         }
     ];
 
-    let url = `${BRAPI_BASE}/news`;
-    const token = import.meta.env.VITE_BRAPI_TOKEN;
-
-    const params = new URLSearchParams();
-    if (token) params.append('token', token);
-    if (category) params.append('category', category);
-
-    const queryString = params.toString();
-    if (queryString) url += `?${queryString}`;
-
     try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-        if (!res.ok) throw new Error(`Brapi News HTTP ${res.status}`);
+        // Usa rss2json para converter o feed RSS do InfoMoney em JSON (CORS-friendly)
+        const rssUrl = encodeURIComponent('https://www.infomoney.com.br/feed/');
+        const url = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`;
 
-        // Check if response is JSON
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("API returned non-JSON response");
-        }
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) throw new Error(`RSS API HTTP ${res.status}`);
 
         const json = await res.json();
 
-        if (!json.news || json.news.length === 0) {
+        if (json.status !== 'ok' || !json.items || json.items.length === 0) {
             return fallbackNews;
         }
 
-        return (json?.news ?? []).map((item: any) => ({
-            title: item.title,
-            description: item.description || item.content,
-            url: item.link || item.url,
-            image: item.image || (item.images && item.images[0]),
-            source: item.source,
-            timestamp: item.date || item.timestamp,
-            category: category,
-        }));
+        return json.items.slice(0, 15).map((item: any) => {
+            // Tenta extrair a imagem do conteudo HTML (tag <img>)
+            let imageUrl: string | undefined = item.thumbnail;
+            if (!imageUrl && item.description) {
+                const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
+                if (imgMatch && imgMatch[1]) {
+                    imageUrl = imgMatch[1];
+                }
+            }
+            // Fallback para uma imagem generica se nao achar
+            if (!imageUrl) {
+                imageUrl = "https://images.unsplash.com/photo-1611974715853-2b8ef967d752?q=80&w=2070&auto=format&fit=crop";
+            }
+
+            // Limpa as tags HTML da descrição para ficar só o texto puro
+            let cleanDesc = item.description || item.content || '';
+            cleanDesc = cleanDesc.replace(/<[^>]*>?/gm, '').trim();
+            // Pega apenas um breve trecho inicial
+            if (cleanDesc.length > 180) {
+                cleanDesc = cleanDesc.substring(0, 177) + '...';
+            }
+
+            return {
+                title: item.title,
+                description: cleanDesc,
+                url: item.link,
+                image: imageUrl,
+                source: "InfoMoney",
+                timestamp: item.pubDate,
+                category: category || "Mercados",
+            };
+        });
     } catch (err: any) {
-        console.warn('Brapi News API failed, using fallback data:', err.message);
+        console.warn('News RSS fetch failed, using fallback data:', err.message);
         return fallbackNews;
     }
 }

@@ -64,6 +64,7 @@ export interface Transaction {
   status: 'completed' | 'pending';
   isRecurring?: boolean; // Nova flag para recorrência
   cardId?: number; // ID do cartão de crédito (opcional)
+  installment_group?: string; // ID único agrupando parcelas de uma mesma compra
 }
 
 // Chart types remain the same for UI visualization

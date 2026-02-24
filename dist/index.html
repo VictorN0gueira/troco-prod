@@ -1,108 +1,266 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- Primary Meta Tags -->
-    <title>Trocô | Gestão Financeira Inteligente</title>
-    <meta name="title" content="Trocô | Gestão Financeira Inteligente">
-    <meta name="description" content="Trocô - Transforme suas finanças em liberdade. Controle seu patrimônio com uma interface intuitiva, relatórios detalhados e gestão simplificada de transações.">
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Trocô | Gestão Financeira Inteligente">
-    <meta property="og:description" content="Trocô - Transforme suas finanças em liberdade. Controle seu patrimônio com uma interface intuitiva, relatórios detalhados e gestão simplificada de transações.">
-    <meta property="og:image" content="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2FLogo%20-%20Sem%20Fundo%20Branco%20e%20Sem%20Nome.png&version_id=null">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:title" content="Trocô | Gestão Financeira Inteligente">
-    <meta property="twitter:description" content="Trocô - Transforme suas finanças em liberdade. Controle seu patrimônio com uma interface intuitiva, relatórios detalhados e gestão simplificada de transações.">
-    <meta property="twitter:image" content="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2FLogo%20-%20Sem%20Fundo%20Branco%20e%20Sem%20Nome.png&version_id=null">
+  <!-- Primary Meta Tags -->
+  <title>Trocô | Gestão Financeira Inteligente</title>
+  <meta name="title" content="Trocô | Gestão Financeira Inteligente">
+  <meta name="description"
+    content="Trocô - Transforme suas finanças em liberdade. Controle seu patrimônio com uma interface intuitiva, relatórios detalhados e gestão simplificada de transações.">
 
-    <!-- Favicon -->
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Trocô | Gestão Financeira Inteligente">
+  <meta property="og:description"
+    content="Trocô - Transforme suas finanças em liberdade. Controle seu patrimônio com uma interface intuitiva, relatórios detalhados e gestão simplificada de transações.">
+  <meta property="og:image"
+    content="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2FLogo%20-%20Sem%20Fundo%20Branco%20e%20Sem%20Nome.png&version_id=null">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Montserrat', 'sans-serif'],
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:title" content="Trocô | Gestão Financeira Inteligente">
+  <meta property="twitter:description"
+    content="Trocô - Transforme suas finanças em liberdade. Controle seu patrimônio com uma interface intuitiva, relatórios detalhados e gestão simplificada de transações.">
+  <meta property="twitter:image"
+    content="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2FLogo%20-%20Sem%20Fundo%20Branco%20e%20Sem%20Nome.png&version_id=null">
+
+  <!-- Favicon -->
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Montserrat', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10B981', // Emerald 500
+              600: '#059669',
             },
-            colors: {
-              primary: {
-                50: '#ecfdf5',
-                100: '#d1fae5',
-                500: '#10B981', // Emerald 500
-                600: '#059669',
-              },
-              danger: {
-                50: '#fff1f2',
-                500: '#F43F5E', // Rose 500
-              },
-              slate: {
-                850: '#151f32', // Custom dark bg
-              }
+            danger: {
+              50: '#fff1f2',
+              500: '#F43F5E', // Rose 500
+            },
+            slate: {
+              850: '#151f32', // Custom dark bg
             }
           }
         }
       }
-    </script>
-    <style>
-      /* Smooth scrolling */
-      html { scroll-behavior: smooth; }
-      /* Custom scrollbar for webkit */
-      ::-webkit-scrollbar { width: 8px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    }
+  </script>
+  <style>
+    /* Smooth scrolling */
+    html {
+      scroll-behavior: smooth;
+    }
 
-      /* Animation for Floating Logo */
-      @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-12px); }
-        100% { transform: translateY(0px); }
-      }
-      .animate-float {
-        animation: float 4s ease-in-out infinite;
+    /* Custom scrollbar for webkit */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+
+    /* Animation for Floating Logo */
+    @keyframes float {
+      0% {
+        transform: translateY(0px);
       }
 
-      /* Entrance Animation (Login -> Dashboard) */
-      @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-fade-in-up {
-        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      50% {
+        transform: translateY(-12px);
       }
 
-      /* Exit Animation (Dashboard -> Login) */
-      @keyframes fadeOutScale {
-        from { opacity: 1; transform: scale(1); filter: blur(0px); }
-        to { opacity: 0; transform: scale(0.95); filter: blur(4px); }
+      100% {
+        transform: translateY(0px);
       }
-      .animate-fade-out-scale {
-        animation: fadeOutScale 0.4s ease-in forwards;
+    }
+
+    .animate-float {
+      animation: float 4s ease-in-out infinite;
+    }
+
+    /* Entrance Animation (Login -> Dashboard) */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
       }
-      
-      /* Simple Fade In (Login Appear) */
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
-      .animate-fade-in {
-        animation: fadeIn 0.8s ease-out forwards;
+    }
+
+    .animate-fade-in-up {
+      animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Exit Animation (Dashboard -> Login) */
+    @keyframes fadeOutScale {
+      from {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0px);
       }
-    </style>
+
+      to {
+        opacity: 0;
+        transform: scale(0.95);
+        filter: blur(4px);
+      }
+    }
+
+    .animate-fade-out-scale {
+      animation: fadeOutScale 0.4s ease-in forwards;
+    }
+
+    /* Simple Fade In (Login Appear) */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.8s ease-out forwards;
+    }
+
+    /* --- 21st.dev / Magic UI Style Animations --- */
+
+    /* Shimmer Effect */
+    @keyframes shimmer {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .animate-shimmer {
+      background-size: 200% 200%;
+      animation: shimmer 2s linear infinite;
+    }
+
+    /* Border Beam (Pseudo-border following) */
+    @keyframes border-beam {
+      100% {
+        offset-distance: 100%;
+      }
+    }
+
+    /* Grid / Pattern animations */
+    @keyframes grid-move {
+      from {
+        transform: translateY(0);
+      }
+
+      to {
+        transform: translateY(40px);
+      }
+    }
+
+    .animate-grid-move {
+      animation: grid-move 20s linear infinite;
+    }
+
+    /* Text Reveal / Typing */
+    @keyframes text-reveal {
+      from {
+        clip-path: inset(0 100% 0 0);
+      }
+
+      to {
+        clip-path: inset(0 0 0 0);
+      }
+    }
+
+    .animate-text-reveal {
+      animation: text-reveal 1.5s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+    }
+
+    /* Infinite Rotation (for glow/beam) */
+    @keyframes spin-slow {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .animate-spin-slow {
+      animation: spin-slow 8s linear infinite;
+    }
+
+    /* Premium Border Beam Utility */
+    .border-beam {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      border: 2px solid transparent;
+      border-radius: inherit;
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask-composite: exclude;
+      z-index: 10;
+    }
+
+    .border-beam::after {
+      content: "";
+      position: absolute;
+      aspect-ratio: 1;
+      width: 150px;
+      background: linear-gradient(to right, #10B981, #3B82F6, transparent);
+      offset-path: rect(0 auto auto 0 round 200px);
+      animation: border-beam 4s linear infinite;
+    }
+
+    .dark .border-beam::after {
+      background: linear-gradient(to right, #34d399, #60a5fa, transparent);
+    }
+  </style>
 
   <script type="importmap">
 {
@@ -121,9 +279,12 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/assets/index-C5aOW7N4.js"></script>
+  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.11/dist/dotlottie-wc.js" type="module"></script>
+  <script type="module" crossorigin src="/assets/index-BdJb-YqN.js"></script>
 <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
-  <body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
-    <div id="root"></div>
-  </body>
+
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
+  <div id="root"></div>
+</body>
+
 </html>

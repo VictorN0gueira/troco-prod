@@ -16,6 +16,7 @@ import {
 import { UserProfile } from '../types';
 import { supabase } from '../supabaseClient';
 import { PushManager } from './PushManager';
+import { useNotification } from '../contexts/NotificationContext';
 
 interface SettingsProps {
   user: UserProfile;
@@ -25,6 +26,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   // --- States ---
   const [isLoading, setIsLoading] = useState(false);
+  const { showNotification } = useNotification();
 
   // Local form state initialized from props
   const [formData, setFormData] = useState<UserProfile>(user);
@@ -129,7 +131,11 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
       // Call parent handler to update Database
       await onUpdateUser(updatedProfile);
 
-      alert('Perfil atualizado com sucesso!');
+      showNotification({
+        title: 'Sucesso',
+        message: 'Perfil atualizado com sucesso!',
+        type: 'success'
+      });
       setAvatarFile(null); // Clear file state after success
 
     } catch (error: any) {
@@ -158,7 +164,11 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
         displayMessage = "Não foi possível detalhar o erro.";
       }
 
-      alert(`Erro ao salvar: ${displayMessage}`);
+      showNotification({
+        title: 'Erro de Atualização',
+        message: `Erro ao salvar: ${displayMessage}`,
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -240,7 +250,11 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
 
       setIsPasswordModalOpen(false);
       setPasswordForm({ current: '', new: '', confirm: '' });
-      alert("Senha alterada com sucesso!");
+      showNotification({
+        title: 'Sucesso',
+        message: 'Senha alterada com sucesso!',
+        type: 'success'
+      });
 
     } catch (error: any) {
       setPasswordError(error.message || "Erro ao alterar senha.");

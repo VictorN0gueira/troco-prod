@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Bell, BellOff, Loader2 } from 'lucide-react';
+import { useNotification } from '../contexts/NotificationContext';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
@@ -24,6 +25,7 @@ export function PushManager({ userId }: { userId: number }) {
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [permission, setPermission] = useState<NotificationPermission>('default');
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         // Check initial state
@@ -66,11 +68,19 @@ export function PushManager({ userId }: { userId: number }) {
 
             setIsSubscribed(true);
             setPermission('granted');
-            alert("Notificações ativadas com sucesso! 🔔");
+            showNotification({
+                title: 'Sucesso',
+                message: 'Notificações ativadas com sucesso! 🔔',
+                type: 'success'
+            });
 
         } catch (err: any) {
             console.error('Failed to subscribe:', err);
-            alert('Erro ao ativar notificações: ' + err.message);
+            showNotification({
+                title: 'Erro',
+                message: 'Erro ao ativar notificações: ' + err.message,
+                type: 'error'
+            });
         } finally {
             setLoading(false);
         }

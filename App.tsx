@@ -20,6 +20,7 @@ import { LOGO_URL } from './constants';
 import { getTodayLocalDate } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
 import { RefreshCw, WifiOff } from 'lucide-react';
+import { useNotification } from './contexts/NotificationContext';
 
 const OfflineIndicator = () => {
   const { isOnline, isSyncing, queueSize } = useOffline();
@@ -108,7 +109,9 @@ const AppRoutes = ({
   addInvestment,
   updateInvestment,
   deleteInvestment,
-  updateInvestmentPrices
+  updateInvestmentPrices,
+  addMultipleTransactions,
+  payCardInvoice
 }: any) => {
   return (
     <Routes>
@@ -161,6 +164,7 @@ const AppRoutes = ({
             onEdit={updateTransaction}
             onDelete={deleteTransaction}
             cards={cards}
+            onAddMultiple={addMultipleTransactions}
           />
         } />
 
@@ -187,6 +191,7 @@ const AppRoutes = ({
             cards={cards}
             transactions={transactions}
             fetchCards={fetchCards}
+            payCardInvoice={payCardInvoice}
           />
         } />
 
@@ -393,6 +398,8 @@ const AppContent: React.FC = () => {
   // Offline Hook
   const { addToQueue, isOnline } = useOffline();
 
+  const { showNotification } = useNotification();
+
   // Initialize Theme
   useEffect(() => {
     if (darkMode) {
@@ -443,7 +450,12 @@ const AppContent: React.FC = () => {
     inactivityTimer.current = setTimeout(() => {
       console.log("Tempo de inatividade excedido. Deslogando...");
       handleLogout();
-      alert("Sua sessão expirou por inatividade. Por favor, faça login novamente.");
+      showNotification({
+        title: 'Sessão Expirada',
+        message: 'Sua sessão expirou por inatividade. Por favor, faça login novamente.',
+        type: 'warning',
+        duration: 8000
+      });
     }, INACTIVITY_LIMIT);
   }, [isAuthenticated, handleLogout]);
 
@@ -548,7 +560,8 @@ const AppContent: React.FC = () => {
         category: t.categoria || 'Outros',
         date: t.data,
         status: t.esta_pago ? 'completed' : 'pending',
-        isRecurring: t.is_recurring // Map DB snake_case to Frontend camelCase
+        isRecurring: t.is_recurring, // Map DB snake_case to Frontend camelCase
+        installment_group: t.installment_group
       };
     };
 
@@ -731,7 +744,8 @@ const AppContent: React.FC = () => {
             date: t.data,
             status: t.esta_pago ? 'completed' : 'pending',
             isRecurring: t.is_recurring, // Map DB snake_case to Frontend camelCase
-            cardId: t.card_id // Map card_id
+            cardId: t.card_id, // Map card_id
+            installment_group: t.installment_group
           };
         });
         setTransactions(formatted);
@@ -766,6 +780,110 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const addMultipleTransactions = async (newTransactions: Transaction[]) => {
+    setTransactions(prev => [...newTransactions, ...prev]);
+
+    if (user.id !== 0) {
+      if (!isOnline) {
+        newTransactions.forEach(t => addToQueue('ADD', t));
+        return;
+      }
+
+      const payload = newTransactions.map(t => ({
+        user_id: user.id,
+        descricao: t.description,
+        valor: t.amount,
+        tipo: t.type === 'income' ? 'Receita' : 'Despesa',
+        categoria: t.category,
+        data: t.date,
+        esta_pago: t.status === 'completed' || String(t.status).toLowerCase() === 'pago',
+        identificador: t.id,
+        is_recurring: t.isRecurring,
+        card_id: t.cardId,
+        installment_group: t.installment_group
+      }));
+
+      const { error } = await supabase.from('transacoes').insert(payload);
+
+      if (error) {
+        console.error("Erro ao salvar múltiplas transações:", error);
+        alert(`Erro ao sincronizar parcelas: ${error.message}`);
+        fetchTransactions(user.id);
+      }
+    }
+  };
+
+  const payCardInvoice = async (cardId: number, totalAmount: number, invoiceTransactionsIds: string[]) => {
+    // 1. Encontrar o cartão correspondente e atualizar limite no JS
+    const cardToPay = cards.find(c => c.id === cardId);
+    if (!cardToPay) return;
+
+    // 2. Criar a despesa de pagamento da fatura (Despesa na conta global, sem cardId)
+    const invoicePayment: Transaction = {
+      id: "INV_" + Date.now().toString().slice(-6),
+      description: `Pagamento Fatura ${cardToPay.name}`,
+      amount: totalAmount,
+      type: 'expense',
+      category: 'Cartão de Crédito',
+      date: getTodayLocalDate(),
+      status: 'completed'
+    };
+
+    // 3. Atualizar localmente as transações da fatura e limite do cartão
+    setTransactions(prev => prev.map(t =>
+      invoiceTransactionsIds.includes(t.id) ? { ...t, status: 'completed' } : t
+    ));
+    setTransactions(prev => [invoicePayment, ...prev]);
+
+    setCards(prev => prev.map(c =>
+      c.id === cardId ? { ...c, current_usage: Math.max(0, c.current_usage - totalAmount) } : c
+    ));
+
+    if (user.id !== 0 && isOnline) {
+      // 4. Update BD
+
+      // Update das transações para esta_pago = true
+      // Limitação do Supabase: `in` num array para dar update. 
+      // Faremos isso em chunks se for mto grande, mas costuma ser pequeno.
+      const { error: txError } = await supabase
+        .from('transacoes')
+        .update({ esta_pago: true })
+        .in('identificador', invoiceTransactionsIds);
+
+      if (txError) {
+        console.error("Erro ao pagar transações:", txError);
+        alert("Erro ao marcar transações como pagas.");
+      }
+
+      // Inserir a despesa de pagamento
+      const { error: payError } = await supabase.from('transacoes').insert({
+        user_id: user.id,
+        descricao: invoicePayment.description,
+        valor: invoicePayment.amount,
+        tipo: 'Despesa',
+        categoria: invoicePayment.category,
+        data: invoicePayment.date,
+        esta_pago: true,
+        identificador: invoicePayment.id,
+      });
+
+      if (payError) {
+        console.error("Erro ao salvar transação de pag:", payError);
+      }
+
+      // Atualizar current_usage no Cartão
+      const newUsage = Math.max(0, cardToPay.current_usage - totalAmount);
+      const { error: cardError } = await supabase
+        .from('credit_cards')
+        .update({ current_usage: newUsage })
+        .eq('id', cardToPay.id);
+
+      if (cardError) {
+        console.error("Erro ao atualizar limite do cartão:", cardError);
+      }
+    }
+  };
+
   const addTransaction = async (newTransaction: Transaction) => {
     setTransactions(prev => [newTransaction, ...prev]);
 
@@ -792,13 +910,18 @@ const AppContent: React.FC = () => {
         esta_pago: isPaid,
         identificador: newTransaction.id,
         is_recurring: newTransaction.isRecurring, // Salva flag no banco
-        card_id: newTransaction.cardId // Adiciona card_id
+        card_id: newTransaction.cardId, // Adiciona card_id
+        installment_group: newTransaction.installment_group
       });
 
       if (error) {
         console.error("Erro ao salvar:", error);
         const msg = error.message || error.details || JSON.stringify(error);
-        alert(`Erro ao salvar no banco de dados: ${msg}`);
+        showNotification({
+          title: 'Erro ao Salvar',
+          message: `Erro ao salvar no banco de dados: ${msg}`,
+          type: 'error'
+        });
       }
     }
   };
@@ -843,7 +966,11 @@ const AppContent: React.FC = () => {
 
       if (error) {
         console.error("Erro ao atualizar transação:", error);
-        alert("Não foi possível salvar a alteração. Por favor, recarregue a página.");
+        showNotification({
+          title: 'Erro de Atualização',
+          message: 'Não foi possível salvar a alteração. Por favor, recarregue a página.',
+          type: 'error'
+        });
       }
     }
   };
@@ -996,12 +1123,14 @@ const AppContent: React.FC = () => {
         updateInvestment={updateInvestment}
         deleteInvestment={deleteInvestment}
         updateInvestmentPrices={updateInvestmentPrices}
+        addMultipleTransactions={addMultipleTransactions}
+        payCardInvoice={payCardInvoice}
       />
     </HashRouter>
   );
 };
 
-const App: React.FC = () => {
+export default function App() {
   return (
     <OfflineProvider>
       <AppContent />
@@ -1009,5 +1138,3 @@ const App: React.FC = () => {
     </OfflineProvider>
   );
 };
-
-export default App;

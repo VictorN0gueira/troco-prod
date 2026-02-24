@@ -26,6 +26,7 @@ import ConfirmationModal from './ConfirmationModal';
 interface TransactionsProps {
   transactions: Transaction[];
   onAdd: (t: Transaction) => void;
+  onAddMultiple?: (txs: Transaction[]) => void;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
   cards?: CreditCard[];
@@ -33,7 +34,7 @@ interface TransactionsProps {
 
 const ITEMS_PER_PAGE = 10;
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit, onDelete, cards = [] }) => {
+const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddMultiple, onEdit, onDelete, cards = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState(''); // Formato YYYY-MM
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,7 +59,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
     type: 'expense' as 'income' | 'expense',
     status: 'pending' as 'completed' | 'pending',
     isRecurring: false,
-    cardId: '' as string | number // Store as string for select, convert to number on submit
+    cardId: '' as string | number, // Store as string for select, convert to number on submit
+    installments: 1
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -168,7 +170,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
       type: t.type,
       status: t.status,
       isRecurring: t.isRecurring || false,
-      cardId: t.cardId || ''
+      cardId: t.cardId || '',
+      installments: 1
     });
     setEditingId(t.id);
     setIsModalOpen(true);
@@ -197,18 +200,52 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
       onEdit(updatedTransaction);
     } else {
       // Create logic
-      const newTransaction: Transaction = {
-        id: generateTransactionId(5), // Usa o gerador de 5 caracteres
-        description: formData.description,
-        amount: numericAmount,
-        category: formData.category,
-        date: formData.date,
-        type: formData.type,
-        status: formData.status,
-        isRecurring: formData.isRecurring,
-        cardId: formData.cardId ? Number(formData.cardId) : undefined
-      };
-      onAdd(newTransaction);
+      // Check for installments
+      if (formData.type === 'expense' && formData.cardId && formData.installments > 1 && onAddMultiple) {
+        const installmentsTxs: Transaction[] = [];
+        const baseAmount = numericAmount / formData.installments;
+        const groupId = "GRP_" + generateTransactionId(6);
+
+        // Parse da data inicial mantendo o tz local para não subtrair/somar dias
+        const [year, month, day] = formData.date.split('-').map(Number);
+
+        for (let i = 0; i < formData.installments; i++) {
+          const installmentDate = new Date(year, month - 1 + i, day);
+
+          // Formatar de volta para YYYY-MM-DD localmente
+          const y = installmentDate.getFullYear();
+          const m = String(installmentDate.getMonth() + 1).padStart(2, '0');
+          const d = String(installmentDate.getDate()).padStart(2, '0');
+          const targetDateStr = `${y}-${m}-${d}`;
+
+          installmentsTxs.push({
+            id: generateTransactionId(5),
+            description: `${formData.description} (${i + 1}/${formData.installments})`,
+            amount: baseAmount,
+            category: formData.category,
+            date: targetDateStr,
+            type: formData.type,
+            status: formData.status,
+            isRecurring: false, // parcelas não são recorrentes infinitamente
+            cardId: Number(formData.cardId),
+            installment_group: groupId
+          });
+        }
+        onAddMultiple(installmentsTxs);
+      } else {
+        const newTransaction: Transaction = {
+          id: generateTransactionId(5),
+          description: formData.description,
+          amount: numericAmount,
+          category: formData.category,
+          date: formData.date,
+          type: formData.type,
+          status: formData.status,
+          isRecurring: formData.isRecurring,
+          cardId: formData.cardId ? Number(formData.cardId) : undefined
+        };
+        onAdd(newTransaction);
+      }
     }
 
     setIsModalOpen(false);
@@ -608,31 +645,62 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onEdit
 
                 {/* Credit Card Selector (Only for Expenses) */}
                 {formData.type === 'expense' && cards.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Pagar com Cartão de Crédito (Opcional)
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={formData.cardId}
-                        onChange={(e) => setFormData({ ...formData, cardId: e.target.value, status: e.target.value ? 'pending' : formData.status })}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all appearance-none"
-                      >
-                        <option value="">Nenhum (Débito/Dinheiro)</option>
-                        {cards.map(card => (
-                          <option key={card.id} value={card.id}>
-                            {card.name} (Final {card.closing_day})
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-500">
-                        <ChevronDown className="w-4 h-4" />
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Pagar com Cartão de Crédito (Opcional)
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={formData.cardId}
+                          onChange={(e) => setFormData({ ...formData, cardId: e.target.value, status: e.target.value ? 'pending' : formData.status })}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all appearance-none"
+                        >
+                          <option value="">Nenhum (Débito/Dinheiro)</option>
+                          {cards.map(card => (
+                            <option key={card.id} value={card.id}>
+                              {card.name} (Final {card.closing_day})
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-500">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
                       </div>
+                      {formData.cardId && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          * Transações no crédito ficam como "Pendente" até o pagamento da fatura.
+                        </p>
+                      )}
                     </div>
-                    {formData.cardId && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        * Transações no crédito ficam como "Pendente" até o pagamento da fatura.
-                      </p>
+
+                    {/* Installments (Only if Card selected and NOT editing) */}
+                    {formData.cardId && !editingId && (
+                      <div className="animate-fade-in-up">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          Número de Parcelas
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={formData.installments}
+                            onChange={(e) => setFormData({ ...formData, installments: Number(e.target.value) })}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all appearance-none"
+                          >
+                            {Array.from({ length: 24 }, (_, i) => i + 1).map(num => {
+                              const rawVal = formData.amount.toString().replace(/\D/g, "");
+                              const numAmt = rawVal ? Number(rawVal) / 100 : 0;
+                              return (
+                                <option key={num} value={num}>
+                                  {num}x {num > 1 ? `(de ${formatCurrency(numAmt / num)})` : 'à vista'}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-500">
+                            <ChevronDown className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}

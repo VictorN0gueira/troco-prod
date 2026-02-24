@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction } from '../types';
 import { parseDateFromDB, formatDateDisplay, getTodayLocalDate } from '../utils';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { Download, Calendar, TrendingUp, DollarSign, Activity, FileText, FileSpreadsheet, File as FileIcon, ChevronDown } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useNotification } from '../contexts/NotificationContext';
 
 interface ReportsProps {
   transactions: Transaction[];
@@ -19,11 +20,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
   const [dateRange, setDateRange] = useState<DateRangeType>('6_months');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const { showNotification } = useNotification();
 
-  const formatCurrency = (val: number) => 
+  const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-  const formatPercentage = (val: number) => 
+  const formatPercentage = (val: number) =>
     `${val.toFixed(1)}%`;
 
   useEffect(() => {
@@ -41,7 +43,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
   const { filteredTransactions, startDate } = useMemo(() => {
     const now = new Date();
     let start = new Date();
-    
+
     switch (dateRange) {
       case '6_months':
         start.setMonth(now.getMonth() - 5);
@@ -62,7 +64,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     start.setHours(0, 0, 0, 0);
 
     const filtered = transactions.filter(t => {
-      const tDate = parseDateFromDB(t.date); 
+      const tDate = parseDateFromDB(t.date);
       return tDate >= start;
     });
 
@@ -75,36 +77,36 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     const iterator = new Date(startDate);
 
     if (dateRange === 'all') {
-        if (transactions.length > 0) {
-            const oldestStr = transactions.reduce((min, p) => p.date < min ? p.date : min, transactions[0].date);
-            const oldest = parseDateFromDB(oldestStr);
-            iterator.setTime(oldest.getTime());
-            iterator.setDate(1);
-        } else {
-            iterator.setMonth(now.getMonth() - 11);
-        }
+      if (transactions.length > 0) {
+        const oldestStr = transactions.reduce((min, p) => p.date < min ? p.date : min, transactions[0].date);
+        const oldest = parseDateFromDB(oldestStr);
+        iterator.setTime(oldest.getTime());
+        iterator.setDate(1);
+      } else {
+        iterator.setMonth(now.getMonth() - 11);
+      }
     }
-    
+
     while (iterator <= now || iterator.getMonth() === now.getMonth()) {
       const key = `${iterator.getFullYear()}-${iterator.getMonth()}`;
       const monthName = iterator.toLocaleDateString('pt-BR', { month: 'short' });
       const formattedName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-      
-      data[key] = { 
-        name: dateRange === '1_year' || dateRange === 'all' ? `${formattedName}/${iterator.getFullYear().toString().slice(2)}` : formattedName, 
-        income: 0, 
+
+      data[key] = {
+        name: dateRange === '1_year' || dateRange === 'all' ? `${formattedName}/${iterator.getFullYear().toString().slice(2)}` : formattedName,
+        income: 0,
         expense: 0,
         dateObj: new Date(iterator)
       };
-      
+
       iterator.setMonth(iterator.getMonth() + 1);
-      if (iterator.getFullYear() > now.getFullYear() + 1) break; 
+      if (iterator.getFullYear() > now.getFullYear() + 1) break;
     }
 
     filteredTransactions.forEach(t => {
       const d = parseDateFromDB(t.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
-      
+
       if (data[key]) {
         if (t.type === 'income') {
           data[key].income += t.amount;
@@ -133,7 +135,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
     const totalExpense = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
     const count = filteredTransactions.length;
-    
+
     const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0;
     const averageTicket = count > 0 ? (totalIncome + totalExpense) / count : 0;
 
@@ -149,21 +151,25 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
 
   const handleExportCSV = () => {
     if (filteredTransactions.length === 0) {
-      alert("Não há dados para exportar neste período.");
+      showNotification({
+        title: 'Sem Dados',
+        message: 'Não há dados para exportar neste período.',
+        type: 'warning'
+      });
       return;
     }
-    
+
     const summaryRows = [
-        "RESUMO DO PERÍODO",
-        `Receitas Totais;${kpis.totalIncome.toFixed(2).replace('.', ',')}`,
-        `Despesas Totais;${kpis.totalExpense.toFixed(2).replace('.', ',')}`,
-        `Resultado Líquido;${kpis.netResult.toFixed(2).replace('.', ',')}`,
-        `Total Transações;${kpis.totalTransactions}`,
-        ""
+      "RESUMO DO PERÍODO",
+      `Receitas Totais;${kpis.totalIncome.toFixed(2).replace('.', ',')}`,
+      `Despesas Totais;${kpis.totalExpense.toFixed(2).replace('.', ',')}`,
+      `Resultado Líquido;${kpis.netResult.toFixed(2).replace('.', ',')}`,
+      `Total Transações;${kpis.totalTransactions}`,
+      ""
     ];
 
     const headers = ["ID;Data;Descrição;Categoria;Tipo;Valor;Status"];
-    
+
     const dataRows = filteredTransactions.map(t => {
       const formattedDate = formatDateDisplay(t.date);
       const formattedAmount = t.amount.toFixed(2).replace('.', ',');
@@ -177,7 +183,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     const csvContent = "\uFEFF" + summaryRows.concat(headers).concat(dataRows).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute("download", `troco_relatorio_${getTodayLocalDate()}.csv`);
@@ -189,8 +195,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
   };
 
   const handleExportPDF = () => {
-     if (filteredTransactions.length === 0) {
-      alert("Não há dados para exportar neste período.");
+    if (filteredTransactions.length === 0) {
+      showNotification({
+        title: 'Sem Dados',
+        message: 'Não há dados para exportar neste período.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -210,13 +220,13 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 38);
-    
+
     let periodoLabel = '';
-    if(dateRange === '6_months') periodoLabel = "Últimos 6 Meses";
-    else if(dateRange === 'ytd') periodoLabel = "Este Ano (YTD)";
-    else if(dateRange === '1_year') periodoLabel = "Últimos 12 Meses";
+    if (dateRange === '6_months') periodoLabel = "Últimos 6 Meses";
+    else if (dateRange === 'ytd') periodoLabel = "Este Ano (YTD)";
+    else if (dateRange === '1_year') periodoLabel = "Últimos 12 Meses";
     else periodoLabel = "Todo o Período";
-    
+
     doc.text(`Período: ${periodoLabel}`, 14, 43);
 
     const startY = 55;
@@ -255,59 +265,59 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     doc.text(formatCurrency(kpis.netResult), 19 + (cardWidth + gap) * 2, startY + 18);
 
     const tableData = filteredTransactions.map(t => [
-        formatDateDisplay(t.date),
-        t.description,
-        t.category,
-        t.type === 'income' ? 'Receita' : 'Despesa',
-        formatCurrency(t.amount),
-        t.status === 'completed' ? 'Pago' : 'Pendente'
+      formatDateDisplay(t.date),
+      t.description,
+      t.category,
+      t.type === 'income' ? 'Receita' : 'Despesa',
+      formatCurrency(t.amount),
+      t.status === 'completed' ? 'Pago' : 'Pendente'
     ]);
 
     autoTable(doc, {
-        startY: startY + cardHeight + 15,
-        head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: {
-            fillColor: [30, 41, 59],
-            textColor: [255, 255, 255],
-            fontStyle: 'bold'
-        },
-        styles: {
-            fontSize: 9,
-            cellPadding: 3
-        },
-        columnStyles: {
-            0: { cellWidth: 25 },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 30 },
-            3: { cellWidth: 20 },
-            4: { cellWidth: 30, halign: 'right' },
-            5: { cellWidth: 25, halign: 'center' }
-        },
-        didParseCell: function(data) {
-            if (data.section === 'body') {
-                if (data.column.index === 4) {
-                    // CORREÇÃO APLICADA AQUI:
-                    const rowRaw = data.row.raw as any;
-                    const type = rowRaw[3];
-                    if (type === 'Receita') {
-                        data.cell.styles.textColor = [16, 185, 129];
-                    } else {
-                        data.cell.styles.textColor = [244, 63, 94];
-                    }
-                }
+      startY: startY + cardHeight + 15,
+      head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 30, halign: 'right' },
+        5: { cellWidth: 25, halign: 'center' }
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body') {
+          if (data.column.index === 4) {
+            // CORREÇÃO APLICADA AQUI:
+            const rowRaw = data.row.raw as any;
+            const type = rowRaw[3];
+            if (type === 'Receita') {
+              data.cell.styles.textColor = [16, 185, 129];
+            } else {
+              data.cell.styles.textColor = [244, 63, 94];
             }
+          }
         }
+      }
     });
 
     const pageCount = (doc as any).internal.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text(`Página ${i} de ${pageCount}`, pageWidth - 20, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
-        doc.text("Gerado por Trocô Financial", 14, doc.internal.pageSize.getHeight() - 10);
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth - 20, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+      doc.text("Gerado por Trocô Financial", 14, doc.internal.pageSize.getHeight() - 10);
     }
 
     doc.save(`troco_relatorio_${getTodayLocalDate()}.pdf`);
@@ -321,10 +331,10 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Relatórios Financeiros</h2>
           <p className="text-slate-500 dark:text-slate-400">Análise detalhada baseada no histórico de transações.</p>
         </div>
-        
+
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:flex-none">
-            <select 
+            <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRangeType)}
               className="w-full md:w-48 appearance-none pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-slate-700 dark:text-slate-200 font-medium focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
@@ -336,34 +346,34 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
             </select>
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           </div>
-          
+
           <div className="relative" ref={exportMenuRef}>
-            <button 
-                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                className="flex items-center justify-center px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-500 dark:hover:text-white transition-all font-medium active:scale-95 shadow-sm"
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="flex items-center justify-center px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-500 dark:hover:text-white transition-all font-medium active:scale-95 shadow-sm"
             >
-                <Download className="w-4 h-4 mr-2" />
-                <span>Exportar</span>
-                <ChevronDown className={`w-3 h-3 ml-2 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+              <Download className="w-4 h-4 mr-2" />
+              <span>Exportar</span>
+              <ChevronDown className={`w-3 h-3 ml-2 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isExportMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50 animate-fade-in-up">
-                    <button 
-                        onClick={handleExportCSV}
-                        className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors border-b border-slate-50 dark:border-slate-700/50"
-                    >
-                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                        CSV (Excel)
-                    </button>
-                    <button 
-                        onClick={handleExportPDF}
-                        className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors"
-                    >
-                        <FileIcon className="w-4 h-4 text-rose-500" />
-                        PDF Analítico
-                    </button>
-                </div>
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50 animate-fade-in-up">
+                <button
+                  onClick={handleExportCSV}
+                  className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors border-b border-slate-50 dark:border-slate-700/50"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  CSV (Excel)
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors"
+                >
+                  <FileIcon className="w-4 h-4 text-rose-500" />
+                  PDF Analítico
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -393,7 +403,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
           <h3 className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{formatCurrency(kpis.averageTicket)}</h3>
           <div className="mt-4 text-sm text-slate-500 flex items-center gap-2">
             <FileText className="w-4 h-4" />
-             <span className="font-bold text-slate-700 dark:text-slate-300">{kpis.totalTransactions}</span> transações
+            <span className="font-bold text-slate-700 dark:text-slate-300">{kpis.totalTransactions}</span> transações
           </div>
         </div>
 
@@ -406,7 +416,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
             {formatCurrency(kpis.netResult)}
           </h3>
           <div className="mt-4 text-sm text-slate-500">
-             Receitas - Despesas
+            Receitas - Despesas
           </div>
         </div>
       </div>
@@ -419,36 +429,36 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={8}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 11 }} 
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#64748b', fontSize: 11 }}
                     dy={10}
                     interval={dateRange === '1_year' || dateRange === 'all' ? 1 : 0}
                   />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fill: '#64748b', fontSize: 11 }}
                     tickFormatter={(value) => {
-                       if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-                       return value;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value;
                     }}
                   />
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                      borderRadius: '12px', 
-                      border: 'none', 
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      borderRadius: '12px',
+                      border: 'none',
                       boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
                       color: '#1e293b'
                     }}
                     formatter={(value: number) => [formatCurrency(value), '']}
                     labelStyle={{ fontWeight: 'bold', marginBottom: '8px' }}
                   />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }}/>
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
                   <Bar dataKey="income" name="Receitas" fill="#10B981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="expense" name="Despesas" fill="#F43F5E" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -482,7 +492,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     formatter={(value: number) => [formatCurrency(value), 'Valor']}
                   />
@@ -494,14 +504,14 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                 Sem dados suficientes
               </div>
             )}
-            
+
             {statusData.length > 0 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
                 <span className="text-3xl font-bold text-slate-800 dark:text-white">
-                    {filteredTransactions.length}
+                  {filteredTransactions.length}
                 </span>
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Itens</span>
-                </div>
+              </div>
             )}
           </div>
         </div>
