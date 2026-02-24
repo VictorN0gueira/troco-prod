@@ -11,7 +11,10 @@ import {
   Lock,
   Eye,
   EyeOff,
-  AlertTriangle
+  AlertTriangle,
+  HelpCircle,
+  MessageCircle,
+  ExternalLink
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../supabaseClient';
@@ -439,6 +442,55 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Support Card */}
+          <div className="bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none space-y-6">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-1">
+                <HelpCircle className="w-5 h-5 text-primary-500" />
+                Suporte
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Precisa de ajuda? Fale com nosso time de atendimento.
+              </p>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <a
+                href="https://wa.me/5581987348633"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:scale-110 transition-transform">
+                    <MessageCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">WhatsApp</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">(81) 98734-8633</p>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-emerald-500" />
+              </a>
+
+              <a
+                href="mailto:contato@vnone.com.br"
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary-100 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 rounded-lg group-hover:scale-110 transition-transform">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">Email</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">contato@vnone.com.br</p>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-primary-500" />
+              </a>
             </div>
           </div>
         </div>

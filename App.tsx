@@ -818,33 +818,19 @@ const AppContent: React.FC = () => {
     const cardToPay = cards.find(c => c.id === cardId);
     if (!cardToPay) return;
 
-    // 2. Criar a despesa de pagamento da fatura (Despesa na conta global, sem cardId)
-    const invoicePayment: Transaction = {
-      id: "INV_" + Date.now().toString().slice(-6),
-      description: `Pagamento Fatura ${cardToPay.name}`,
-      amount: totalAmount,
-      type: 'expense',
-      category: 'Cartão de Crédito',
-      date: getTodayLocalDate(),
-      status: 'completed'
-    };
-
-    // 3. Atualizar localmente as transações da fatura e limite do cartão
+    // 2. Atualizar localmente as transações da fatura e limite do cartão
     setTransactions(prev => prev.map(t =>
       invoiceTransactionsIds.includes(t.id) ? { ...t, status: 'completed' } : t
     ));
-    setTransactions(prev => [invoicePayment, ...prev]);
 
     setCards(prev => prev.map(c =>
       c.id === cardId ? { ...c, current_usage: Math.max(0, c.current_usage - totalAmount) } : c
     ));
 
     if (user.id !== 0 && isOnline) {
-      // 4. Update BD
+      // 3. Update BD
 
       // Update das transações para esta_pago = true
-      // Limitação do Supabase: `in` num array para dar update. 
-      // Faremos isso em chunks se for mto grande, mas costuma ser pequeno.
       const { error: txError } = await supabase
         .from('transacoes')
         .update({ esta_pago: true })
@@ -853,22 +839,6 @@ const AppContent: React.FC = () => {
       if (txError) {
         console.error("Erro ao pagar transações:", txError);
         alert("Erro ao marcar transações como pagas.");
-      }
-
-      // Inserir a despesa de pagamento
-      const { error: payError } = await supabase.from('transacoes').insert({
-        user_id: user.id,
-        descricao: invoicePayment.description,
-        valor: invoicePayment.amount,
-        tipo: 'Despesa',
-        categoria: invoicePayment.category,
-        data: invoicePayment.date,
-        esta_pago: true,
-        identificador: invoicePayment.id,
-      });
-
-      if (payError) {
-        console.error("Erro ao salvar transação de pag:", payError);
       }
 
       // Atualizar current_usage no Cartão

@@ -534,13 +534,13 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
 
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Cor do Cartão</label>
-                                    <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                                    <div className="flex flex-wrap gap-4 pb-2">
                                         {['#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1', '#EF4444', '#1F2937'].map(color => (
                                             <button
                                                 key={color}
                                                 type="button"
                                                 onClick={() => setFormData({ ...formData, color })}
-                                                className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all ${formData.color === color ? 'ring-2 ring-offset-2 ring-primary-500 scale-110 shadow-md' : 'hover:scale-105'}`}
+                                                className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${formData.color === color ? 'ring-2 ring-offset-4 ring-primary-500 shadow-md' : 'hover:scale-110'}`}
                                                 style={{ background: color }}
                                             >
                                                 {formData.color === color && <Check className="w-5 h-5 text-white drop-shadow-md" />}
