@@ -90,6 +90,14 @@ export function PushManager({ userId }: { userId: number }) {
         return null; // Not supported
     }
 
+    // Check for Super Trocô Plan
+    // A propriedade de usuario para PushManager seria recebida por contexto se nao for por prop.
+    // Mas PushManager só tem userId. Vamos importar algo ou tratar no componente pai?
+    // Vamos buscar o usuario completo via context Auth se não tivermos. 
+    // Wait, Trocô's app structure often passes `user` around. Let's add a check based on Supabase or Context.
+    // However, realistically the App restricts rendering PushManager or its tab in Settings.
+    // We can also let the Settings page handle `user.status_assinatura` since PushManager only has `userId`.
+
     return (
         <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3">

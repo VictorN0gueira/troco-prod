@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Investment, InvestmentType, UserProfile } from '../types';
+import { supabase } from '../supabaseClient';
 import {
     TrendingUp, TrendingDown, Plus, Pencil, Trash2, X, Search,
     DollarSign, BarChart2, Briefcase, AlertCircle, ChevronDown,
@@ -454,6 +455,8 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
     );
 };
 
+import SuperPaywall from './SuperPaywall';
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const Investments: React.FC<InvestmentsProps> = ({
@@ -465,6 +468,12 @@ const Investments: React.FC<InvestmentsProps> = ({
     user,
     privacyMode = false
 }) => {
+    const isSuper = user?.status_assinatura === 'active';
+
+    if (!isSuper) {
+        return <SuperPaywall feature="Investimentos" userEmail={user?.email} />;
+    }
+
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState<InvestmentType | 'Todos'>('Todos');
     const [showModal, setShowModal] = useState(false);
@@ -485,11 +494,27 @@ const Investments: React.FC<InvestmentsProps> = ({
 
     // Load market overview on mount
     useEffect(() => {
-        setMarketLoading(true);
-        fetchMarketOverview()
-            .then(setMarket)
-            .finally(() => setMarketLoading(false));
-    }, []);
+        const loadMarket = async () => {
+            setMarketLoading(true);
+            try {
+                // BACKEND SECURITY CHECK: Prevent React State Spoofing
+                if (user?.id) {
+                    const { data: dbUser } = await supabase.from('usuarios').select('tem_plano').eq('id', user.id).single();
+                    if (!dbUser?.tem_plano) {
+                        setMarketLoading(false);
+                        return; // Silent fail if UI spoofed
+                    }
+                }
+                const data = await fetchMarketOverview();
+                setMarket(data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setMarketLoading(false);
+            }
+        };
+        loadMarket();
+    }, [user?.id]);
 
     // Auto-dismiss success
     useEffect(() => {
@@ -504,6 +529,16 @@ const Investments: React.FC<InvestmentsProps> = ({
         setUpdateError(null);
         setUpdateSuccess(false);
         try {
+            // BACKEND SECURITY CHECK: Prevent React State Spoofing
+            if (user?.id) {
+                const { data: dbUser } = await supabase.from('usuarios').select('tem_plano').eq('id', user.id).single();
+                if (!dbUser?.tem_plano) {
+                    setUpdateError('Assinatura inválida no servidor.');
+                    setUpdatingPrices(false);
+                    return;
+                }
+            }
+
             const results = await fetchInvestmentPrices(investments);
             const map = new Map<string, PriceResult>();
             const updates: { id: string; current_price: number }[] = [];

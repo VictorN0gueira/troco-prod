@@ -12,7 +12,7 @@ interface LoginProps {
   onLogin: (user: UserProfile) => void;
 }
 
-type ViewMode = 'login' | 'first_access_check' | 'first_access_create' | 'forgot_password';
+type ViewMode = 'login' | 'forgot_password' | 'register';
 
 // ─── Password strength helper ─────────────────────────────────────────────────
 
@@ -161,6 +161,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('login');
 
   // Form States
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -170,26 +171,20 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showForgotSuccess, setShowForgotSuccess] = useState(false);
 
-  // Temp User Data
-  const [dbUser, setDbUser] = useState<any>(null);
+  // Temp User Data no longer needed
 
-  // Persisted errors (e.g. from forced logout due to subscription)
-  useEffect(() => {
-    const persistedError = sessionStorage.getItem('troco_subscription_error');
-    if (persistedError) {
-      setError('SUBSCRIPTION_ERROR');
-      sessionStorage.removeItem('troco_subscription_error');
-    }
-  }, []);
+  // Persisted errors have been removed as the app is now freemium
+  // Users bypass login and hit the paywall on specific routes instead.
 
   const switchMode = useCallback((mode: ViewMode) => {
     setViewMode(mode);
     setError(null);
     setSuccessMsg(null);
     setShowForgotSuccess(false);
+    setFullName('');
     setPassword('');
     setConfirmPassword('');
-    if (mode === 'login') setEmail('');
+    if (mode === 'login' || mode === 'register') setEmail('');
   }, []);
 
   // --- LOGIC: Regular Login ---
@@ -201,22 +196,76 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (data.user?.email) {
-        const { data: profile } = await supabase
-          .from('usuarios').select('tem_plano').eq('email', data.user.email).single();
-        if (profile && profile.tem_plano === false) {
-          sessionStorage.setItem('troco_subscription_error', 'true');
-          await supabase.auth.signOut();
-          throw new Error('SUBSCRIPTION_ERROR');
-        }
+        // Obter o perfil não é obrigatório para bloquear o usuário, 
+        // já que agora temos uma versão gratuita. O status será carregado no App.tsx.
       }
     } catch (err: any) {
-      if (err.message === 'SUBSCRIPTION_ERROR') {
-        setError('SUBSCRIPTION_ERROR');
-      } else {
-        setError(err.message === 'Invalid login credentials'
-          ? 'Email ou senha incorretos. Se criou a conta agora, verifique se confirmou o email.'
-          : err.message);
+      setError(err.message === 'Invalid login credentials'
+        ? 'Email ou senha incorretos. Se criou a conta agora, verifique se confirmou o email.'
+        : err.message);
+      setLoading(false);
+    }
+  };
+
+  // --- LOGIC: Registration ---
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!fullName) { setError('Por favor, informe seu nome completo.'); return; }
+    if (password.length < 6) { setError('A senha deve ter no mínimo 6 caracteres.'); return; }
+    if (password !== confirmPassword) { setError('As senhas não coincidem.'); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { full_name: fullName }
+        }
+      });
+      if (error) {
+        if (error.status === 429) {
+          setError('Muitas tentativas de cadastro. Por favor, aguarde alguns minutos e tente novamente.');
+        } else if (error.message.includes('registered') || error.message.includes('already exists')) {
+          setError('Este email já possui cadastro. Por favor, faça login.');
+        } else {
+          setError(`Erro ao cadastrar: ${error.message} (Código: ${error.status})`);
+        }
+        setLoading(false);
+        return;
       }
+
+      // Ensure user exists in our local database correctly as Free tier.
+      if (data.user?.email) {
+        const { error: dbError } = await supabase.from('usuarios').insert([
+          {
+            email: data.user.email,
+            nome: fullName,
+            password: `troco_secure_auth_${Math.random().toString(36).substring(2)}`, // SECURITY FIX: Use dummy password for NOT NULL constraint to avoid storing plain text
+            tem_plano: false
+          }
+        ]);
+
+        if (dbError) {
+          console.error("Error creating user profile:", dbError);
+          // Only show error if the trigger didn't handle it for us
+          if (!dbError.message.includes('duplicate key value')) {
+            setError(`Conta criada na autenticação, mas falhamos ao salvar no banco. Aviso para o Admin: Rode o SQL Trigger. Erro: ${dbError.message}`);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      setSuccessMsg('Conta criada com sucesso! Por favor, confirme seu email (verifique a caixa de spam) e faça login.');
+      setViewMode('login');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -240,62 +289,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
   };
 
-  // --- LOGIC: First Access (Step 1) ---
-  const handleFirstAccessCheck = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('usuarios').select('*').eq('email', email).single();
-      if (error || !data) {
-        setError('Email não encontrado na base de clientes. Verifique se digitou o email da compra corretamente.');
-        setLoading(false);
-        return;
-      }
-      setDbUser(data);
-      setViewMode('first_access_create');
-      setLoading(false);
-    } catch {
-      setError('Erro ao verificar email. Tente novamente.');
-      setLoading(false);
-    }
-  };
-
-  // --- LOGIC: First Access (Step 2) ---
-  const handleCreatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (password.length < 6) { setError('A senha deve ter no mínimo 6 caracteres.'); return; }
-    if (password !== confirmPassword) { setError('As senhas não coincidem.'); return; }
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { full_name: dbUser?.nome || email.split('@')[0] }
-        }
-      });
-      if (error) {
-        if (error.message.includes('registered') || error.status === 400) {
-          setError('Este email já possui cadastro. Por favor, faça login.');
-        } else {
-          throw error;
-        }
-        setLoading(false);
-        return;
-      }
-      setSuccessMsg('Cadastro realizado! Enviamos um email de confirmação. Por favor, verifique sua caixa de entrada e clique no link para ativar sua conta.');
-      setViewMode('login');
-      setPassword('');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const strength = getPasswordStrength(password);
 
@@ -398,41 +391,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <img src={LOGO_URL} alt="Trocô" className="h-16 w-auto object-contain animate-float" />
           </div>
 
-          {/* ── SUBSCRIPTION ERROR ── */}
-          {error === 'SUBSCRIPTION_ERROR' && (
-            <div className="mb-6 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl p-6 text-center">
-              <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/40 rounded-full flex items-center justify-center mx-auto mb-3">
-                <AlertTriangle className="w-6 h-6 text-rose-500" />
-              </div>
-              <h3 className="text-base font-bold text-rose-800 dark:text-rose-200 mb-1">Assinatura Pendente</h3>
-              <p className="text-sm text-rose-600 dark:text-rose-300 mb-4 leading-relaxed">
-                Identificamos uma pendência no seu plano. Regularize para continuar acessando.
-              </p>
-              <button
-                onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
-                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-colors text-sm"
-              >
-                Regularizar Agora
-              </button>
-              <button onClick={() => setError(null)} className="mt-3 text-xs text-rose-400 hover:text-rose-600 underline">
-                Tentar outro login
-              </button>
-            </div>
-          )}
-
-          {/* ── SUCCESS MESSAGE ── */}
-          {successMsg && (
-            <div className="mb-6 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Sucesso!</p>
-                <p className="text-sm text-emerald-700 dark:text-emerald-300 leading-relaxed mt-0.5">{successMsg}</p>
-              </div>
-            </div>
-          )}
-
           {/* ── STANDARD ERROR ── */}
-          {error && error !== 'SUBSCRIPTION_ERROR' && (
+          {error && (
             <div className="mb-5 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl p-4 flex items-center gap-3 text-sm text-rose-600 dark:text-rose-300">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               {error}
@@ -440,7 +400,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           )}
 
           {/* ══════════════════════════════ VIEW: LOGIN ══════════════════════════════ */}
-          {viewMode === 'login' && error !== 'SUBSCRIPTION_ERROR' && (
+          {viewMode === 'login' && (
             <div className="animate-fade-in-up">
               <div className="mb-8">
                 <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Bem-vindo de volta 👋</h2>
@@ -488,9 +448,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
               {/* Secondary actions */}
               <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                <p className="text-xs text-slate-400 text-center">Comprou agora e ainda não tem senha?</p>
-                <button onClick={() => switchMode('first_access_check')} className={secondaryBtn}>
-                  <UserPlus className="w-4 h-4" /> Acessar pela primeira vez
+                <p className="text-xs text-slate-400 text-center">Ainda não tem conta no Trocô?</p>
+                <button onClick={() => switchMode('register')} className={secondaryBtn}>
+                  <UserPlus className="w-4 h-4" /> Criar Conta Grátis
                 </button>
                 <a
                   href="https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d"
@@ -537,14 +497,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       <div>
                         <p className="font-bold text-amber-800 dark:text-amber-200 text-sm">Não recebeu?</p>
                         <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">
-                          Se nunca criou uma senha, use a opção &quot;Primeiro Acesso&quot; para ativar sua conta.
+                          Se ainda não tem cadastro, clique e crie sua conta grátis.
                         </p>
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <button onClick={() => switchMode('first_access_check')} className={secondaryBtn}>
-                      Tentar &quot;Primeiro Acesso&quot;
+                    <button onClick={() => switchMode('register')} className={secondaryBtn}>
+                      Criar Conta
                     </button>
                     <button
                       onClick={() => { setShowForgotSuccess(false); setEmail(''); }}
@@ -579,52 +539,43 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
           )}
 
-          {/* ══════════════════════════════ VIEW: FIRST ACCESS — CHECK EMAIL ══════════════════════════════ */}
-          {viewMode === 'first_access_check' && (
+          {/* ══════════════════════════════ VIEW: REGISTER ══════════════════════════════ */}
+          {viewMode === 'register' && (
             <div className="animate-fade-in-up">
               <button onClick={() => switchMode('login')} className="mb-6 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors">
                 <ArrowLeft className="w-4 h-4" /> Voltar para Login
               </button>
               <div className="mb-8">
-                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Primeiro Acesso 🚀</h2>
-                <p className="mt-1 text-sm text-slate-500">Insira o email utilizado na compra para localizarmos seu cadastro.</p>
+                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Criar Conta 🚀</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Cadastre-se grátis e comece a controlar seu dinheiro de forma inteligente.
+                </p>
               </div>
-              <form onSubmit={handleFirstAccessCheck} className="space-y-4">
+              <form onSubmit={handleRegisterSubmit} className="space-y-4">
                 <FloatingInput
-                  id="first-email"
+                  id="reg-name"
+                  type="text"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  label="Nome Completo"
+                  required
+                  autoComplete="name"
+                />
+                <FloatingInput
+                  id="reg-email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  label="Email da compra"
+                  label="Email"
                   required
                   autoComplete="email"
                 />
-                <button type="submit" disabled={loading} className={primaryBtn(loading)}>
-                  {loading ? <Spinner /> : (<>Continuar <ArrowRight className="w-4 h-4" /></>)}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* ══════════════════════════════ VIEW: FIRST ACCESS — CREATE PASSWORD ══════════════════════════════ */}
-          {viewMode === 'first_access_create' && (
-            <div className="animate-fade-in-up">
-              <button onClick={() => switchMode('first_access_check')} className="mb-6 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors">
-                <ArrowLeft className="w-4 h-4" /> Voltar
-              </button>
-              <div className="mb-8">
-                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Criar Senha 🔐</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Olá, <span className="text-emerald-500 font-semibold">{dbUser?.nome || 'Usuário'}</span>! Defina uma senha segura para acessar sua conta.
-                </p>
-              </div>
-              <form onSubmit={handleCreatePassword} className="space-y-4">
                 <div className="space-y-1">
                   <PasswordInput
-                    id="new-password"
+                    id="reg-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    label="Nova Senha"
+                    label="Senha"
                     required
                     minLength={6}
                   />
@@ -635,8 +586,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         {[1, 2, 3, 4].map(i => (
                           <div
                             key={i}
-                            className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= strength.score ? strength.color : 'bg-slate-200 dark:bg-slate-700'
-                              }`}
+                            className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= strength.score ? strength.color : 'bg-slate-200 dark:bg-slate-700'}`}
                           />
                         ))}
                       </div>
@@ -649,7 +599,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   )}
                 </div>
                 <PasswordInput
-                  id="confirm-password"
+                  id="reg-confirm-password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   label="Confirmar Senha"
@@ -658,8 +608,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 />
                 {/* Match indicator */}
                 {confirmPassword.length > 0 && (
-                  <p className={`text-xs px-1 flex items-center gap-1 ${password === confirmPassword ? 'text-emerald-500' : 'text-rose-500'
-                    }`}>
+                  <p className={`text-xs px-1 flex items-center gap-1 ${password === confirmPassword ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {password === confirmPassword
                       ? <><CheckCircle2 className="w-3.5 h-3.5" /> As senhas coincidem</>
                       : <><AlertTriangle className="w-3.5 h-3.5" /> As senhas não coincidem</>
@@ -667,7 +616,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </p>
                 )}
                 <button type="submit" disabled={loading} className={primaryBtn(loading)}>
-                  {loading ? <Spinner /> : (<>Definir Senha e Entrar <ArrowRight className="w-4 h-4" /></>)}
+                  {loading ? <Spinner /> : (<>Cadastrar <UserPlus className="w-4 h-4" /></>)}
                 </button>
               </form>
             </div>

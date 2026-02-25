@@ -391,19 +391,45 @@ export async function fetchInvestmentNews(category?: string): Promise<Investment
 
     try {
         // Usa rss2json para converter o feed RSS do InfoMoney em JSON (CORS-friendly)
-        const rssUrl = encodeURIComponent('https://www.infomoney.com.br/feed/');
-        const url = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`;
+        const rssUrls = [
+            'https://www.infomoney.com.br/mercados/feed/',
+            'https://www.infomoney.com.br/onde-investir/feed/',
+            'https://www.infomoney.com.br/minhas-financas/feed/'
+        ];
 
-        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) throw new Error(`RSS API HTTP ${res.status}`);
+        const fetchPromises = rssUrls.map(async (rssUrl) => {
+            const encodedUrl = encodeURIComponent(rssUrl);
+            const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodedUrl}`;
 
-        const json = await res.json();
+            try {
+                const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                if (!res.ok) return [];
 
-        if (json.status !== 'ok' || !json.items || json.items.length === 0) {
+                const json = await res.json();
+                if (json.status !== 'ok' || !json.items) return [];
+
+                return json.items;
+            } catch (err) {
+                console.warn(`Failed to fetch ${rssUrl}:`, err);
+                return [];
+            }
+        });
+
+        const results = await Promise.all(fetchPromises);
+
+        // Combine all items into a single array
+        const allItems = results.flat();
+
+        if (allItems.length === 0) {
             return fallbackNews;
         }
 
-        return json.items.slice(0, 15).map((item: any) => {
+        // Sort items by published date (descending)
+        allItems.sort((a: any, b: any) => {
+            return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
+        });
+
+        return allItems.slice(0, 15).map((item: any) => {
             // Tenta extrair a imagem do conteudo HTML (tag <img>)
             let imageUrl: string | undefined = item.thumbnail;
             if (!imageUrl && item.description) {

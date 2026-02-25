@@ -21,7 +21,9 @@ import {
   XCircle,
   RefreshCw
 } from 'lucide-react';
+import { useNotification } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
+import LimitPaywallModal from './LimitPaywallModal';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -30,13 +32,16 @@ interface TransactionsProps {
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
   cards?: CreditCard[];
+  user?: any; // Assuming 'any' or importing UserProfile to avoid circular deps if needed, let's just use the prop
 }
 
 const ITEMS_PER_PAGE = 10;
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddMultiple, onEdit, onDelete, cards = [] }) => {
+const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddMultiple, onEdit, onDelete, cards = [], user }) => {
+  const { showNotification } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState(''); // Formato YYYY-MM
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -156,6 +161,19 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   };
 
   const handleOpenCreate = () => {
+    // Limit check for free tier: max 30 transactions in current month
+    if (user && user.status_assinatura !== 'active') {
+      const now = new Date();
+      const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const transactionsThisMonth = transactions.filter(t => t.date.startsWith(currentMonthPrefix)).length;
+
+      if (transactionsThisMonth >= 30) {
+        setIsLimitModalOpen(true);
+        return; // Block opening the modal
+      }
+    }
+
     setFormData(initialFormState);
     setEditingId(null);
     setIsModalOpen(true);
@@ -776,6 +794,15 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"
+      />
+
+      {/* Limit Reached Modal */}
+      <LimitPaywallModal
+        isOpen={isLimitModalOpen}
+        onClose={() => setIsLimitModalOpen(false)}
+        title="Limite Atingido"
+        description="No plano gratuito você pode ter até 30 lançamentos por mês. Assine o Super Trocô para ter lançamentos ilimitados e controle total."
+        userEmail={user?.email}
       />
     </div>
   );

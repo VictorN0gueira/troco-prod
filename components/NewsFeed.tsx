@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ExternalLink, Newspaper, TrendingUp, TrendingDown, Clock, Search, Filter, RefreshCw, AlertTriangle } from 'lucide-react';
-import { InvestmentNews } from '../types';
+import SuperPaywall from './SuperPaywall';
+import { InvestmentNews, UserProfile } from '../types';
 import { fetchInvestmentNews } from '../services/priceApi';
+import { supabase } from '../supabaseClient';
 
 const NewsCard = ({ news }: { news: InvestmentNews }) => {
     const formattedDate = news.timestamp ? new Date(news.timestamp).toLocaleString('pt-BR', {
@@ -63,7 +65,13 @@ const NewsCard = ({ news }: { news: InvestmentNews }) => {
     );
 };
 
-const NewsFeed = () => {
+const NewsFeed = ({ user }: { user: UserProfile }) => {
+    const isSuper = user?.status_assinatura === 'active';
+
+    if (!isSuper) {
+        return <SuperPaywall feature="Insights de Mercado" userEmail={user?.email} />;
+    }
+
     const [news, setNews] = useState<InvestmentNews[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -73,6 +81,15 @@ const NewsFeed = () => {
         setLoading(true);
         setError(null);
         try {
+            // BACKEND SECURITY CHECK: Prevent React State Spoofing for Premium Features
+            const { data: dbUser } = await supabase.from('usuarios').select('tem_plano').eq('id', user.id).single();
+            if (!dbUser?.tem_plano) {
+                setError('Assinatura inválida no servidor. Atualize a página.');
+                setNews([]);
+                setLoading(false);
+                return;
+            }
+
             const data = await fetchInvestmentNews();
             if (data.length === 0) {
                 setError('Nenhuma notícia encontrada no momento.');
@@ -88,6 +105,13 @@ const NewsFeed = () => {
 
     useEffect(() => {
         loadNews();
+
+        // Atualiza as notícias a cada 3 minutos
+        const intervalId = setInterval(() => {
+            loadNews();
+        }, 3 * 60 * 1000);
+
+        return () => clearInterval(intervalId);
     }, [loadNews]);
 
     const filteredNews = news.filter(item =>

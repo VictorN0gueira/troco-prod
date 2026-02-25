@@ -174,6 +174,7 @@ const AppRoutes = ({
             onAdd={addTransaction}
             onEdit={updateTransaction}
             onDelete={deleteTransaction}
+            user={user}
           />
         } />
 
@@ -211,7 +212,7 @@ const AppRoutes = ({
           />
         } />
 
-        <Route path="/insights" element={<NewsFeed />} />
+        <Route path="/insights" element={<NewsFeed user={user} />} />
 
         <Route path="/settings" element={
           <Settings
@@ -392,7 +393,7 @@ const AppContent: React.FC = () => {
     email: '',
     telefone: '',
     avatarUrl: '',
-    status_assinatura: 'active',
+    status_assinatura: 'canceled', // Changed from 'active' to enforce Paywall by default
   });
 
   // Offline Hook
@@ -420,7 +421,7 @@ const AppContent: React.FC = () => {
       await supabase.auth.signOut();
       setIsAuthenticated(false);
       setTransactions([]);
-      setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'active' });
+      setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'canceled' });
       setIsExiting(false); // Reset exiting state
       console.log("Sessão encerrada com animação.");
     }, 400); // 400ms matches CSS animation duration
@@ -515,7 +516,7 @@ const AppContent: React.FC = () => {
         if (!isExiting) {
           setIsAuthenticated(false);
           setTransactions([]);
-          setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'active' });
+          setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'canceled' });
         }
       }
       setLoading(false);

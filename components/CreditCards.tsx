@@ -8,6 +8,8 @@ import { useNotification } from '../contexts/NotificationContext';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from 'recharts';
 
+import LimitPaywallModal from './LimitPaywallModal';
+
 interface CreditCardsProps {
     user: UserProfile;
     cards: CreditCard[];
@@ -18,6 +20,7 @@ interface CreditCardsProps {
 
 const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fetchCards, payCardInvoice }) => {
     const [loading, setLoading] = useState(false);
+    const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
     const { showNotification } = useNotification();
@@ -103,6 +106,13 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
     };
 
     const handleOpenModal = (card?: CreditCard) => {
+        // Super Trocô Limit Check
+        const isSuper = user?.status_assinatura === 'active';
+        if (!card && !isSuper && cards.length >= 2) {
+            setIsLimitModalOpen(true);
+            return;
+        }
+
         if (card) {
             setEditingCard(card);
             setFormData({
@@ -874,6 +884,15 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 confirmText="Excluir"
                 cancelText="Cancelar"
                 type="danger"
+            />
+
+            {/* Limit Reached Modal */}
+            <LimitPaywallModal
+                isOpen={isLimitModalOpen}
+                onClose={() => setIsLimitModalOpen(false)}
+                title="Limite Atingido"
+                description="No plano gratuito você pode ter até 2 cartões. Assine o Super Trocô para cadastrar cartões ilimitados e ter controle total."
+                userEmail={user?.email}
             />
         </div>
     );
