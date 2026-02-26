@@ -534,8 +534,8 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     type="button"
                     onClick={() => setFormData({ ...formData, type: 'income' })}
                     className={`py-2 rounded-lg text-sm font-semibold transition-all ${formData.type === 'income'
-                        ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
                       }`}
                   >
                     A Receber
@@ -544,8 +544,8 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     type="button"
                     onClick={() => setFormData({ ...formData, type: 'expense' })}
                     className={`py-2 rounded-lg text-sm font-semibold transition-all ${formData.type === 'expense'
-                        ? 'bg-white dark:bg-slate-800 text-rose-500 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-white dark:bg-slate-800 text-rose-500 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
                       }`}
                   >
                     A Pagar
@@ -626,8 +626,8 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                         type="button"
                         onClick={() => setFormData({ ...formData, status: 'pending' })}
                         className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2 ${formData.status === 'pending'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800 ring-1 ring-amber-500/50'
-                            : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800 ring-1 ring-amber-500/50'
+                          : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                           }`}
                       >
                         <Clock className="w-4 h-4" />
@@ -637,8 +637,8 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                         type="button"
                         onClick={() => setFormData({ ...formData, status: 'completed' })}
                         className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2 ${formData.status === 'completed'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 ring-1 ring-emerald-500/50'
-                            : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 ring-1 ring-emerald-500/50'
+                          : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                           }`}
                       >
                         <CheckCircle2 className="w-4 h-4" />

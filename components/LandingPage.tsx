@@ -23,6 +23,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { InvestmentNews } from '../types';
 import { fetchInvestmentNews } from '../services/priceApi';
+import WhatsAppSimulation from './WhatsAppSimulation';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
@@ -266,6 +267,66 @@ const LandingPage: React.FC = () => {
                                 <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{f.desc}</p>
                             </div>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* --- WhatsApp Bot Showcase Section --- */}
+            <section className="py-24 relative overflow-hidden bg-slate-50 dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
+                {/* Decorative Background Elements */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-300 dark:bg-emerald-900/20 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-[100px] opacity-40 animate-blob" />
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary-300 dark:bg-primary-900/20 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-[100px] opacity-40 animate-blob animation-delay-4000" />
+
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <div className="flex flex-col lg:flex-row items-center gap-16">
+                        {/* Text Content */}
+                        <div className="flex-1 lg:pr-8">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-8">
+                                <MessageCircle className="w-4 h-4" />
+                                <span>Funcionalidade Exclusiva</span>
+                            </div>
+
+                            <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-6 leading-tight">
+                                Gestão na palma <br />
+                                da sua mão, <span className="text-emerald-500">literalmente.</span>
+                            </h2>
+
+                            <p className="text-lg text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                                Esqueça planilhas complicadas e apps que você desiste de usar. Com a Trocô, você pode registrar gastos, consultar saldos e criar lembretes conversando com nossa IA pelo WhatsApp.
+                            </p>
+
+                            <ul className="space-y-4 mb-10">
+                                {[
+                                    'Reconhecimento de áudio',
+                                    'Categorização automática de despesas',
+                                    'Dúvidas financeiras em tempo real'
+                                ].map((item, idx) => (
+                                    <li key={idx} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 font-medium">
+                                        <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                        </div>
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <button
+                                onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
+                                className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
+                            >
+                                Testar Agente Agora
+                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+
+                        {/* Phone Mockup / Simulation */}
+                        <div className="flex-1 w-full lg:w-auto flex justify-center lg:justify-end">
+                            {/* Glow behind phone */}
+                            <div className="absolute inset-0 bg-emerald-500/10 dark:bg-emerald-500/5 blur-3xl rounded-full" />
+                            <div className="relative z-10 w-full max-w-[380px]">
+                                <WhatsAppSimulation />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
