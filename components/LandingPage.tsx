@@ -202,12 +202,12 @@ const LandingPage: React.FC = () => {
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                         <button
-                            onClick={() => scrollToSection('pricing')}
+                            onClick={() => navigate('/login?mode=register')}
                             className="group relative w-full sm:w-auto px-10 py-5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-black text-lg overflow-hidden transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
                         >
                             {/* Shimmer Layer */}
                             <div className="absolute inset-0 w-full h-full animate-shimmer bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.1),transparent)] dark:bg-[linear-gradient(110deg,transparent,rgba(0,0,0,0.05),transparent)]" />
-                            <span className="relative">Começar agora!</span>
+                            <span className="relative">Crie sua conta grátis</span>
                             <ArrowRight className="w-5 h-5 relative group-hover:translate-x-1 transition-transform" />
                         </button>
                         <button
@@ -481,10 +481,10 @@ const LandingPage: React.FC = () => {
                             <h2 className="text-4xl md:text-6xl font-black mb-8">Comece a transformar sua vida financeira hoje.</h2>
                             <p className="text-lg md:text-xl text-white/80 mb-12">Tenha o controle total do seu patrimônio com a melhor ferramenta de gestão financeira do Brasil.</p>
                             <button
-                                onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
+                                onClick={() => navigate('/login?mode=register')}
                                 className="px-10 py-5 rounded-2xl bg-white text-primary-600 font-black text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-black/20"
                             >
-                                Começar Agora
+                                Crie sua conta grátis
                             </button>
                         </div>
                     </div>

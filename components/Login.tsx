@@ -158,7 +158,12 @@ const FeatureCard = ({
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('login');
+
+  // Parse mode from URL if present
+  const queryParams = new URLSearchParams(window.location.search);
+  const initialMode = queryParams.get('mode') === 'register' ? 'register' : 'login';
+
+  const [viewMode, setViewMode] = useState<ViewMode>(initialMode);
 
   // Form States
   const [fullName, setFullName] = useState('');
