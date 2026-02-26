@@ -12,7 +12,7 @@ interface LoginProps {
   onLogin: (user: UserProfile) => void;
 }
 
-type ViewMode = 'login' | 'forgot_password' | 'register';
+type ViewMode = 'login' | 'forgot_password' | 'register' | 'verify_email';
 
 // ─── Password strength helper ─────────────────────────────────────────────────
 
@@ -264,8 +264,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
 
       setSuccessMsg('Conta criada com sucesso! Por favor, confirme seu email (verifique a caixa de spam) e faça login.');
-      setViewMode('login');
-      setEmail('');
+      setViewMode('verify_email');
+      // Mantém o email para a próxima tela
       setPassword('');
       setConfirmPassword('');
     } catch (err: any) {
@@ -624,6 +624,31 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   {loading ? <Spinner /> : (<>Cadastrar <UserPlus className="w-4 h-4" /></>)}
                 </button>
               </form>
+            </div>
+          )}
+
+          {/* ══════════════════════════════ VIEW: VERIFY EMAIL ══════════════════════════════ */}
+          {viewMode === 'verify_email' && (
+            <div className="animate-fade-in-up">
+              <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-3xl p-8 text-center shadow-sm">
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-8 h-8 text-emerald-500" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Verifique seu Email ✉️</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
+                  Quase lá! Enviamos um link de confirmação para o email <strong className="text-slate-900 dark:text-white">{email}</strong>. Por favor, clique no link para ativar sua conta.
+                  <br /><br />
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">Não esqueça de verificar também sua caixa de Spam.</span>
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button onClick={() => switchMode('login')} className={primaryBtn(false)}>
+                    Ir para o Login <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => switchMode('register')} className="mt-2 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors">
+                    Usar outro email
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
