@@ -44,12 +44,12 @@ BEGIN
   -- LIMIT CHECK 2: Max 30 Transactions Per Month
   -- ==========================================================
   -- Check transactions matching the same YYYY-MM prefix as the new insert date
-  v_month_prefix := to_char(NEW.date::date, 'YYYY-MM');
+  v_month_prefix := to_char(NEW.data::date, 'YYYY-MM');
 
   SELECT COUNT(*) INTO v_transaction_count
   FROM public.transacoes
   WHERE user_id = NEW.user_id 
-    AND to_char(date::date, 'YYYY-MM') = v_month_prefix;
+    AND to_char(data::date, 'YYYY-MM') = v_month_prefix;
 
   IF v_transaction_count >= 30 THEN
     RAISE EXCEPTION 'Limites do Plano: O plano gratuito permite no máximo 30 lançamentos por mês.';
