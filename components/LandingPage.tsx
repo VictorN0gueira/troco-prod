@@ -445,10 +445,10 @@ const LandingPage: React.FC = () => {
                             </div>
                             <h4 className="text-lg font-bold mb-2 relative z-20">Plano Anual</h4>
                             <div className="flex items-baseline gap-1 mb-1 relative z-20">
-                                <span className="text-4xl font-black">R$ 12,90</span>
+                                <span className="text-4xl font-black">R$ 19,90</span>
                                 <span className="opacity-60 text-sm">/mês*</span>
                             </div>
-                            <p className="text-[10px] opacity-50 mb-6 relative z-20">*Cobrado anualmente (R$ 154,80)</p>
+                            <p className="text-[10px] opacity-50 mb-6 relative z-20">*Cobrado anualmente (R$ 238,80)</p>
 
                             <ul className="space-y-4 mb-10 flex-1 relative z-20">
                                 <li className="flex items-center gap-3">

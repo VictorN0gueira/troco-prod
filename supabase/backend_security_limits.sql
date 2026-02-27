@@ -29,11 +29,11 @@ BEGIN
   -- ==========================================================
   -- LIMIT CHECK 1: Max 10 Active Reminders
   -- ==========================================================
-  -- A reminder is identified by status = 'pending'
-  IF NEW.status = 'pending' THEN
+  -- A reminder is identified by esta_pago = false
+  IF NEW.esta_pago = false THEN
     SELECT COUNT(*) INTO v_reminder_count
     FROM public.transacoes
-    WHERE user_id = NEW.user_id AND status = 'pending';
+    WHERE user_id = NEW.user_id AND esta_pago = false;
 
     IF v_reminder_count >= 10 THEN
       RAISE EXCEPTION 'Limites do Plano: O plano gratuito permite no máximo 10 lembretes ativos.';
