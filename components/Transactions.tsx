@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, CreditCard } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, formatDateDisplay, parseDateFromDB } from '../utils';
+import { UsageMeter } from './FreePlanBadge';
 import {
   Search,
   Plus,
@@ -341,6 +342,19 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
             <span className="hidden sm:inline">Filtrar</span>
             <span className="sm:hidden">Filtrar</span>
           </button>
+
+          {/* Indicador de uso mensal para plano free */}
+          {user && user.status_assinatura !== 'active' && (() => {
+            const now = new Date();
+            const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const countThisMonth = transactions.filter(t => t.date.startsWith(monthPrefix)).length;
+            return (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 min-w-[140px]">
+                <UsageMeter current={countThisMonth} max={30} label="este mês" size="sm" />
+              </div>
+            );
+          })()}
+
           <button
             onClick={handleOpenCreate}
             className="flex-1 xl:flex-none flex items-center justify-center px-6 py-3 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/30 font-semibold"

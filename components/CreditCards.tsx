@@ -10,6 +10,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from 'recharts';
 
 import LimitPaywallModal from './LimitPaywallModal';
+import { UsageMeter } from './FreePlanBadge';
 
 interface CreditCardsProps {
     user: UserProfile;
@@ -287,6 +288,12 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 <div>
                     <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Meus Cartões</h2>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Gerencie seus limites e vencimentos</p>
+                    {/* Indicador de uso para plano free */}
+                    {user.status_assinatura !== 'active' && (
+                        <div className="mt-2 max-w-[200px]">
+                            <UsageMeter current={cards.length} max={2} label="cartões" />
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={() => handleOpenModal()}

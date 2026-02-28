@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, UserProfile } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, formatDateDisplay, parseDateFromDB } from '../utils';
+import { UsageMeter } from './FreePlanBadge';
 import {
   Search,
   Plus,
@@ -290,6 +291,21 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
             <span className="font-bold">Novo Lembrete</span>
           </div>
           <p className="text-emerald-100 text-xs">Agendar pagamento ou recebimento</p>
+          {/* Indicador de uso para plano free */}
+          {user && user.status_assinatura !== 'active' && (() => {
+            const activeCount = transactions.filter(t => t.status === 'pending').length;
+            return (
+              <div className="mt-2 w-full bg-white/20 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-white transition-all duration-500"
+                  style={{ width: `${Math.min((activeCount / 10) * 100, 100)}%` }}
+                />
+                <p className="text-[10px] text-white/80 mt-1">
+                  {activeCount}/10 lembretes ativos
+                </p>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

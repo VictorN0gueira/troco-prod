@@ -8,6 +8,7 @@ import { Goal, UserProfile } from '../types';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import LimitPaywallModal from './LimitPaywallModal';
 import ConfirmationModal from './ConfirmationModal';
+import { UsageMeter } from './FreePlanBadge';
 
 interface GoalsProps {
     goals: Goal[];
@@ -256,6 +257,12 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                         Minhas Metas
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Defina seus objetivos e acompanhe seu progresso.</p>
+                    {/* Indicador de uso para plano free */}
+                    {user.status_assinatura !== 'active' && (
+                        <div className="mt-2 max-w-xs">
+                            <UsageMeter current={goals.length} max={5} label="metas" />
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={openAddModal}

@@ -23,6 +23,7 @@ import {
 // ... other imports
 import { NavItem, UserProfile } from '../types';
 import { LOGO_URL } from '../constants';
+import { FreePlanBadge } from './FreePlanBadge';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -138,7 +139,15 @@ const Layout: React.FC<LayoutProps> = ({
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-1">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          {/* Selo de Plano Gratuito (apenas para usuários sem plano) */}
+          {user.status_assinatura !== 'active' && (
+            <FreePlanBadge
+              variant="full"
+              onClick={() => window.open('https://wa.me/558184451243?text=Quero+conhecer+o+Super+Trocô!', '_blank')}
+            />
+          )}
+
           {/* WhatsApp AI Agent */}
           <a
             href="https://wa.me/558184451243?text=Ol%C3%A1%20Troc%C3%B4%2C%20gostaria%20de%20saber%20mais%20sobre..."
@@ -219,6 +228,13 @@ const Layout: React.FC<LayoutProps> = ({
             </button>
 
             <div className="flex items-center gap-3 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
+              {/* Selo Free compacto no header */}
+              {user.status_assinatura !== 'active' && (
+                <FreePlanBadge
+                  variant="compact"
+                  onClick={() => window.open('https://wa.me/558184451243?text=Quero+conhecer+o+Super+Trocô!', '_blank')}
+                />
+              )}
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">{user.nome}</p>
               </div>
