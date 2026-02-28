@@ -18,7 +18,7 @@ import { Transaction, UserProfile, CreditCard, Investment, Goal } from './types'
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
-import { getTodayLocalDate } from './utils';
+import { getTodayLocalDate, formatTransaction } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
@@ -88,6 +88,39 @@ const ProtectedLayout = ({
   );
 };
 
+// Tipagem correta das props do AppRoutes
+interface AppRoutesProps {
+  isAuthenticated: boolean;
+  loading: boolean;
+  darkMode: boolean;
+  setDarkMode: (v: boolean) => void;
+  handleLogout: () => void;
+  user: UserProfile;
+  transactions: Transaction[];
+  addTransaction: (t: Transaction) => Promise<void>;
+  updateTransaction: (t: Transaction) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  updateUser: (u: UserProfile) => Promise<void>;
+  handleLoginSuccess: () => void;
+  isExiting: boolean;
+  privacyMode: boolean;
+  togglePrivacyMode: () => void;
+  cards: CreditCard[];
+  fetchCards: (userId: number) => Promise<void>;
+  investments: Investment[];
+  addInvestment: (inv: Investment) => Promise<void>;
+  updateInvestment: (inv: Investment) => Promise<void>;
+  deleteInvestment: (id: string) => Promise<void>;
+  updateInvestmentPrices: (updates: { id: string; current_price: number }[]) => Promise<void>;
+  addMultipleTransactions: (txs: Transaction[]) => Promise<void>;
+  payCardInvoice: (cardId: number, totalAmount: number, ids: string[]) => Promise<void>;
+  goals: Goal[];
+  addGoal: (g: Goal) => Promise<void>;
+  updateGoal: (g: Goal) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  addMoneyToGoal: (id: string, amount: number) => Promise<void>;
+}
+
 // Componente interno para gerenciar navegação baseada em eventos
 const AppRoutes = ({
   isAuthenticated,
@@ -119,7 +152,7 @@ const AppRoutes = ({
   updateGoal,
   deleteGoal,
   addMoneyToGoal
-}: any) => {
+}: AppRoutesProps) => {
   return (
     <Routes>
       <Route
@@ -427,8 +460,9 @@ const AppContent: React.FC = () => {
   // --- PRODUCTION MODE: Inicia deslogado e com array vazio ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [privacyMode, setPrivacyMode] = useState(false); // Novo estado de privacidade
+  // Persistir preferências no localStorage entre sessões
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('troco_darkMode') === 'true');
+  const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem('troco_privacyMode') === 'true');
 
   // Transactions com array vazio inicial
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -457,14 +491,20 @@ const AppContent: React.FC = () => {
 
   const { showNotification } = useNotification();
 
-  // Initialize Theme
+  // Aplicar tema e persistir no localStorage
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+    localStorage.setItem('troco_darkMode', String(darkMode));
   }, [darkMode]);
+
+  // Persistir privacy mode
+  useEffect(() => {
+    localStorage.setItem('troco_privacyMode', String(privacyMode));
+  }, [privacyMode]);
 
   // --- HANDLERS ---
 
@@ -624,8 +664,9 @@ const AppContent: React.FC = () => {
 
     console.log(`Iniciando canal Realtime para user_id: ${user.id}`);
 
+    // Canal com nome único por usuário para evitar conflitos com múltiplas abas
     const channel = supabase
-      .channel('realtime:transactions')
+      .channel(`realtime:transactions:${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -802,40 +843,8 @@ const AppContent: React.FC = () => {
       if (error) throw error;
 
       if (data) {
-        const formatted: Transaction[] = data.map((t: any) => {
-          // 1. Normalização de Tipo (Duplicada para o fetch inicial)
-          let finalType: 'income' | 'expense' = 'expense';
-          const typeLower = (t.tipo || '').toLowerCase();
-
-          if (typeLower === 'receita' || typeLower === 'income') {
-            finalType = 'income';
-          } else if (typeLower === 'despesa' || typeLower === 'expense') {
-            finalType = 'expense';
-          } else {
-            // Heurística fallback
-            const descLower = (t.descricao || '').toLowerCase();
-            const incomeKeywords = [
-              'salário', 'salario', 'recebimento', 'venda', 'pix recebido',
-              'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
-            ];
-            if (incomeKeywords.some(k => descLower.includes(k))) {
-              finalType = 'income';
-            }
-          }
-
-          return {
-            id: t.identificador || t.id.toString(),
-            description: t.descricao,
-            amount: Number(t.valor),
-            type: finalType,
-            category: t.categoria || 'Outros',
-            date: t.data,
-            status: t.esta_pago ? 'completed' : 'pending',
-            isRecurring: t.is_recurring, // Map DB snake_case to Frontend camelCase
-            cardId: t.card_id, // Map card_id
-            installment_group: t.installment_group
-          };
-        });
+        // Usar formatTransaction centralizado em utils.ts
+        const formatted: Transaction[] = data.map(formatTransaction);
         setTransactions(formatted);
       }
     } catch (error) {
@@ -895,7 +904,11 @@ const AppContent: React.FC = () => {
 
       if (error) {
         console.error("Erro ao salvar múltiplas transações:", error);
-        alert(`Erro ao sincronizar parcelas: ${error.message}`);
+        showNotification({
+          title: 'Erro ao Sincronizar Parcelas',
+          message: `Não foi possível salvar as parcelas: ${error.message}`,
+          type: 'error'
+        });
         fetchTransactions(user.id);
       }
     }
@@ -926,7 +939,11 @@ const AppContent: React.FC = () => {
 
       if (txError) {
         console.error("Erro ao pagar transações:", txError);
-        alert("Erro ao marcar transações como pagas.");
+        showNotification({
+          title: 'Erro ao Pagar Fatura',
+          message: 'Não foi possível marcar as transações como pagas. Tente novamente.',
+          type: 'error'
+        });
       }
 
       // Atualizar current_usage no Cartão
@@ -1034,6 +1051,8 @@ const AppContent: React.FC = () => {
   };
 
   const deleteTransaction = async (id: string) => {
+    // Snapshot para rollback em caso de erro
+    const previousTransactions = transactions;
     setTransactions(prev => prev.filter(t => t.id !== id));
 
     if (user.id !== 0) {
@@ -1051,10 +1070,19 @@ const AppContent: React.FC = () => {
         .delete()
         .eq('user_id', user.id);
 
-      if (isNumericId) {
-        await deleteQuery.eq('id', Number(id));
-      } else {
-        await deleteQuery.eq('identificador', id);
+      const { error } = isNumericId
+        ? await deleteQuery.eq('id', Number(id))
+        : await deleteQuery.eq('identificador', id);
+
+      if (error) {
+        console.error("Erro ao excluir transação:", error);
+        // Rollback: restaurar a transação na UI
+        setTransactions(previousTransactions);
+        showNotification({
+          title: 'Erro ao Excluir',
+          message: 'Não foi possível excluir a transação. Os dados foram restaurados.',
+          type: 'error'
+        });
       }
     }
   };
@@ -1211,14 +1239,17 @@ const AppContent: React.FC = () => {
   };
 
   const addMoneyToGoal = async (id: string, amount: number) => {
-    // Optimistic Update
+    // Snapshot para rollback em caso de erro
+    const previousGoals = goals;
+
+    // Optimistic Update via callback para evitar race condition
     setGoals(prev => prev.map(g => g.id === id ? { ...g, current_amount: g.current_amount + amount } : g));
 
     if (user.id !== 0) {
-      const goalToUpdate = goals.find(g => g.id === id);
-      if (!goalToUpdate) return;
-
-      const newAmount = goalToUpdate.current_amount + amount;
+      // Calcular novo valor a partir do estado atual (não do snapshot stale)
+      const currentGoal = goals.find(g => g.id === id);
+      if (!currentGoal) return;
+      const newAmount = currentGoal.current_amount + amount;
 
       const { error } = await supabase.from('metas').update({
         current_amount: newAmount
@@ -1227,7 +1258,7 @@ const AppContent: React.FC = () => {
       if (error) {
         console.error('Erro ao adicionar dinheiro à meta:', error);
         // Rollback on error
-        setGoals(prev => prev.map(g => g.id === id ? { ...g, current_amount: goalToUpdate.current_amount } : g));
+        setGoals(previousGoals);
         throw error;
       }
     }
@@ -1261,7 +1292,7 @@ const AppContent: React.FC = () => {
         privacyMode={privacyMode}
         togglePrivacyMode={togglePrivacyMode}
         cards={cards}
-        fetchCards={() => fetchCards(user.id)}
+        fetchCards={fetchCards}
         investments={investments}
         addInvestment={addInvestment}
         updateInvestment={updateInvestment}

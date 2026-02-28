@@ -122,3 +122,42 @@ export const getProjectedTransactions = (
 
   return projected;
 };
+
+/**
+ * Normaliza um registro bruto do banco de dados para o tipo Transaction do frontend.
+ * Trata a tradução de tipo (Receita/Despesa → income/expense) e campos opcionais.
+ * Centralizado aqui para evitar duplicação entre o fetch inicial e o listener realtime.
+ */
+export const formatTransaction = (t: any): Transaction => {
+  let finalType: 'income' | 'expense' = 'expense';
+  const typeLower = (t.tipo || '').toLowerCase();
+
+  if (typeLower === 'receita' || typeLower === 'income') {
+    finalType = 'income';
+  } else if (typeLower === 'despesa' || typeLower === 'expense') {
+    finalType = 'expense';
+  } else {
+    // Heurística de fallback para tipos inválidos
+    const descLower = (t.descricao || '').toLowerCase();
+    const incomeKeywords = [
+      'salário', 'salario', 'recebimento', 'venda', 'pix recebido',
+      'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
+    ];
+    if (incomeKeywords.some(k => descLower.includes(k))) {
+      finalType = 'income';
+    }
+  }
+
+  return {
+    id: t.identificador || t.id.toString(),
+    description: t.descricao,
+    amount: Number(t.valor),
+    type: finalType,
+    category: t.categoria || 'Outros',
+    date: t.data,
+    status: t.esta_pago ? 'completed' : 'pending',
+    isRecurring: t.is_recurring,
+    cardId: t.card_id,
+    installment_group: t.installment_group
+  };
+};

@@ -170,6 +170,29 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Rate-limiting state (proteção contra brute force)
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+
+  // Countdown timer para o lockout
+  useEffect(() => {
+    if (!lockoutUntil) return;
+    const interval = setInterval(() => {
+      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockoutUntil(null);
+        setLockoutSeconds(0);
+        setLoginAttempts(0);
+        clearInterval(interval);
+      } else {
+        setLockoutSeconds(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutUntil]);
 
   // Feedback States
   const [error, setError] = useState<string | null>(null);
@@ -196,18 +219,51 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Rate-limiting: verificar lockout
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      setError(`Muitas tentativas. Aguarde ${lockoutSeconds} segundos para tentar novamente.`);
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      if (data.user?.email) {
-        // Obter o perfil não é obrigatório para bloquear o usuário, 
-        // já que agora temos uma versão gratuita. O status será carregado no App.tsx.
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: { captchaToken: undefined }
+      });
+
+      // Controlar persistência de sessão baseado no "Lembrar de mim"
+      if (!rememberMe) {
+        // Sem persistência: sessão expira ao fechar o browser
+        // Supabase cuida disso via storage type — workaround via sessionStorage
+        sessionStorage.setItem('troco_session_only', 'true');
+      } else {
+        sessionStorage.removeItem('troco_session_only');
       }
+
+      if (error) throw error;
+
+      // Login bem-sucedido: resetar tentativas
+      setLoginAttempts(0);
+      setLockoutUntil(null);
+
     } catch (err: any) {
-      setError(err.message === 'Invalid login credentials'
-        ? 'Email ou senha incorretos. Se criou a conta agora, verifique se confirmou o email.'
-        : err.message);
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+
+      // Após 3 tentativas, lockout de 30 segundos
+      if (newAttempts >= 3) {
+        const until = Date.now() + 30_000;
+        setLockoutUntil(until);
+        setLockoutSeconds(30);
+        setError('Muitas tentativas incorretas. Aguarde 30 segundos antes de tentar novamente.');
+      } else {
+        setError(err.message === 'Invalid login credentials'
+          ? `Email ou senha incorretos. (${newAttempts}/3 tentativas)`
+          : err.message);
+      }
       setLoading(false);
     }
   };
@@ -247,7 +303,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {
             email: data.user.email,
             nome: fullName,
-            password: `troco_secure_auth_${Math.random().toString(36).substring(2)}`, // SECURITY FIX: Use dummy password for NOT NULL constraint to avoid storing plain text
             tem_plano: false
           }
         ]);
@@ -433,6 +488,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer select-none">
                     <input
                       type="checkbox"
+                      checked={rememberMe}
+                      onChange={e => setRememberMe(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500 accent-emerald-500"
                     />
                     Lembrar de mim
@@ -446,8 +503,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </button>
                 </div>
 
-                <button type="submit" disabled={loading} className={primaryBtn(loading)}>
-                  {loading ? <Spinner /> : (<>Entrar <ArrowRight className="w-4 h-4" /></>)}
+                <button
+                  type="submit"
+                  disabled={loading || (lockoutUntil !== null && Date.now() < lockoutUntil)}
+                  className={primaryBtn(loading || (lockoutUntil !== null && Date.now() < lockoutUntil))}
+                >
+                  {loading ? <Spinner /> : lockoutUntil ? `Aguarde ${lockoutSeconds}s` : (<>Entrar <ArrowRight className="w-4 h-4" /></>)}
                 </button>
               </form>
 

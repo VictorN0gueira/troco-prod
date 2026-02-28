@@ -261,23 +261,6 @@ export async function fetchInvestmentPrices(
 //   USD/BRL → AwesomeAPI (economia.awesomeapi.com.br) — 100% free, no auth
 //   BTC     → Mercado Bitcoin ticker (price) + CoinGecko (24h change%)
 
-// JSONP helper — bypasses CORS for HG Brasil Finance (they support ?callback=)
-function fetchHGJsonp<T>(url: string, timeoutMs = 8000): Promise<T | null> {
-    return new Promise(resolve => {
-        const cbName = `_hg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        const script = document.createElement('script');
-        const timer = setTimeout(() => { cleanup(); resolve(null); }, timeoutMs);
-        const cleanup = () => {
-            clearTimeout(timer);
-            delete (window as any)[cbName];
-            script.remove();
-        };
-        (window as any)[cbName] = (data: T) => { cleanup(); resolve(data); };
-        script.src = `${url}&callback=${cbName}`;
-        script.onerror = () => { cleanup(); resolve(null); };
-        document.head.appendChild(script);
-    });
-}
 
 export async function fetchMarketOverview(): Promise<MarketOverview> {
     const overview: MarketOverview = { updatedAt: new Date() };

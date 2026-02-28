@@ -1,1 +1,15 @@
 node_modules
+
+# Variáveis de ambiente (NUNCA commitar)
+.env
+.env.*
+
+# Build outputs
+dist/
+dev-dist/
+
+# Scripts de geração/validação de chaves
+generate_vapid.cjs
+generate_vapid.js
+validate_key.js
+test_insert.ts

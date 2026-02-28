@@ -80,13 +80,34 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Create local preview
-      const imageUrl = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, avatarUrl: imageUrl }));
-      // Store file for upload
-      setAvatarFile(file);
+    if (!file) return;
+
+    // Validação de tipo MIME
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      showNotification({
+        title: 'Formato inválido',
+        message: 'Por favor, selecione uma imagem JPG, PNG, WebP ou GIF.',
+        type: 'error'
+      });
+      return;
     }
+
+    // Validação de tamanho (máx 5MB)
+    const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      showNotification({
+        title: 'Arquivo muito grande',
+        message: 'A imagem deve ter no máximo 5MB.',
+        type: 'error'
+      });
+      return;
+    }
+
+    // Criar preview local
+    const imageUrl = URL.createObjectURL(file);
+    setFormData(prev => ({ ...prev, avatarUrl: imageUrl }));
+    setAvatarFile(file);
   };
 
   // 3. Salvar Perfil (Upload + Database Update)

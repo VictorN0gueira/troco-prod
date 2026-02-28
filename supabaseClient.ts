@@ -12,19 +12,18 @@ declare global {
 }
 
 // --- CONFIGURAÇÃO DE CREDENCIAIS ---
-// Inseridas manualmente conforme solicitação.
-// A 'public key' (Anon Key) é segura para uso no frontend.
-// A 'secret key' foi omitida para segurança (deve ser usada apenas em servidores/backend).
+// As credenciais DEVEM ser definidas nas variáveis de ambiente (.env.local).
+// A 'anon key' (publishable) é segura para uso no frontend — expõe apenas
+// o que o RLS do Supabase permitir. Nunca commite valores hardcoded aqui.
 
-const HARDCODED_URL = 'https://jxwlttibcigihiyllhmz.supabase.co';
-const HARDCODED_KEY = 'sb_publishable_J6n8BuizmLDjbwUrxo2T-Q_qGh8B3qV';
+const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env?.VITE_SUPABASE_KEY;
 
-// Prioriza variáveis de ambiente (.env), fallback para os valores fornecidos
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || HARDCODED_URL;
-const supabaseKey = import.meta.env?.VITE_SUPABASE_KEY || HARDCODED_KEY;
-
-if (!supabaseUrl || !supabaseKey || supabaseUrl === 'https://placeholder.supabase.co') {
-  console.warn('Supabase URL ou Key não configuradas corretamente.');
+if (!supabaseUrl || !supabaseKey) {
+  console.error(
+    '[Trocô] ERRO: Variáveis VITE_SUPABASE_URL e VITE_SUPABASE_KEY não encontradas. ' +
+    'Certifique-se de que o arquivo .env.local está configurado corretamente.'
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl!, supabaseKey!);
