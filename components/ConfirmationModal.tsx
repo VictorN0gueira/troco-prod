@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, Info, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ConfirmationModalProps {
     isOpen: boolean;
@@ -52,62 +53,59 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div
-                    className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity"
-                    aria-hidden="true"
-                    onClick={isLoading ? undefined : onClose}
-                />
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        aria-hidden="true"
+                        onClick={isLoading ? undefined : onClose}
+                    />
 
-                <span className="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 w-full max-w-sm relative z-10 shadow-2xl text-center border border-slate-100 dark:border-slate-700"
+                    >
+                        <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${getBgColor()}`}>
+                            {getIcon()}
+                        </div>
 
-                <div className="relative inline-block transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-slate-100 dark:border-slate-700 animate-scale-in">
-                    <div className="p-6">
-                        <div className="flex items-start gap-4">
-                            <div className={`flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full ${getBgColor()}`}>
-                                {getIcon()}
-                            </div>
-                            <div className="flex-1 mt-1">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-6" id="modal-title">
-                                    {title}
-                                </h3>
-                                <div className="mt-2">
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                                        {message}
-                                    </p>
-                                </div>
-                            </div>
+                        <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2" id="modal-title">
+                            {title}
+                        </h3>
+
+                        <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">
+                            {message}
+                        </p>
+
+                        <div className="flex gap-3">
                             <button
-                                onClick={onClose}
+                                type="button"
                                 disabled={isLoading}
-                                className="text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                                onClick={onClose}
+                                className="flex-1 py-3.5 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95 transition-all"
                             >
-                                <X className="w-5 h-5" />
+                                {cancelText}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isLoading}
+                                onClick={onConfirm}
+                                className={`flex-1 py-3.5 text-white rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-black/10 disabled:opacity-70 flex items-center justify-center gap-2 ${getButtonColor()}`}
+                            >
+                                {isLoading ? 'Processando...' : confirmText}
                             </button>
                         </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 flex flex-row-reverse gap-3">
-                        <button
-                            type="button"
-                            disabled={isLoading}
-                            onClick={onConfirm}
-                            className={`w-full sm:w-auto inline-flex justify-center rounded-xl border border-transparent px-4 py-2 text-base font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm transition-colors ${getButtonColor()} ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                            {isLoading ? 'Processando...' : confirmText}
-                        </button>
-                        <button
-                            type="button"
-                            disabled={isLoading}
-                            onClick={onClose}
-                            className="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-base font-medium text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:text-sm transition-colors"
-                        >
-                            {cancelText}
-                        </button>
-                    </div>
+                    </motion.div>
                 </div>
-            </div>
-        </div>,
+            )}
+        </AnimatePresence>,
         document.body
     );
 };

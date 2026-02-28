@@ -21,6 +21,7 @@ import {
   XCircle,
   RefreshCw
 } from 'lucide-react';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useNotification } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
 import LimitPaywallModal from './LimitPaywallModal';
@@ -282,6 +283,22 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     return <IconComponent className={className} />;
   };
 
+  // Variants para a animação staggered
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05
+      }
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
   return (
     <div className="space-y-6">
       {/* Action Bar */}
@@ -363,133 +380,162 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {currentTransactions.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      {t.description}
-                      {t.isRecurring && (
-                        <RefreshCw className="w-3 h-3 text-primary-500" />
+            <motion.tbody
+              className="divide-y divide-slate-100 dark:divide-slate-800"
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+            >
+              <AnimatePresence>
+                {currentTransactions.map((t) => (
+                  <motion.tr
+                    key={t.id}
+                    variants={itemVariants}
+                    layout
+                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        {t.description}
+                        {t.isRecurring && (
+                          <RefreshCw className="w-3 h-3 text-primary-500" />
+                        )}
+                        <span className="block text-[10px] text-slate-400 font-mono mt-0.5">#{t.id}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getCategoryColor(t.category)}`}>
+                        <CategoryIcon category={t.category} className="w-3.5 h-3.5 mr-1.5" />
+                        {t.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center">
+                        <Calendar className="w-3 h-3 mr-1.5 opacity-70" />
+                        {formatDateDisplay(t.date)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {t.status === 'completed' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> {t.type === 'income' ? 'Recebido' : 'Pago'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                          <Clock className="w-3 h-3 mr-1" /> Pendente
+                        </span>
                       )}
-                      <span className="block text-[10px] text-slate-400 font-mono mt-0.5">#{t.id}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getCategoryColor(t.category)}`}>
-                      <CategoryIcon category={t.category} className="w-3.5 h-3.5 mr-1.5" />
-                      {t.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center">
-                      <Calendar className="w-3 h-3 mr-1.5 opacity-70" />
-                      {formatDateDisplay(t.date)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {t.status === 'completed' ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> {t.type === 'income' ? 'Recebido' : 'Pago'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <span className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-                        <Clock className="w-3 h-3 mr-1" /> Pendente
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <span className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex justify-center items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleOpenEdit(t)}
-                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-primary-500 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(t.id)}
-                        className="p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex justify-center items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleOpenEdit(t)}
+                          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-primary-500 transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTransactionToDelete(t.id);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </motion.tbody>
           </table>
         </div>
 
         {/* Mobile View: Cards */}
         <div className="md:hidden">
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {currentTransactions.map((t) => (
-              <div key={t.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t.description}</h4>
-                      {t.isRecurring && (
-                        <RefreshCw className="w-3 h-3 text-primary-500" />
-                      )}
-                      <span className="text-[10px] text-slate-400 font-mono">#{t.id}</span>
-                    </div>
-                    <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 gap-2 mt-1">
-                      <div className="flex items-center">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {formatDateDisplay(t.date)}
+          <motion.div
+            className="divide-y divide-slate-100 dark:divide-slate-800"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+          >
+            <AnimatePresence>
+              {currentTransactions.map((t) => (
+                <motion.div
+                  key={t.id}
+                  variants={itemVariants}
+                  layout
+                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                  className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t.description}</h4>
+                        {t.isRecurring && (
+                          <RefreshCw className="w-3 h-3 text-primary-500" />
+                        )}
+                        <span className="text-[10px] text-slate-400 font-mono">#{t.id}</span>
                       </div>
-                      <span>•</span>
-                      <div className="flex items-center">
-                        <CategoryIcon category={t.category} className="w-3 h-3 mr-1" />
-                        <span>{t.category}</span>
+                      <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 gap-2 mt-1">
+                        <div className="flex items-center">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {formatDateDisplay(t.date)}
+                        </div>
+                        <span>•</span>
+                        <div className="flex items-center">
+                          <CategoryIcon category={t.category} className="w-3 h-3 mr-1" />
+                          <span>{t.category}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => handleOpenEdit(t)}
-                    className="p-2 -mt-2 -mr-2 text-slate-400 hover:text-primary-500"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-center mt-3">
-                  <div className="flex items-center gap-2">
-                    {t.status === 'completed' ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                        {t.type === 'income' ? 'Recebido' : 'Pago'}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-                        Pendente
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className={`text-base font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
-                    </span>
                     <button
-                      onClick={() => {
-                        setTransactionToDelete(t.id);
-                        setIsDeleteModalOpen(true);
-                      }}
-                      className="p-2 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                      onClick={() => handleOpenEdit(t)}
+                      className="p-2 -mt-2 -mr-2 text-slate-400 hover:text-primary-500"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Edit2 className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+
+                  <div className="flex justify-between items-center mt-3">
+                    <div className="flex items-center gap-2">
+                      {t.status === 'completed' ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                          {t.type === 'income' ? 'Recebido' : 'Pago'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                          Pendente
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className={`text-base font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setTransactionToDelete(t.id);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        className="p-2 rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         </div>
 
         {filteredTransactions.length === 0 && (

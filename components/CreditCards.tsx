@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { CreditCard, UserProfile, Transaction } from '../types';
 import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
 
@@ -263,6 +264,22 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         return <CardIcon className="w-8 h-8 opacity-80" />;
     };
 
+    // Variants para a animação staggered
+    const containerVariants: Variants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants: Variants = {
+        hidden: { opacity: 0, scale: 0.9 },
+        show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
+    };
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             <div className="flex justify-between items-center">
@@ -280,142 +297,156 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {cards.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((card) => {
-                    const { invoiceAmount, availableLimit, currentInvoiceMonth, totalUsedLimit, usagePercentage } = getCardMetrics(card);
+            <motion.div
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+            >
+                <AnimatePresence>
+                    {cards.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((card) => {
+                        const { invoiceAmount, availableLimit, currentInvoiceMonth, totalUsedLimit, usagePercentage } = getCardMetrics(card);
 
-                    const isOverLimit = totalUsedLimit > card.limit_amount;
-                    const barColor = usagePercentage >= 100 ? '#EF4444'
-                        : usagePercentage >= 75 ? '#F59E0B'
-                            : '#34D399';
-                    const clampedPct = Math.min(100, usagePercentage);
+                        const isOverLimit = totalUsedLimit > card.limit_amount;
+                        const barColor = usagePercentage >= 100 ? '#EF4444'
+                            : usagePercentage >= 75 ? '#F59E0B'
+                                : '#34D399';
+                        const clampedPct = Math.min(100, usagePercentage);
 
-                    return (
-                        <div
-                            key={card.id}
-                            className="relative group perspective-1000"
-                        >
-                            {/* 3D Card Visual */}
-                            <div
-                                className="h-64 w-full rounded-2xl p-6 text-white shadow-xl transition-transform duration-500 transform group-hover:-translate-y-2 relative overflow-hidden flex flex-col justify-between cursor-pointer"
-                                style={{ background: getGradient(card.color) }}
-                                onClick={() => handleViewInvoice(card)}
+                        return (
+                            <motion.div
+                                key={card.id}
+                                className="relative group perspective-1000"
+                                variants={itemVariants}
+                                layout
+                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                             >
-                                {/* ... (Card Visuals remain the same) ... */}
-                                {/* Background Pattern */}
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                                <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5"></div>
+                                {/* 3D Card Visual */}
+                                <div
+                                    className="h-64 w-full rounded-2xl p-6 text-white shadow-xl transition-transform duration-500 transform group-hover:-translate-y-2 relative overflow-hidden flex flex-col justify-between cursor-pointer"
+                                    style={{ background: getGradient(card.color) }}
+                                    onClick={() => handleViewInvoice(card)}
+                                >
+                                    {/* ... (Card Visuals remain the same) ... */}
+                                    {/* Background Pattern */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5"></div>
 
-                                <div className="flex justify-between items-start relative z-10">
-                                    <div className="flex items-center gap-3">
-                                        {getBankLogo(card.name)}
-                                        <div>
-                                            <p className="text-xs font-medium opacity-80 uppercase tracking-wider">{card.brand || 'Cartão'}</p>
-                                            <h3 className="text-xl font-bold mt-0.5 tracking-wide">{card.name}</h3>
-                                        </div>
-                                    </div>
-
-                                    {/* Smart Alerts */}
-                                    <div className="flex flex-col items-end gap-1">
-                                        {(() => {
-                                            const today = new Date().getDate();
-                                            // Melhor dia para compra: Logo após o fechamento, até uns 3 dias depois
-                                            const bestDay = today >= card.closing_day && today <= card.closing_day + 3;
-                                            // Vence em breve: 5 dias antes do vencimento
-                                            let daysToDue = card.due_day - today;
-                                            if (daysToDue < 0) daysToDue += 30; // aproximação simples
-                                            const dueSoon = daysToDue <= 5 && daysToDue >= 0;
-
-                                            if (bestDay) {
-                                                return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
-                                            }
-                                            if (dueSoon) {
-                                                return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
-                                            }
-                                            return null;
-                                        })()}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 relative z-10">
-                                    <div>
-                                        {/* Usage header row */}
-                                        <div className="flex justify-between text-xs mb-1 opacity-90">
-                                            <span>Valor Consumido</span>
-                                            <span className="font-bold">R$ {totalUsedLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                    <div className="flex justify-between items-start relative z-10">
+                                        <div className="flex items-center gap-3">
+                                            {getBankLogo(card.name)}
+                                            <div>
+                                                <p className="text-xs font-medium opacity-80 uppercase tracking-wider">{card.brand || 'Cartão'}</p>
+                                                <h3 className="text-xl font-bold mt-0.5 tracking-wide">{card.name}</h3>
+                                            </div>
                                         </div>
 
-                                        {/* Colour-coded limit progress bar */}
-                                        <div className="relative w-full bg-black/30 rounded-full h-3 overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-700 ease-out"
-                                                style={{ width: `${clampedPct}%`, background: barColor, boxShadow: `0 0 8px ${barColor}99` }}
-                                            />
-                                            {/* Overflow flash when over limit */}
-                                            {isOverLimit && (
-                                                <div className="absolute inset-0 rounded-full animate-pulse bg-red-500/30" />
-                                            )}
-                                        </div>
+                                        {/* Smart Alerts */}
+                                        <div className="flex flex-col items-end gap-1">
+                                            {(() => {
+                                                const today = new Date().getDate();
+                                                // Melhor dia para compra: Logo após o fechamento, até uns 3 dias depois
+                                                const bestDay = today >= card.closing_day && today <= card.closing_day + 3;
+                                                // Vence em breve: 5 dias antes do vencimento
+                                                let daysToDue = card.due_day - today;
+                                                if (daysToDue < 0) daysToDue += 30; // aproximação simples
+                                                const dueSoon = daysToDue <= 5 && daysToDue >= 0;
 
-                                        {/* Bottom row */}
-                                        <div className="flex justify-between text-xs mt-1.5 opacity-90">
-                                            <span className="flex items-center gap-1">
-                                                {isOverLimit
-                                                    ? <span className="font-black text-red-300 animate-pulse">⚠ ESTOURADO</span>
-                                                    : <span>Disponível</span>
+                                                if (bestDay) {
+                                                    return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
                                                 }
-                                            </span>
-                                            <span className="font-bold" style={{ color: isOverLimit ? '#FCA5A5' : 'white' }}>
-                                                R$ {Math.abs(availableLimit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </span>
+                                                if (dueSoon) {
+                                                    return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-between items-center text-sm pt-2 border-t border-white/20">
-                                        <div className="flex items-center gap-1.5">
-                                            <CalendarClock className="w-4 h-4 opacity-75" />
-                                            <span>Fecha dia {card.closing_day}</span>
+                                    <div className="space-y-4 relative z-10">
+                                        <div>
+                                            {/* Usage header row */}
+                                            <div className="flex justify-between text-xs mb-1 opacity-90">
+                                                <span>Valor Consumido</span>
+                                                <span className="font-bold">R$ {totalUsedLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+
+                                            {/* Colour-coded limit progress bar */}
+                                            <div className="relative w-full bg-black/30 rounded-full h-3 overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-700 ease-out"
+                                                    style={{ width: `${clampedPct}%`, background: barColor, boxShadow: `0 0 8px ${barColor}99` }}
+                                                />
+                                                {/* Overflow flash when over limit */}
+                                                {isOverLimit && (
+                                                    <div className="absolute inset-0 rounded-full animate-pulse bg-red-500/30" />
+                                                )}
+                                            </div>
+
+                                            {/* Bottom row */}
+                                            <div className="flex justify-between text-xs mt-1.5 opacity-90">
+                                                <span className="flex items-center gap-1">
+                                                    {isOverLimit
+                                                        ? <span className="font-black text-red-300 animate-pulse">⚠ ESTOURADO</span>
+                                                        : <span>Disponível</span>
+                                                    }
+                                                </span>
+                                                <span className="font-bold" style={{ color: isOverLimit ? '#FCA5A5' : 'white' }}>
+                                                    R$ {Math.abs(availableLimit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <Calendar className="w-4 h-4 opacity-75" />
-                                            <span>Vence dia {card.due_day}</span>
+
+                                        <div className="flex justify-between items-center text-sm pt-2 border-t border-white/20">
+                                            <div className="flex items-center gap-1.5">
+                                                <CalendarClock className="w-4 h-4 opacity-75" />
+                                                <span>Fecha dia {card.closing_day}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <Calendar className="w-4 h-4 opacity-75" />
+                                                <span>Vence dia {card.due_day}</span>
+                                            </div>
                                         </div>
                                     </div>
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 backdrop-blur-[2px] rounded-2xl z-20">
+                                        <span className="bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                                            Ver Fatura
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 backdrop-blur-[2px] rounded-2xl z-20">
-                                    <span className="bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                                        Ver Fatura
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Action Buttons (Visible on Hover/Focus - Outside Card Click Area) */}
-                            <div className="absolute -top-3 -right-3 flex gap-2 z-30">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
-                                    className="p-2 bg-white dark:bg-slate-800 text-blue-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
-                                >
-                                    <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(card.id); }}
-                                    className="p-2 bg-white dark:bg-slate-800 text-red-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
+                                {/* Action Buttons (Visible on Hover/Focus - Outside Card Click Area) */}
+                                <div className="absolute -top-3 -right-3 flex gap-2 z-30">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
+                                        className="p-2 bg-white dark:bg-slate-800 text-blue-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(card.id); }}
+                                        className="p-2 bg-white dark:bg-slate-800 text-red-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </AnimatePresence>
 
                 {/* ... (Empty State) ... */}
                 {cards.length === 0 && (
-                    <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl"
+                    >
                         <CardIcon className="w-12 h-12 mb-4 opacity-50" />
                         <p>Nenhum cartão cadastrado ainda.</p>
-                    </div>
+                    </motion.div>
                 )}
-            </div>
+            </motion.div>
 
             {/* Pagination Controls */}
             {cards.length > ITEMS_PER_PAGE && (

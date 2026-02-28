@@ -22,6 +22,7 @@ import { getTodayLocalDate } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const OfflineIndicator = () => {
   const { isOnline, isSyncing, queueSize } = useOffline();
@@ -124,7 +125,17 @@ const AppRoutes = ({
       <Route
         path="/"
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="h-full w-full"
+            >
+              <LandingPage />
+            </motion.div>
+          )
         }
       />
 
@@ -132,10 +143,15 @@ const AppRoutes = ({
         path="/login"
         element={
           isAuthenticated ? <Navigate to="/dashboard" replace /> : (
-            // Wrapper animado para a tela de login
-            <div className="animate-fade-in">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="h-full w-full"
+            >
               <Login onLogin={handleLoginSuccess} />
-            </div>
+            </motion.div>
           )
         }
       />
@@ -155,88 +171,110 @@ const AppRoutes = ({
         />
       }>
         <Route path="/dashboard" element={
-          <Dashboard
-            transactions={transactions}
-            user={user}
-            privacyMode={privacyMode}
-            cards={cards} // Pass cards to Dashboard
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Dashboard
+              transactions={transactions}
+              user={user}
+              privacyMode={privacyMode}
+              cards={cards} // Pass cards to Dashboard
+            />
+          </motion.div>
         } />
 
         <Route path="/transactions" element={
-          <Transactions
-            transactions={transactions}
-            onAdd={addTransaction}
-            onEdit={updateTransaction}
-            onDelete={deleteTransaction}
-            cards={cards}
-            onAddMultiple={addMultipleTransactions}
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Transactions
+              transactions={transactions}
+              onAdd={addTransaction}
+              onEdit={updateTransaction}
+              onDelete={deleteTransaction}
+              cards={cards}
+              onAddMultiple={addMultipleTransactions}
+            />
+          </motion.div>
         } />
 
         <Route path="/reminders" element={
-          <Reminders
-            transactions={transactions}
-            onAdd={addTransaction}
-            onEdit={updateTransaction}
-            onDelete={deleteTransaction}
-            user={user}
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Reminders
+              transactions={transactions}
+              onAdd={addTransaction}
+              onEdit={updateTransaction}
+              onDelete={deleteTransaction}
+              user={user}
+            />
+          </motion.div>
         } />
 
         <Route path="/calendar" element={
-          <CalendarView
-            transactions={transactions}
-            onAddTransaction={addTransaction}
-            onUpdateTransaction={updateTransaction}
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <CalendarView
+              transactions={transactions}
+              onAddTransaction={addTransaction}
+              onUpdateTransaction={updateTransaction}
+            />
+          </motion.div>
         } />
 
         <Route path="/cards" element={
-          <CreditCards
-            user={user}
-            cards={cards}
-            transactions={transactions}
-            fetchCards={fetchCards}
-            payCardInvoice={payCardInvoice}
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <CreditCards
+              user={user}
+              cards={cards}
+              transactions={transactions}
+              fetchCards={fetchCards}
+              payCardInvoice={payCardInvoice}
+            />
+          </motion.div>
         } />
 
         <Route path="/reports" element={
-          <Reports transactions={transactions} />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Reports transactions={transactions} />
+          </motion.div>
         } />
 
         <Route path="/investments" element={
-          <Investments
-            investments={investments}
-            onAdd={addInvestment}
-            onEdit={updateInvestment}
-            onDelete={deleteInvestment}
-            onUpdatePrices={updateInvestmentPrices}
-            user={user}
-            privacyMode={privacyMode}
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Investments
+              investments={investments}
+              onAdd={addInvestment}
+              onEdit={updateInvestment}
+              onDelete={deleteInvestment}
+              onUpdatePrices={updateInvestmentPrices}
+              user={user}
+              privacyMode={privacyMode}
+            />
+          </motion.div>
         } />
 
-        <Route path="/insights" element={<NewsFeed user={user} />} />
+        <Route path="/insights" element={
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <NewsFeed user={user} />
+          </motion.div>
+        } />
 
         <Route path="/goals" element={
-          <Goals
-            goals={goals}
-            onAdd={addGoal}
-            onEdit={updateGoal}
-            onDelete={deleteGoal}
-            onAddMoney={addMoneyToGoal}
-            user={user}
-            privacyMode={privacyMode}
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Goals
+              goals={goals}
+              onAdd={addGoal}
+              onEdit={updateGoal}
+              onDelete={deleteGoal}
+              onAddMoney={addMoneyToGoal}
+              user={user}
+              privacyMode={privacyMode}
+            />
+          </motion.div>
         } />
 
         <Route path="/settings" element={
-          <Settings
-            user={user}
-            onUpdateUser={updateUser}
-          />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Settings
+              user={user}
+              onUpdateUser={updateUser}
+            />
+          </motion.div>
         } />
       </Route>
 

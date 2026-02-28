@@ -5,8 +5,9 @@ import {
     ShoppingCart, Star, Gift, Trophy, BookOpen, Briefcase, Music, Laptop, AlertTriangle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Goal, UserProfile } from '../types';
-
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import LimitPaywallModal from './LimitPaywallModal';
+import ConfirmationModal from './ConfirmationModal';
 
 interface GoalsProps {
     goals: Goal[];
@@ -230,6 +231,22 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
         return Math.min(Math.max(percentage, 0), 100);
     };
 
+    // Variants para a animação staggered
+    const containerVariants: Variants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants: Variants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+    };
+
     return (
         <div className="space-y-6 animate-fade-in pb-20 lg:pb-0">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -268,122 +285,132 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                 </div>
             ) : (
                 <div className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {currentGoals.map(goal => {
-                            const progress = calculateProgress(goal.current_amount, goal.target_amount);
-                            const isCompleted = progress >= 100;
+                    <motion.div
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="show"
+                    >
+                        <AnimatePresence>
+                            {currentGoals.map(goal => {
+                                const progress = calculateProgress(goal.current_amount, goal.target_amount);
+                                const isCompleted = progress >= 100;
 
-                            return (
-                                <div
-                                    key={goal.id}
-                                    className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] transition-all hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group flex flex-col"
-                                >
-                                    {/* Cor de fundo borrada superior */}
-                                    <div
-                                        className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"
-                                        style={{ backgroundColor: goal.color }}
-                                    />
+                                return (
+                                    <motion.div
+                                        key={goal.id}
+                                        variants={itemVariants}
+                                        layout
+                                        exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                                        className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] transition-all hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group flex flex-col"
+                                    >
+                                        {/* Cor de fundo borrada superior */}
+                                        <div
+                                            className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"
+                                            style={{ backgroundColor: goal.color }}
+                                        />
 
-                                    <div className="flex justify-between items-start mb-6 relative z-10">
-                                        <div className="flex items-center gap-4">
-                                            <div
-                                                className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner"
-                                                style={{ backgroundColor: `${goal.color}20`, color: goal.color }}
-                                            >
-                                                {renderIcon(goal.icon)}
+                                        <div className="flex justify-between items-start mb-6 relative z-10">
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner"
+                                                    style={{ backgroundColor: `${goal.color}20`, color: goal.color }}
+                                                >
+                                                    {renderIcon(goal.icon)}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-lg text-slate-800 dark:text-white leading-tight">{goal.name}</h3>
+                                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-1">
+                                                        <CalendarIcon className="w-3.5 h-3.5" />
+                                                        {new Date(goal.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h3 className="font-bold text-lg text-slate-800 dark:text-white leading-tight">{goal.name}</h3>
-                                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-1">
-                                                    <CalendarIcon className="w-3.5 h-3.5" />
-                                                    {new Date(goal.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}
-                                                </p>
+
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => openEditModal(goal)}
+                                                    className="p-2 text-slate-400 hover:text-primary-500 bg-slate-50 hover:bg-primary-50 dark:bg-slate-700 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => openDeleteModal(goal.id)}
+                                                    className="p-2 text-slate-400 hover:text-danger-500 bg-slate-50 hover:bg-danger-50 dark:bg-slate-700 dark:hover:bg-danger-900/40 rounded-lg transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex-1 mt-2">
+                                            <div className="flex justify-between items-end mb-2">
+                                                <div>
+                                                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Guardado</p>
+                                                    <p className="text-xl font-bold flex items-center gap-1" style={{ color: goal.color }}>
+                                                        {formatCurrency(goal.current_amount)}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Objetivo</p>
+                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                        {formatCurrency(goal.target_amount)}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3 mb-2 overflow-hidden shadow-inner relative">
+                                                <div
+                                                    className="h-3 rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                                                    style={{
+                                                        width: `${progress}%`,
+                                                        backgroundColor: goal.color,
+                                                    }}
+                                                >
+                                                    {/* Efeito de brilho na barra */}
+                                                    <div className="absolute top-0 right-0 bottom-0 left-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                                                    Progresso
+                                                </span>
+                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${goal.color}15`, color: goal.color }}>
+                                                    {progress.toFixed(1)}%
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-700/50">
                                             <button
-                                                onClick={() => openEditModal(goal)}
-                                                className="p-2 text-slate-400 hover:text-primary-500 bg-slate-50 hover:bg-primary-50 dark:bg-slate-700 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
-                                                title="Editar"
+                                                onClick={() => openAddMoneyModal(goal.id)}
+                                                disabled={isCompleted}
+                                                className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${isCompleted
+                                                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 cursor-not-allowed'
+                                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 shadow-sm'
+                                                    }`}
                                             >
-                                                <Edit2 className="w-4 h-4" />
+                                                {isCompleted ? (
+                                                    <>
+                                                        <CheckCircle2 className="w-5 h-5" />
+                                                        Meta Alcançada!
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <DollarSign className="w-5 h-5" />
+                                                        Guardar Dinheiro
+                                                    </>
+                                                )}
                                             </button>
-                                            <button
-                                                onClick={() => openDeleteModal(goal.id)}
-                                                className="p-2 text-slate-400 hover:text-danger-500 bg-slate-50 hover:bg-danger-50 dark:bg-slate-700 dark:hover:bg-danger-900/40 rounded-lg transition-colors"
-                                                title="Excluir"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
                                         </div>
-                                    </div>
-
-                                    <div className="flex-1 mt-2">
-                                        <div className="flex justify-between items-end mb-2">
-                                            <div>
-                                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Guardado</p>
-                                                <p className="text-xl font-bold flex items-center gap-1" style={{ color: goal.color }}>
-                                                    {formatCurrency(goal.current_amount)}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Objetivo</p>
-                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                                                    {formatCurrency(goal.target_amount)}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3 mb-2 overflow-hidden shadow-inner relative">
-                                            <div
-                                                className="h-3 rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
-                                                style={{
-                                                    width: `${progress}%`,
-                                                    backgroundColor: goal.color,
-                                                }}
-                                            >
-                                                {/* Efeito de brilho na barra */}
-                                                <div className="absolute top-0 right-0 bottom-0 left-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                                                Progresso
-                                            </span>
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${goal.color}15`, color: goal.color }}>
-                                                {progress.toFixed(1)}%
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-700/50">
-                                        <button
-                                            onClick={() => openAddMoneyModal(goal.id)}
-                                            disabled={isCompleted}
-                                            className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${isCompleted
-                                                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 cursor-not-allowed'
-                                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 shadow-sm'
-                                                }`}
-                                        >
-                                            {isCompleted ? (
-                                                <>
-                                                    <CheckCircle2 className="w-5 h-5" />
-                                                    Meta Alcançada!
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <DollarSign className="w-5 h-5" />
-                                                    Guardar Dinheiro
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    </motion.div>
 
                     {totalPages > 1 && (
                         <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/50 pt-6 mt-6">
@@ -594,39 +621,17 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
             }
 
             {/* Modal Excluir Meta */}
-            {
-                isDeleteModalOpen && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
-                        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 w-full max-w-sm relative z-10 shadow-2xl animate-scale-in text-center">
-                            <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-6">
-                                <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Excluir Meta?</h3>
-                            <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">
-                                Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita e os dados serão removidos.
-                            </p>
-
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsDeleteModalOpen(false)}
-                                    className="flex-1 py-3.5 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95 transition-all"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={confirmDelete}
-                                    disabled={isLoading}
-                                    className="flex-1 py-3.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 active:scale-95 transition-all shadow-lg shadow-red-500/30 disabled:opacity-70 flex items-center justify-center gap-2"
-                                >
-                                    {isLoading ? 'Excluindo...' : 'Excluir'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Excluir Meta"
+                message="Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita e os dados serão removidos."
+                confirmText="Excluir"
+                cancelText="Cancelar"
+                type="danger"
+                isLoading={isLoading}
+            />
 
             {/* Limit Reached Modal */}
             <LimitPaywallModal

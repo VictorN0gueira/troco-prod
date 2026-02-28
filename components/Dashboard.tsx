@@ -518,14 +518,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
           {/* Date Navigation */}
           <div className="flex items-center bg-white dark:bg-slate-850 p-1.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            <button onClick={prevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
+            <button onClick={prevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-all active:scale-95">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2 px-4 min-w-[160px] justify-center text-slate-700 dark:text-white font-semibold">
               <Calendar className="w-4 h-4 text-primary-500" />
               {displayMonth}
             </div>
-            <button onClick={nextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
+            <button onClick={nextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-all active:scale-95">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>

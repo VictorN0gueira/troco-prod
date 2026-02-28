@@ -23,7 +23,9 @@ import {
   Wallet,
   RefreshCw
 } from 'lucide-react';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import LimitPaywallModal from './LimitPaywallModal';
+import ConfirmationModal from './ConfirmationModal';
 
 interface RemindersProps {
   transactions: Transaction[];
@@ -45,6 +47,9 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'asc' });
 
   const [confirmPaymentTx, setConfirmPaymentTx] = useState<Transaction | null>(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [reminderToDelete, setReminderToDelete] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const today = getTodayLocalDate();
@@ -227,6 +232,35 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
     return { label: 'Em Breve', color: 'text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700' };
   };
 
+  const openDeleteModal = (id: string) => {
+    setReminderToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (reminderToDelete) {
+      onDelete(reminderToDelete);
+      setIsDeleteModalOpen(false);
+      setReminderToDelete(null);
+    }
+  };
+
+  // Variants para a animação staggered
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05
+      }
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -299,121 +333,147 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {currentTransactions.map((t) => {
-                const status = getDueStatus(t.date);
-                return (
-                  <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-xs font-bold ${status.color}`}>
-                        <CalendarClock className="w-3.5 h-3.5 mr-1.5" />
-                        {status.label === 'Vence Hoje' ? 'Hoje' : formatDateDisplay(t.date)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                        {t.description}
-                        {t.isRecurring && (
-                          <RefreshCw className="w-3 h-3 text-primary-500" />
-                        )}
-                        <span className="block text-[10px] text-slate-400 font-mono mt-0.5">#{t.id}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getCategoryColor(t.category)}`}>
-                        <CategoryIcon category={t.category} className="w-3.5 h-3.5 mr-1.5" />
-                        {t.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-200'}`}>
-                        {formatCurrency(t.amount)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex justify-center items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMarkAsPaid(t);
-                          }}
-                          title="Marcar como Pago"
-                          className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors border border-emerald-200 dark:border-emerald-800 cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(t)}
-                          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-primary-500 transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(t.id)}
-                          className="p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+            <motion.tbody
+              className="divide-y divide-slate-100 dark:divide-slate-800"
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+            >
+              <AnimatePresence>
+                {currentTransactions.map((t) => {
+                  const status = getDueStatus(t.date);
+                  return (
+                    <motion.tr
+                      key={t.id}
+                      variants={itemVariants}
+                      layout
+                      exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-xs font-bold ${status.color}`}>
+                          <CalendarClock className="w-3.5 h-3.5 mr-1.5" />
+                          {status.label === 'Vence Hoje' ? 'Hoje' : formatDateDisplay(t.date)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                          {t.description}
+                          {t.isRecurring && (
+                            <RefreshCw className="w-3 h-3 text-primary-500" />
+                          )}
+                          <span className="block text-[10px] text-slate-400 font-mono mt-0.5">#{t.id}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getCategoryColor(t.category)}`}>
+                          <CategoryIcon category={t.category} className="w-3.5 h-3.5 mr-1.5" />
+                          {t.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <span className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                          {formatCurrency(t.amount)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex justify-center items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsPaid(t);
+                            }}
+                            title="Marcar como Pago"
+                            className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors border border-emerald-200 dark:border-emerald-800 cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(t)}
+                            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-primary-500 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(t.id)}
+                            className="p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.tbody>
           </table>
         </div>
 
         <div className="md:hidden">
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {currentTransactions.map((t) => {
-              const status = getDueStatus(t.date);
-              return (
-                <div key={t.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className={`inline-flex items-center px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wide ${status.color}`}>
-                      <CalendarClock className="w-3 h-3 mr-1" />
-                      {status.label === 'Vence Hoje' ? 'Vence Hoje' : `Vence em ${formatDateDisplay(t.date)}`}
+          <motion.div
+            className="divide-y divide-slate-100 dark:divide-slate-800"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+          >
+            <AnimatePresence>
+              {currentTransactions.map((t) => {
+                const status = getDueStatus(t.date);
+                return (
+                  <motion.div
+                    key={t.id}
+                    variants={itemVariants}
+                    layout
+                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                    className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className={`inline-flex items-center px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wide ${status.color}`}>
+                        <CalendarClock className="w-3 h-3 mr-1" />
+                        {status.label === 'Vence Hoje' ? 'Vence Hoje' : `Vence em ${formatDateDisplay(t.date)}`}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsPaid(t);
+                        }}
+                        className="flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800 active:scale-95"
+                      >
+                        <CheckCircle2 className="w-3 h-3 mr-1.5" /> Pagar
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMarkAsPaid(t);
-                      }}
-                      className="flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800 active:scale-95"
-                    >
-                      <CheckCircle2 className="w-3 h-3 mr-1.5" /> Pagar
-                    </button>
-                  </div>
 
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.description}</h4>
-                      {t.isRecurring && <RefreshCw className="w-3 h-3 text-primary-500" />}
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t.description}</h4>
+                        {t.isRecurring && <RefreshCw className="w-3 h-3 text-primary-500" />}
+                      </div>
+                      <span className={`text-base font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {formatCurrency(t.amount)}
+                      </span>
                     </div>
-                    <span className={`text-base font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-200'}`}>
-                      {formatCurrency(t.amount)}
-                    </span>
-                  </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center">
-                      <CategoryIcon category={t.category} className="w-3 h-3 mr-1" />
-                      <span>{t.category}</span>
+                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center">
+                        <CategoryIcon category={t.category} className="w-3 h-3 mr-1" />
+                        <span>{t.category}</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={() => handleOpenEdit(t)} className="text-primary-500 font-medium">Editar</button>
+                        <button onClick={() => openDeleteModal(t.id)} className="text-rose-500 font-medium">Excluir</button>
+                      </div>
                     </div>
-                    <div className="flex gap-3">
-                      <button onClick={() => handleOpenEdit(t)} className="text-primary-500 font-medium">Editar</button>
-                      <button onClick={() => onDelete(t.id)} className="text-rose-500 font-medium">Excluir</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
         </div>
 
         {filteredTransactions.length === 0 && (
@@ -686,6 +746,17 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         title="Limite de Lembretes Atingido"
         description="No plano gratuito você pode ter até 10 lembretes ativos simultaneamente. Assine o Super Trocô para criar lembretes ilimitados e nunca mais esquecer uma conta."
         userEmail={user?.email}
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Excluir Lembrete"
+        message="Tem certeza que deseja excluir este lembrete? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
       />
     </div>
   );
