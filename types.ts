@@ -109,3 +109,15 @@ export interface InvestmentNews {
   timestamp: string;
   category?: string;
 }
+
+export interface Goal {
+  id: string;
+  user_id: number;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  deadline: string; // ISO date string YYYY-MM-DD
+  color: string;
+  icon: string;
+  created_at?: string;
+}

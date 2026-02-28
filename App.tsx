@@ -13,7 +13,8 @@ import LandingPage from './components/LandingPage';
 import Investments from './components/Investments';
 import Legal from './components/Legal';
 import NewsFeed from './components/NewsFeed';
-import { Transaction, UserProfile, CreditCard, Investment } from './types';
+import Goals from './components/Goals';
+import { Transaction, UserProfile, CreditCard, Investment, Goal } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
@@ -111,7 +112,12 @@ const AppRoutes = ({
   deleteInvestment,
   updateInvestmentPrices,
   addMultipleTransactions,
-  payCardInvoice
+  payCardInvoice,
+  goals,
+  addGoal,
+  updateGoal,
+  deleteGoal,
+  addMoneyToGoal
 }: any) => {
   return (
     <Routes>
@@ -213,6 +219,18 @@ const AppRoutes = ({
         } />
 
         <Route path="/insights" element={<NewsFeed user={user} />} />
+
+        <Route path="/goals" element={
+          <Goals
+            goals={goals}
+            onAdd={addGoal}
+            onEdit={updateGoal}
+            onDelete={deleteGoal}
+            onAddMoney={addMoneyToGoal}
+            user={user}
+            privacyMode={privacyMode}
+          />
+        } />
 
         <Route path="/settings" element={
           <Settings
@@ -613,6 +631,36 @@ const AppContent: React.FC = () => {
   // State for Investments
   const [investments, setInvestments] = useState<Investment[]>([]);
 
+  // State for Goals
+  const [goals, setGoals] = useState<Goal[]>([]);
+
+  // Fetch Goals Function
+  const fetchGoals = async (userId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('metas')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setGoals(
+        (data || []).map((g: any): Goal => ({
+          id: g.id.toString(),
+          user_id: g.user_id,
+          name: g.name,
+          target_amount: Number(g.target_amount),
+          current_amount: Number(g.current_amount),
+          deadline: g.deadline,
+          color: g.color,
+          icon: g.icon,
+          created_at: g.created_at,
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+    }
+  };
+
   // Fetch Investments Function
   const fetchInvestments = async (userId: number) => {
     try {
@@ -686,6 +734,7 @@ const AppContent: React.FC = () => {
         fetchTransactions(data.id);
         fetchCards(data.id); // Fetch Cards too!
         fetchInvestments(data.id); // Fetch Investments too!
+        fetchGoals(data.id); // Fetch Goals too!
 
       } else {
         // Retry Logic para suportar delay do N8N
@@ -1060,6 +1109,92 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // ── Goals CRUD ──────────────────────────────────────────────────────────────
+
+  const addGoal = async (goal: Goal) => {
+    // Generate a temporary ID for optimistic UI
+    const tempId = Date.now().toString();
+    const newGoalTemp = { ...goal, id: tempId };
+    setGoals(prev => [newGoalTemp, ...prev]);
+
+    if (user.id !== 0) {
+      const { error, data } = await supabase.from('metas').insert({
+        user_id: user.id,
+        name: goal.name,
+        target_amount: goal.target_amount,
+        current_amount: goal.current_amount || 0,
+        deadline: goal.deadline,
+        color: goal.color,
+        icon: goal.icon
+      }).select().single();
+
+      if (error) {
+        console.error('Erro ao adicionar meta:', error);
+        setGoals(prev => prev.filter(g => g.id !== tempId));
+        throw error;
+      }
+
+      // Update with the real ID from DB
+      if (data) {
+        setGoals(prev => prev.map(g => g.id === tempId ? { ...g, id: data.id.toString() } : g));
+      }
+    }
+  };
+
+  const updateGoal = async (goal: Goal) => {
+    setGoals(prev => prev.map(g => g.id === goal.id ? goal : g));
+    if (user.id !== 0) {
+      const { error } = await supabase.from('metas').update({
+        name: goal.name,
+        target_amount: goal.target_amount,
+        current_amount: goal.current_amount,
+        deadline: goal.deadline,
+        color: goal.color,
+        icon: goal.icon
+      }).eq('user_id', user.id).eq('id', goal.id);
+
+      if (error) {
+        console.error('Erro ao atualizar meta:', error);
+        throw error;
+      }
+    }
+  };
+
+  const deleteGoal = async (id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+    if (user.id !== 0) {
+      const { error } = await supabase.from('metas').delete()
+        .eq('user_id', user.id).eq('id', id);
+      if (error) {
+        console.error('Erro ao excluir meta:', error);
+        throw error;
+      }
+    }
+  };
+
+  const addMoneyToGoal = async (id: string, amount: number) => {
+    // Optimistic Update
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, current_amount: g.current_amount + amount } : g));
+
+    if (user.id !== 0) {
+      const goalToUpdate = goals.find(g => g.id === id);
+      if (!goalToUpdate) return;
+
+      const newAmount = goalToUpdate.current_amount + amount;
+
+      const { error } = await supabase.from('metas').update({
+        current_amount: newAmount
+      }).eq('user_id', user.id).eq('id', id);
+
+      if (error) {
+        console.error('Erro ao adicionar dinheiro à meta:', error);
+        // Rollback on error
+        setGoals(prev => prev.map(g => g.id === id ? { ...g, current_amount: goalToUpdate.current_amount } : g));
+        throw error;
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -1096,6 +1231,11 @@ const AppContent: React.FC = () => {
         updateInvestmentPrices={updateInvestmentPrices}
         addMultipleTransactions={addMultipleTransactions}
         payCardInvoice={payCardInvoice}
+        goals={goals}
+        addGoal={addGoal}
+        updateGoal={updateGoal}
+        deleteGoal={deleteGoal}
+        addMoneyToGoal={addMoneyToGoal}
       />
     </HashRouter>
   );
