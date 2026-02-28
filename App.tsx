@@ -223,6 +223,7 @@ const AppRoutes = ({
               onDelete={deleteTransaction}
               cards={cards}
               onAddMultiple={addMultipleTransactions}
+              user={user}
             />
           </motion.div>
         } />

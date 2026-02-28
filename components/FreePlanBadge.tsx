@@ -62,8 +62,8 @@ export const FreePlanBadge: React.FC<FreePlanBadgeProps> = ({
                                 FREE
                             </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 leading-tight truncate">
-                            Upgrade para recursos ilimitados
+                        <p className="text-[11px] text-slate-400 leading-tight">
+                            Assine o Super Trocô ✨
                         </p>
                     </div>
 
@@ -149,7 +149,7 @@ export const UsageMeter: React.FC<UsageMeterProps> = ({
 
             {/* Label (oculto em sm) */}
             {!isCompact && (
-                <span className="text-slate-400 text-xs hidden sm:inline truncate max-w-[100px]">{label}</span>
+                <span className="text-slate-400 text-xs hidden sm:inline">{label}</span>
             )}
         </div>
     );

@@ -20,7 +20,8 @@ import {
   TrendingDown,
   HelpCircle,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  ArrowRightLeft
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useNotification } from '../contexts/NotificationContext';
@@ -163,14 +164,9 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   };
 
   const handleOpenCreate = () => {
-    // Limit check for free tier: max 30 transactions in current month
+    // Limit check for free tier: max 30 transactions in TOTAL
     if (user && user.status_assinatura !== 'active') {
-      const now = new Date();
-      const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-      const transactionsThisMonth = transactions.filter(t => t.date.startsWith(currentMonthPrefix)).length;
-
-      if (transactionsThisMonth >= 30) {
+      if (transactions.length >= 30) {
         setIsLimitModalOpen(true);
         return; // Block opening the modal
       }
@@ -302,6 +298,21 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
 
   return (
     <div className="space-y-6">
+      {/* Cabeçalho com indicador de uso para plano free */}
+      {user && user.status_assinatura !== 'active' && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+              <ArrowRightLeft className="w-7 h-7 text-primary-500" />
+              Transações
+            </h2>
+            <div className="mt-2 max-w-xs">
+              <UsageMeter current={transactions.length} max={30} label="transações" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Action Bar */}
       <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
 
@@ -343,17 +354,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
             <span className="sm:hidden">Filtrar</span>
           </button>
 
-          {/* Indicador de uso mensal para plano free */}
-          {user && user.status_assinatura !== 'active' && (() => {
-            const now = new Date();
-            const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const countThisMonth = transactions.filter(t => t.date.startsWith(monthPrefix)).length;
-            return (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 min-w-[140px]">
-                <UsageMeter current={countThisMonth} max={30} label="este mês" size="sm" />
-              </div>
-            );
-          })()}
+          {/* Indicador de uso mensal - removido daqui (agora está no cabeçalho) */}
 
           <button
             onClick={handleOpenCreate}

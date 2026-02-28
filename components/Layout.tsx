@@ -144,7 +144,7 @@ const Layout: React.FC<LayoutProps> = ({
           {user.status_assinatura !== 'active' && (
             <FreePlanBadge
               variant="full"
-              onClick={() => window.open('https://wa.me/558184451243?text=Quero+conhecer+o+Super+Trocô!', '_blank')}
+              onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
             />
           )}
 
@@ -232,7 +232,7 @@ const Layout: React.FC<LayoutProps> = ({
               {user.status_assinatura !== 'active' && (
                 <FreePlanBadge
                   variant="compact"
-                  onClick={() => window.open('https://wa.me/558184451243?text=Quero+conhecer+o+Super+Trocô!', '_blank')}
+                  onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
                 />
               )}
               <div className="text-right hidden sm:block">
