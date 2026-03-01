@@ -17,7 +17,8 @@ import {
     Instagram,
     Newspaper,
     Clock,
-    ExternalLink
+    ExternalLink,
+    Target
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
@@ -252,14 +253,15 @@ const LandingPage: React.FC = () => {
                         <h3 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white">Tudo que você precisa para <br className="hidden md:block" /> sua vida financeira.</h3>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="flex flex-wrap justify-center gap-8">
                         {[
                             { icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10', title: 'Gestão de Cartões', desc: 'Acompanhe faturamentos, limites e melhores datas de compra automaticamente.' },
                             { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10', title: 'Investimentos', desc: 'Sua carteira consolidada com cotações em tempo real e análise de performance.' },
                             { icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10', title: 'Contas e Lembretes', desc: 'Nunca mais esqueça de pagar um boleto. Notificações inteligentes de vencimento.' },
-                            { icon: MessageCircle, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10', title: 'Agente WhatsApp', desc: 'Interaja com seu assistente financeiro direto pelo WhatsApp via comandos de voz ou texto.' }
+                            { icon: MessageCircle, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10', title: 'Agente WhatsApp', desc: 'Interaja com seu assistente financeiro direto pelo WhatsApp via comandos de voz ou texto.' },
+                            { icon: Target, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10', title: 'Metas Financeiras', desc: 'Defina, acompanhe e alcance seus objetivos financeiros mais rápido com metas inteligentes.' }
                         ].map((f, i) => (
-                            <div key={i} className="group p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-primary-500/50 hover:shadow-2xl hover:shadow-primary-500/10 transition-all duration-500">
+                            <div key={i} className="flex-1 min-w-[280px] max-w-[320px] group p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-primary-500/50 hover:shadow-2xl hover:shadow-primary-500/10 transition-all duration-500">
                                 <div className={`w-14 h-14 ${f.bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                                     <f.icon className={`w-7 h-7 ${f.color}`} />
                                 </div>
@@ -445,10 +447,10 @@ const LandingPage: React.FC = () => {
                             </div>
                             <h4 className="text-lg font-bold mb-2 relative z-20">Plano Anual</h4>
                             <div className="flex items-baseline gap-1 mb-1 relative z-20">
-                                <span className="text-4xl font-black">R$ 19,90</span>
+                                <span className="text-4xl font-black">R$ 14,90</span>
                                 <span className="opacity-60 text-sm">/mês*</span>
                             </div>
-                            <p className="text-[10px] opacity-50 mb-6 relative z-20">*Cobrado anualmente (R$ 238,80)</p>
+                            <p className="text-[10px] opacity-50 mb-6 relative z-20">*Cobrado anualmente (R$ 178,80)</p>
 
                             <ul className="space-y-4 mb-10 flex-1 relative z-20">
                                 <li className="flex items-center gap-3">
