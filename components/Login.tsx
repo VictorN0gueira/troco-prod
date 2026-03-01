@@ -347,7 +347,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       if (data.user?.email) {
         const { error: dbError } = await supabase.from('usuarios').insert([
-          { email: data.user.email, nome: fullName, tem_plano: false }
+          {
+            email: data.user.email,
+            nome: fullName,
+            tem_plano: false,
+            notificacoes_email: true,
+            notificacoes_push: true,
+            notificacoes_marketing: true,
+            notificacoes_whatsapp: true
+          }
         ]);
         if (dbError && !dbError.message.includes('duplicate key value')) {
           triggerError(`Conta criada, mas erro ao salvar perfil. Contate o suporte.`);

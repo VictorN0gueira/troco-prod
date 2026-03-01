@@ -442,35 +442,10 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
               Notificações
             </h3>
 
-            {/* Push Manager Component / Smart Notifications Paywall */}
-            {user.status_assinatura === 'active' ? (
-              <PushManager userId={user.id} />
-            ) : (
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-3 opacity-20 transform group-hover:scale-110 transition-transform">
-                  <Bell className="w-16 h-16 text-emerald-500" />
-                </div>
-                <div className="relative z-10">
-                  <h4 className="font-bold text-emerald-800 dark:text-emerald-400 mb-1 flex items-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    Notificações Inteligentes
-                  </h4>
-                  <p className="text-sm text-emerald-700/80 dark:text-emerald-500/80 mb-3">
-                    Assine o Super Trocô para receber alertas de faturas e pagamentos no WhatsApp e Email.
-                  </p>
-                  <a
-                    href={user?.email ? `https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d?email=${encodeURIComponent(user.email)}` : "https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors"
-                  >
-                    Fazer Upgrade
-                  </a>
-                </div>
-              </div>
-            )}
+            {/* Push Manager Component */}
+            <PushManager userId={user.id} />
 
-            <div className={`space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800 ${user.status_assinatura !== 'active' ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               {[
                 { label: 'Alertas por Email', key: 'email' },
                 { label: 'Alertas por WhatsApp', key: 'whatsapp' },
