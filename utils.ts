@@ -101,8 +101,7 @@ export const getProjectedTransactions = (
       // Verifica se já existe uma REAL neste dia com mesmos dados
       const alreadyExistsConcrete = realTransactions.some(existing =>
         existing.date === projectedDateStr &&
-        existing.description === t.description &&
-        existing.amount === t.amount &&
+        existing.description.toLowerCase().trim() === t.description.toLowerCase().trim() &&
         existing.type === t.type &&
         !existing.isRecurring
       );

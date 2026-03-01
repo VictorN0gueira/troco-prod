@@ -9,6 +9,7 @@
  */
 
 import { Investment, InvestmentType, InvestmentNews } from '../types';
+import { supabase } from '../supabaseClient';
 
 // ─── Result types ──────────────────────────────────────────────────────────────
 
@@ -98,15 +99,36 @@ async function fetchBrapiQuotes(
     const results = new Map<string, Omit<PriceResult, 'investmentId'>>();
     if (tickers.length === 0) return results;
 
-    // Brapi allows comma-separated tickers in one request
     const joined = tickers.map(t => t.toUpperCase()).join(',');
-    const token = import.meta.env.VITE_BRAPI_TOKEN;
-    const url = `${BRAPI_BASE}/quote/${joined}?currency=${currency}${token ? `&token=${token}` : ''}`;
 
     try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-        if (!res.ok) throw new Error(`Brapi HTTP ${res.status}`);
-        const json = await res.json();
+        // Tenta buscar via Edge Function no Supabase para não expor a chave publicamente
+        const { data: json, error } = await supabase.functions.invoke('brapi', {
+            body: { tickers: joined, currency }
+        });
+
+        if (error || !json) {
+            // Fallback para uso direto consumindo do env localmente em modo dev ou se Edge function falhar/não existir
+            const token = import.meta.env.VITE_BRAPI_TOKEN;
+            const fallbackUrl = `${BRAPI_BASE}/quote/${joined}?currency=${currency}${token ? `&token=${token}` : ''}`;
+            const res = await fetch(fallbackUrl, { signal: AbortSignal.timeout(10_000) });
+            if (!res.ok) throw new Error(`Brapi HTTP ${res.status}`);
+            const fallbackJson = await res.json();
+
+            for (const item of fallbackJson?.results ?? []) {
+                results.set(item.symbol.toUpperCase(), {
+                    ticker: item.symbol,
+                    price: Number(item.regularMarketPrice) ?? 0,
+                    change: Number(item.regularMarketChangePercent) ?? 0,
+                    changeAbs: Number(item.regularMarketChange) ?? 0,
+                    high: Number(item.regularMarketDayHigh) ?? undefined,
+                    low: Number(item.regularMarketDayLow) ?? undefined,
+                    volume: Number(item.regularMarketVolume) ?? undefined,
+                    source: 'brapi',
+                });
+            }
+            return results;
+        }
 
         for (const item of json?.results ?? []) {
             results.set(item.symbol.toUpperCase(), {

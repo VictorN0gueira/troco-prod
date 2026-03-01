@@ -260,27 +260,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Rate-limiting
-  const [loginAttempts, setLoginAttempts] = useState(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-  const [lockoutSeconds, setLockoutSeconds] = useState(0);
-
-  useEffect(() => {
-    if (!lockoutUntil) return;
-    const interval = setInterval(() => {
-      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      if (remaining <= 0) {
-        setLockoutUntil(null);
-        setLockoutSeconds(0);
-        setLoginAttempts(0);
-        clearInterval(interval);
-      } else {
-        setLockoutSeconds(remaining);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [lockoutUntil]);
-
   // Feedback
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -309,11 +288,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     e.preventDefault();
     setError(null);
 
-    if (lockoutUntil && Date.now() < lockoutUntil) {
-      triggerError(`Muitas tentativas. Aguarde ${lockoutSeconds} segundos.`);
-      return;
-    }
-
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -330,21 +304,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       if (error) throw error;
 
-      setLoginAttempts(0);
-      setLockoutUntil(null);
-
     } catch (err: any) {
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-
-      if (newAttempts >= 3) {
-        const until = Date.now() + 30_000;
-        setLockoutUntil(until);
-        setLockoutSeconds(30);
-        triggerError('Muitas tentativas incorretas. Aguarde 30 segundos.');
+      if (err.status === 429) {
+        triggerError('Muitas tentativas. Aguarde um momento e tente novamente.');
       } else {
         triggerError(err.message === 'Invalid login credentials'
-          ? `Email ou senha incorretos. (${newAttempts}/3 tentativas)`
+          ? 'Email ou senha incorretos.'
           : err.message);
       }
       setLoading(false);
@@ -633,10 +598,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
                   <button
                     type="submit"
-                    disabled={loading || (lockoutUntil !== null && Date.now() < lockoutUntil)}
-                    className={primaryBtn(loading || (lockoutUntil !== null && Date.now() < lockoutUntil))}
+                    disabled={loading}
+                    className={primaryBtn(loading)}
                   >
-                    {loading ? <Spinner /> : lockoutUntil ? `Aguarde ${lockoutSeconds}s` : (<>Entrar <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>)}
+                    {loading ? <Spinner /> : (<>Entrar <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>)}
                   </button>
                 </form>
 
