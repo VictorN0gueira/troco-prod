@@ -18,7 +18,7 @@ import { Transaction, UserProfile, CreditCard, Investment, Goal } from './types'
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
-import { getTodayLocalDate, formatTransaction } from './utils';
+import { getTodayLocalDate, formatTransaction, generateTransactionId } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
@@ -956,6 +956,42 @@ const AppContent: React.FC = () => {
 
       if (cardError) {
         console.error("Erro ao atualizar limite do cartão:", cardError);
+      }
+
+      // Adicionar Transação de "Pagamento de Fatura"
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const todayString = `${y}-${m}-${d}`;
+
+      const paymentTxId = generateTransactionId(6);
+
+      const payloadPayment = {
+        user_id: user.id,
+        descricao: `Pagamento de Fatura - ${cardToPay.name}`,
+        valor: totalAmount,
+        tipo: 'Despesa',
+        categoria: 'Financeiro',
+        data: todayString,
+        esta_pago: true,
+        identificador: paymentTxId,
+        is_recurring: false,
+        card_id: cardId, // Ligando ao cartão para ter histórico
+      };
+
+      const { error: insertTxError } = await supabase
+        .from('transacoes')
+        .insert(payloadPayment);
+
+      if (insertTxError) {
+        console.error("Erro ao inserir transação de pagamento de fatura:", insertTxError);
+      } else {
+        showNotification({
+          title: 'Fatura Paga',
+          message: 'Transação de pagamento da fatura adicionada com sucesso!',
+          type: 'success'
+        });
       }
     }
   };

@@ -8,7 +8,7 @@ import {
     ArrowUpRight, ArrowDownRight, Info, RefreshCw, CheckCircle2,
     TrendingUp as TrendUp, Activity, Wifi, WifiOff, Clock,
     Layers, Home, ShieldCheck, Coins, Flame, Star,
-    Download, ChevronsUpDown, ChevronUp
+    Download, ChevronsUpDown, ChevronUp, AlertTriangle, Zap, Target
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, Tooltip as PieTooltip, Legend, ResponsiveContainer,
@@ -140,12 +140,16 @@ const MarketTicker = ({
     label: string;
     value?: number;
     change?: number;
-    format?: 'currency' | 'crypto' | 'gold';
+    format?: 'currency' | 'crypto' | 'gold' | 'points' | 'rate';
     loading?: boolean;
 }) => {
     const formatVal = (v: number) => {
         if (format === 'crypto' || format === 'gold')
             return v >= 1_000 ? `R$\u00a0${(v / 1_000).toFixed(1)}k` : `R$\u00a0${v.toFixed(2)}`;
+        if (format === 'points')
+            return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' pts';
+        if (format === 'rate')
+            return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '% a.a.';
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
     };
     const isPositive = (change ?? 0) >= 0;
@@ -479,7 +483,7 @@ const Investments: React.FC<InvestmentsProps> = ({
     const [showModal, setShowModal] = useState(false);
     const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'list' | 'charts'>('list');
+    const [activeTab, setActiveTab] = useState<'list' | 'charts' | 'benchmark'>('list');
 
     // ── Price Update state
     const [priceResults, setPriceResults] = useState<Map<string, PriceResult>>(new Map());
@@ -593,6 +597,76 @@ const Investments: React.FC<InvestmentsProps> = ({
         const pnlPct = totalCost > 0 ? (pnlAbs / totalCost) * 100 : 0;
         return { totalCost, totalCurrent, pnlAbs, pnlPct, count: investments.length };
     }, [investments]);
+
+    // ── Diversification Score (0-10)
+    const diversificationScore = useMemo(() => {
+        if (investments.length === 0) return 0;
+        const totalVal = investments.reduce((s, i) => s + i.quantity * i.current_price, 0);
+        if (totalVal === 0) return 0;
+
+        // Factor 1: number of distinct types (max 5 points)
+        const types = new Set(investments.map(i => i.type));
+        const typeScore = Math.min(types.size / 5, 1) * 4; // 0-4 pts
+
+        // Factor 2: max single-asset concentration (lower = better, max 4 pts)
+        const maxConc = investments.reduce((max, inv) => {
+            const w = (inv.quantity * inv.current_price) / totalVal;
+            return Math.max(max, w);
+        }, 0);
+        const concScore = (1 - maxConc) * 4; // 0-4 pts
+
+        // Factor 3: intl/crypto presence (2 pts)
+        const hasIntl = investments.some(i => ['Stocks EUA', 'REITs', 'BDR'].includes(i.type));
+        const hasCrypto = investments.some(i => i.type === 'Crypto');
+        const hasFixedIncome = investments.some(i => ['Tesouro Direto', 'Renda Fixa', 'Debêntures'].includes(i.type));
+        const intlScore = (hasIntl ? 1 : 0) + (hasCrypto ? 0.5 : 0) + (hasFixedIncome ? 0.5 : 0);
+
+        return Math.min(10, Math.round((typeScore + concScore + intlScore) * 10) / 10);
+    }, [investments]);
+
+    // ── Concentration Alert: biggest single asset
+    const concentrationAlert = useMemo(() => {
+        const totalVal = investments.reduce((s, i) => s + i.quantity * i.current_price, 0);
+        if (totalVal === 0 || investments.length < 2) return null;
+        const biggest = investments.reduce((max, inv) => {
+            const w = (inv.quantity * inv.current_price) / totalVal;
+            return w > max.weight ? { inv, weight: w } : max;
+        }, { inv: investments[0], weight: 0 });
+        return biggest.weight >= 0.4 ? biggest : null;
+    }, [investments]);
+
+    // ── Benchmark data (CDI based on Selic, last 6 months)
+    const benchmarkData = useMemo(() => {
+        const selicRate = market?.selic?.value ?? 10.75; // fallback
+        const dailyCDI = Math.pow(1 + selicRate / 100, 1 / 252) - 1;
+        const months: { name: string; carteira: number; cdi: number }[] = [];
+
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            const label = d.toLocaleDateString('pt-BR', { month: 'short' });
+            const cutoff = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+
+            const active = investments.filter(inv => {
+                const pd = new Date(inv.purchase_date + 'T00:00:00');
+                return pd <= cutoff;
+            });
+            const cost = active.reduce((s, inv) => s + inv.quantity * inv.purchase_price, 0);
+            const val = active.reduce((s, inv) => s + inv.quantity * inv.current_price, 0);
+            const carteiraReturn = cost > 0 ? ((val - cost) / cost) * 100 : 0;
+
+            // Approximate CDI return for that month (business days ~21)
+            const monthlyDays = 21 * (5 - i + 1);
+            const cdiReturn = (Math.pow(1 + dailyCDI, monthlyDays) - 1) * 100;
+
+            months.push({
+                name: label.charAt(0).toUpperCase() + label.slice(1),
+                carteira: parseFloat(carteiraReturn.toFixed(2)),
+                cdi: parseFloat(cdiReturn.toFixed(2)),
+            });
+        }
+        return months;
+    }, [investments, market?.selic?.value]);
 
     // ── Allocation by type (pie)
     const allocationData = useMemo(() => {
@@ -793,12 +867,14 @@ const Investments: React.FC<InvestmentsProps> = ({
             </div>
 
             {/* ── Market Overview Bar ──────────────────────── */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
+                <MarketTicker label="IBOV" value={market?.ibov?.value} change={market?.ibov?.change} format="points" loading={marketLoading} />
                 <MarketTicker label="EUR/BRL" value={market?.eurBrl?.value} change={market?.eurBrl?.change} format="currency" loading={marketLoading} />
                 <MarketTicker label="USD/BRL" value={market?.usdBrl?.value} change={market?.usdBrl?.change} format="currency" loading={marketLoading} />
                 <MarketTicker label="BTC" value={market?.btcBrl?.value} change={market?.btcBrl?.change} format="crypto" loading={marketLoading} />
                 <MarketTicker label="ETH" value={market?.ethBrl?.value} change={market?.ethBrl?.change} format="crypto" loading={marketLoading} />
                 <MarketTicker label="Ouro" value={market?.goldBrl?.value} change={market?.goldBrl?.change} format="gold" loading={marketLoading} />
+                <MarketTicker label="Selic" value={market?.selic?.value} format="rate" loading={marketLoading} />
                 {lastUpdatedLabel && (
                     <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs text-slate-400 bg-white/60 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700">
                         <Clock className="w-3 h-3" />
@@ -811,6 +887,20 @@ const Investments: React.FC<InvestmentsProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* ── Concentration Alert ───────────────────────── */}
+            {concentrationAlert && (
+                <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Alerta de Concentração</span>
+                        <span className="text-sm text-amber-600 dark:text-amber-300 ml-2">
+                            <strong>{concentrationAlert.inv.name}</strong> representa {(concentrationAlert.weight * 100).toFixed(0)}% da sua carteira.
+                            Considere diversificar para reduzir o risco.
+                        </span>
+                    </div>
+                </div>
+            )}
 
             {/* ── Summary Cards ───────────────────────────── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -866,24 +956,34 @@ const Investments: React.FC<InvestmentsProps> = ({
                     </p>
                 </div>
 
-                {/* Diversificação */}
+                {/* Score de Diversificação */}
                 <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 hidden lg:block">
                     <div className="absolute top-0 right-0 p-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <BarChart2 className="w-20 h-20" />
+                        <Target className="w-20 h-20" />
                     </div>
                     <div className="p-2.5 w-fit rounded-2xl bg-violet-50 dark:bg-violet-500/10 mb-3">
-                        <BarChart2 className="w-5 h-5 text-violet-500" />
+                        <Target className="w-5 h-5 text-violet-500" />
                     </div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Diversificação</p>
-                    <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">{allocationData.length} tipos</p>
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                        {allocationData.slice(0, 4).map((a) => (
-                            <span key={a.name} className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                                style={{ background: `${TYPE_META[a.name as InvestmentType]?.color}20`, color: TYPE_META[a.name as InvestmentType]?.color }}>
-                                {a.name}
-                            </span>
-                        ))}
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score Diversificação</p>
+                    <div className="flex items-end gap-2 mt-1">
+                        <p className={`text-xl font-bold ${diversificationScore >= 7 ? 'text-emerald-600 dark:text-emerald-400'
+                                : diversificationScore >= 4 ? 'text-amber-500'
+                                    : 'text-rose-500'
+                            }`}>{diversificationScore.toFixed(1)}<span className="text-slate-400 text-sm font-medium">/10</span></p>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full mb-0.5 ${diversificationScore >= 7 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                                : diversificationScore >= 4 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+                                    : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'
+                            }`}>
+                            {diversificationScore >= 7 ? '✓ Boa' : diversificationScore >= 4 ? '~ Média' : '✗ Baixa'}
+                        </span>
                     </div>
+                    <div className="mt-2 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-700 ${diversificationScore >= 7 ? 'bg-emerald-500'
+                                : diversificationScore >= 4 ? 'bg-amber-400'
+                                    : 'bg-rose-500'
+                            }`} style={{ width: `${diversificationScore * 10}%` }} />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">{allocationData.length} tipos · {investments.length} ativos</p>
                 </div>
             </div>
 
@@ -891,14 +991,14 @@ const Investments: React.FC<InvestmentsProps> = ({
             {investments.length > 0 && (
                 <div className="bg-white dark:bg-slate-850 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
                     {/* Tab Switch */}
-                    <div className="flex border-b border-slate-100 dark:border-slate-800 px-6 pt-4 gap-4">
-                        {(['list', 'charts'] as const).map(tab => (
-                            <button key={tab} onClick={() => setActiveTab(tab)}
-                                className={`pb-3 text-sm font-semibold border-b-2 transition-all ${activeTab === tab
+                    <div className="flex border-b border-slate-100 dark:border-slate-800 px-6 pt-4 gap-4 overflow-x-auto">
+                        {([['list', '📋 Carteira'], ['charts', '📊 Gráficos'], ['benchmark', '📈 Benchmark']] as const).map(([tab, label]) => (
+                            <button key={tab} onClick={() => setActiveTab(tab as any)}
+                                className={`pb-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === tab
                                     ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                                     : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                                     }`}>
-                                {tab === 'list' ? '📋 Carteira' : '📊 Gráficos'}
+                                {label}
                             </button>
                         ))}
                     </div>
@@ -1027,6 +1127,73 @@ const Investments: React.FC<InvestmentsProps> = ({
                                     </ResponsiveContainer>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* ── Benchmark Tab */}
+                    {activeTab === 'benchmark' && (
+                        <div className="p-6">
+                            <div className="mb-6">
+                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">Benchmark: Carteira vs CDI</h3>
+                                <p className="text-xs text-slate-500">Retorno acumulado da sua carteira comparado ao CDI (referência Selic {market?.selic?.value?.toFixed(2) ?? '—'}% a.a.)</p>
+                            </div>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={benchmarkData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="gradCarteira" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="gradCDI" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }}
+                                            tickFormatter={v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px -2px rgb(0 0 0 / 0.15)', color: '#1e293b' }}
+                                            formatter={(value: number, name: string) => [`${value >= 0 ? '+' : ''}${value.toFixed(2)}%`, name === 'carteira' ? 'Minha Carteira' : 'CDI']}
+                                        />
+                                        <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1.5} strokeDasharray="4 4" />
+                                        <Area type="monotone" dataKey="cdi" name="CDI" stroke="#8B5CF6" strokeWidth={2} strokeDasharray="6 3" fill="url(#gradCDI)" dot={false} />
+                                        <Area type="monotone" dataKey="carteira" name="Carteira" stroke="#10B981" strokeWidth={3} fill="url(#gradCarteira)" dot={{ fill: '#10B981', r: 3 }} />
+                                        <Legend
+                                            wrapperStyle={{ paddingTop: '16px' }}
+                                            formatter={v => <span className="text-xs text-slate-500 font-semibold">{v === 'carteira' ? 'Minha Carteira' : 'CDI (Selic)'}</span>}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            {/* Benchmark Summary */}
+                            {benchmarkData.length > 0 && (() => {
+                                const last = benchmarkData[benchmarkData.length - 1];
+                                const diff = last.carteira - last.cdi;
+                                return (
+                                    <div className="mt-6 grid grid-cols-3 gap-4">
+                                        <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 text-center">
+                                            <p className="text-xs text-slate-500 mb-1">Retorno Carteira</p>
+                                            <p className={`text-lg font-bold ${last.carteira >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                                                {last.carteira >= 0 ? '+' : ''}{last.carteira.toFixed(2)}%
+                                            </p>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 text-center">
+                                            <p className="text-xs text-slate-500 mb-1">CDI no Período</p>
+                                            <p className="text-lg font-bold text-violet-600 dark:text-violet-400">+{last.cdi.toFixed(2)}%</p>
+                                        </div>
+                                        <div className={`rounded-2xl p-4 text-center ${diff >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20'}`}>
+                                            <p className="text-xs text-slate-500 mb-1">Alpha vs CDI</p>
+                                            <p className={`text-lg font-bold ${diff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                                                {diff >= 0 ? '+' : ''}{diff.toFixed(2)}%
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 

@@ -98,6 +98,7 @@ export interface CreditCard {
   due_day: number;
   color: string;
   brand?: string;
+  cashback_rate?: number;  // % de cashback (ex: 1.5 = 1,5%)
 }
 
 export interface InvestmentNews {
@@ -106,8 +107,10 @@ export interface InvestmentNews {
   url: string;
   image?: string;
   source: string;
+  sourceColor?: string; // cor do badge da fonte (hex)
   timestamp: string;
   category?: string;
+  sentiment?: 'positive' | 'negative' | 'neutral';
 }
 
 export interface Goal {

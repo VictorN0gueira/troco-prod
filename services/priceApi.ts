@@ -2,10 +2,14 @@
  * priceApi.ts — Trocô Investment Price Service
  *
  * APIs used (all FREE, no API key required for basic use):
- *  - Brapi (brapi.dev)         → Ações, FII, ETF, Internacional (USD→BRL auto-converted)
- *  - CoinGecko (coingecko.com) → Crypto
- *  - Brapi special tickers     → Market overview: IBOV, USD/BRL
- *  - CoinGecko global          → BTC dominance + global market cap
+ *  - Brapi (brapi.dev)               → Ações, FII, ETF, Internacional, IBOV (USD→BRL auto-converted)
+ *  - CoinGecko (coingecko.com)        → Crypto
+ *  - Brapi special tickers            → Market overview: IBOV, USD/BRL
+ *  - CoinGecko global                 → BTC dominance + global market cap
+ *  - AwesomeAPI (awesomeapi.com.br)   → USD/BRL, EUR/BRL, XAU/BRL (free, CORS-ok)
+ *  - BrasilAPI (brasilapi.com.br)     → SELIC/CDI actual rate from Banco Central (free, no auth)
+ *  - Mercado Bitcoin                  → BTC price in BRL
+ *  - RSS2JSON (api.rss2json.com)      → News from multiple financial RSS feeds
  */
 
 import { Investment, InvestmentType, InvestmentNews } from '../types';
@@ -32,6 +36,8 @@ export interface MarketOverview {
     btcBrl?: { value: number; change: number };
     ethBrl?: { value: number; change: number };
     goldBrl?: { value: number; change: number };
+    ibov?: { value: number; change: number };
+    selic?: { value: number }; // taxa anual % (ex: 10.75)
     updatedAt: Date;
 }
 
@@ -276,13 +282,88 @@ export async function fetchInvestmentPrices(
     return results;
 }
 
+
 // ─── Market Overview ──────────────────────────────────────────────────────────
 //
-// APIs used (chosen for reliability + CORS support + no auth):
-//   IBOV    → Brapi /quote/%5EBVSP (URL-encoded ^BVSP)
+// APIs used (chosen for reliability + CORS support):
+//   IBOV    → Brapi via Supabase edge fn (with token) → fallback BOVA11 ETF → fallback direct
 //   USD/BRL → AwesomeAPI (economia.awesomeapi.com.br) — 100% free, no auth
+//   SELIC   → BrasilAPI /bcb/v1/taxas/selicmeta — returns annual rate % directly (free, no auth)
 //   BTC     → Mercado Bitcoin ticker (price) + CoinGecko (24h change%)
 
+// Helper: fetch IBOV with multiple fallbacks
+async function fetchIbovData(): Promise<any> {
+    // 1st: via Supabase edge function URL with query params (edge fn reads from URL, not body)
+    try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (supabaseUrl) {
+            const edgeUrl = `${supabaseUrl}/functions/v1/brapi?tickers=%5EBVSP&currency=BRL`;
+            const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const res = await fetch(edgeUrl, {
+                headers: anonKey ? { Authorization: `Bearer ${anonKey}` } : {},
+                signal: AbortSignal.timeout(8_000),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.results?.[0]) return data;
+            }
+        }
+    } catch { /* fall through */ }
+
+    // 2nd: BOVA11 ETF as IBOV proxy (tracks IBOV very closely, widely available, free)
+    try {
+        const token = import.meta.env.VITE_BRAPI_TOKEN;
+        const url = `${BRAPI_BASE}/quote/BOVA11${token ? `?token=${token}` : ''}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+        if (res.ok) return res.json();
+    } catch { /* fall through */ }
+
+    // 3rd: direct ^BVSP call (may work on free tier without rate limiting)
+    try {
+        const token = import.meta.env.VITE_BRAPI_TOKEN;
+        const url = `${BRAPI_BASE}/quote/%5EBVSP${token ? `?token=${token}` : ''}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+        if (res.ok) return res.json();
+    } catch { /* fall through */ }
+
+    return null;
+}
+
+// Helper: fetch SELIC annual rate — correct BrasilAPI endpoint
+async function fetchSelicRate(): Promise<number | null> {
+    // BrasilAPI correct endpoint: returns { nome: "SELIC", valor: 15 } (annual %)
+    try {
+        const res = await fetch('https://brasilapi.com.br/api/taxas/v1/selic', {
+            signal: AbortSignal.timeout(8_000)
+        });
+        if (res.ok) {
+            const json = await res.json();
+            // Response: { nome: "SELIC", valor: 15 }
+            const val = Number(json?.valor ?? 0);
+            if (val > 0) return parseFloat(val.toFixed(2));
+        }
+    } catch { /* fall through */ }
+
+    // Fallback: all rates from BrasilAPI
+    try {
+        const res = await fetch('https://brasilapi.com.br/api/taxas/v1', {
+            signal: AbortSignal.timeout(8_000)
+        });
+        if (res.ok) {
+            const arr = await res.json();
+            if (Array.isArray(arr)) {
+                const selic = arr.find((r: any) =>
+                    r.nome?.toLowerCase().includes('selic') ||
+                    r.sigla?.toLowerCase().includes('selic')
+                );
+                const val = Number(selic?.valor ?? 0);
+                if (val > 0) return parseFloat(val.toFixed(2));
+            }
+        }
+    } catch { /* fall through */ }
+
+    return null;
+}
 
 export async function fetchMarketOverview(): Promise<MarketOverview> {
     const overview: MarketOverview = { updatedAt: new Date() };
@@ -290,7 +371,7 @@ export async function fetchMarketOverview(): Promise<MarketOverview> {
     const safe = <T>(p: Promise<T>): Promise<T | null> =>
         p.catch(() => null);
 
-    const [awesomeJson, mbBtcJson, cgCryptoJson] = await Promise.all([
+    const [awesomeJson, mbBtcJson, cgCryptoJson, brapiIbovJson, selicRate] = await Promise.all([
         // USD/BRL + EUR/BRL + XAU/BRL — AwesomeAPI (free, CORS-friendly, no key)
         safe(
             fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,XAU-BRL', {
@@ -310,6 +391,10 @@ export async function fetchMarketOverview(): Promise<MarketOverview> {
                 { signal: AbortSignal.timeout(8_000) },
             ).then(r => r.ok ? r.json() : null)
         ),
+        // IBOV — via helper with multiple fallbacks
+        safe(fetchIbovData()),
+        // SELIC annual rate — via helper with multiple fallbacks
+        safe(fetchSelicRate()),
     ]);
 
     // ── USD/BRL  { USDBRL: { bid, pctChange } }
@@ -355,121 +440,180 @@ export async function fetchMarketOverview(): Promise<MarketOverview> {
         overview.ethBrl = { value: ethPrice, change: ethChange };
     }
 
+    // ── IBOV — Brapi (via edge fn or direct)
+    const ibovResult = (brapiIbovJson as any)?.results?.[0];
+    if (ibovResult?.regularMarketPrice) {
+        overview.ibov = {
+            value: Number(ibovResult.regularMarketPrice),
+            change: Number(ibovResult.regularMarketChangePercent ?? 0),
+        };
+    }
+
+    // ── SELIC — already resolved as annual rate number (or null)
+    if (selicRate != null && selicRate > 0) {
+        overview.selic = { value: selicRate };
+    }
+
     return overview;
 }
 
-export async function fetchInvestmentNews(category?: string): Promise<InvestmentNews[]> {
-    const fallbackNews: InvestmentNews[] = [
-        {
-            title: "IBOVESPA tem alta com expectativa de novos dados econômicos",
-            description: "O principal índice da bolsa brasileira iniciou o dia em território positivo, impulsionado por setores de commodities e varejo.",
-            url: "https://g1.globo.com/economia/investimentos/",
-            source: "Valor Econômico",
-            timestamp: new Date().toISOString(),
-            image: "https://images.unsplash.com/photo-1611974715853-2b8ef967d752?q=80&w=2070&auto=format&fit=crop"
-        },
-        {
-            title: "Dólar opera em estabilidade frente ao Real nesta segunda-feira",
-            description: "A moeda americana mantém patamar enquanto investidores aguardam decisões sobre política fiscal e juros nos EUA.",
-            url: "https://www.infomoney.com.br/",
-            source: "InfoMoney",
-            timestamp: new Date().toISOString(),
-            image: "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=2071&auto=format&fit=crop"
-        },
-        {
-            title: "Criptoativos: Bitcoin se consolida acima dos US$ 90 mil",
-            description: "O mercado de criptomoedas continua demonstrando força com a entrada de fluxos institucionais e otimismo regulatório.",
-            url: "https://portaldobitcoin.uol.com.br/",
-            source: "Portal do Bitcoin",
-            timestamp: new Date().toISOString(),
-            image: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=2069&auto=format&fit=crop"
-        },
-        {
-            title: "Selic: Analistas projetam manutenção de taxas no curto prazo",
-            description: "O mercado financeiro ajustou suas projeções para a próxima reunião do Copom, mantendo foco na inflação.",
-            url: "https://exame.com/invest/",
-            source: "Exame",
-            timestamp: new Date().toISOString(),
-            image: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=2070&auto=format&fit=crop"
+// ─── News Category Detection ──────────────────────────────────────────────────
+
+type NewsCategory = 'Ações' | 'Cripto' | 'Renda Fixa' | 'Câmbio' | 'Internacional' | 'Geral';
+
+function detectNewsCategory(title: string, description: string): NewsCategory {
+    const text = `${title} ${description}`.toLowerCase();
+
+    const cryptoTerms = ['bitcoin', 'btc', 'ethereum', 'eth', 'cripto', 'crypto', 'blockchain', 'altcoin', 'nft', 'defi', 'stablecoin', 'binance', 'coinbase', 'solana', 'xrp', 'dogecoin'];
+    const fixedTerms = ['selic', 'cdi', 'tesouro', 'renda fixa', 'ipca', 'inflação', 'copom', 'juros', 'debenture', 'cdb', 'lci', 'lca', 'poupança', 'taxa'];
+    const stockTerms = ['ibovespa', 'ibov', 'bovespa', 'ação', 'ações', 'bolsa', 'petr4', 'vale3', 'itub4', 'b3', 'fii', 'dividendo', 'lucro', 'resultado', 'balanço'];
+    const forexTerms = ['dólar', 'euro', 'câmbio', 'real', 'moeda', 'divisas', 'usd', 'eur', 'brl', 'fed', 'banco central'];
+    const intlTerms = ['eua', 'estados unidos', 'china', 'europa', 'nasdaq', 'dow jones', 's&p', 'sp500', 'trump', 'fed', 'wall street', 'internacional', 'global', 'mundial'];
+
+    if (cryptoTerms.some(t => text.includes(t))) return 'Cripto';
+    if (fixedTerms.some(t => text.includes(t))) return 'Renda Fixa';
+    if (stockTerms.some(t => text.includes(t))) return 'Ações';
+    if (forexTerms.some(t => text.includes(t))) return 'Câmbio';
+    if (intlTerms.some(t => text.includes(t))) return 'Internacional';
+    return 'Geral';
+}
+
+// ─── News Sentiment Detection ─────────────────────────────────────────────────
+
+export function detectNewsSentiment(title: string): 'positive' | 'negative' | 'neutral' {
+    const text = title.toLowerCase();
+
+    const positiveTerms = ['alta', 'sobe', 'subiu', 'valoriza', 'valorização', 'lucro', 'ganho', 'crescimento', 'recorde', 'máxima', 'otimismo', 'alta', 'recuperação', 'dispara', 'avança', 'melhora', 'supera', 'positivo'];
+    const negativeTerms = ['queda', 'cai', 'caiu', 'perde', 'perda', 'prejuízo', 'baixa', 'risco', 'mínima', 'crise', 'colapso', 'retração', 'pessimismo', 'despenca', 'recua', 'piora', 'negativo', 'ameaça', 'tensão'];
+
+    if (positiveTerms.some(t => text.includes(t))) return 'positive';
+    if (negativeTerms.some(t => text.includes(t))) return 'negative';
+    return 'neutral';
+}
+
+// ─── News Source Config ───────────────────────────────────────────────────────
+
+const GENERIC_IMAGES = [
+    'https://images.unsplash.com/photo-1611974715853-2b8ef967d752?q=80&w=2070&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=2070&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=2069&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=2071&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1579621970588-a35d0e7ab9b6?q=80&w=2070&auto=format&fit=crop',
+];
+
+// Static fallback — only shown if ALL APIs fail
+const STATIC_FALLBACK: InvestmentNews[] = [
+    {
+        title: 'Mercado financeiro: acompanhe as principais notícias do dia',
+        description: 'Acompanhe as atualizações do mercado financeiro, incluindo Ibovespa, câmbio, juros e criptomoedas.',
+        url: 'https://www.infomoney.com.br/',
+        source: 'InfoMoney', sourceColor: '#10B981',
+        timestamp: new Date().toISOString(),
+        image: GENERIC_IMAGES[0], category: 'Ações', sentiment: 'neutral',
+    },
+    {
+        title: 'Bitcoin e criptomoedas: últimas atualizações do mercado crypto',
+        description: 'O mercado de criptoativos continua em movimento. Acompanhe as últimas análises e preços.',
+        url: 'https://portaldobitcoin.uol.com.br/',
+        source: 'Portal Bitcoin', sourceColor: '#F59E0B',
+        timestamp: new Date().toISOString(),
+        image: GENERIC_IMAGES[2], category: 'Cripto', sentiment: 'neutral',
+    },
+    {
+        title: 'Taxa Selic e renda fixa: o que esperar do Copom',
+        description: 'Analistas discutem as próximas decisões do Banco Central e o impacto para os investidores de renda fixa.',
+        url: 'https://exame.com/invest/',
+        source: 'Exame Invest', sourceColor: '#8B5CF6',
+        timestamp: new Date().toISOString(),
+        image: GENERIC_IMAGES[1], category: 'Renda Fixa', sentiment: 'neutral',
+    },
+];
+
+export async function fetchInvestmentNews(): Promise<InvestmentNews[]> {
+    // ── 1. Primary: Supabase Edge Function (server-side RSS parse, no CORS) ──────
+    try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const anonKey = import.meta.env.VITE_SUPABASE_KEY; // .env.local usa VITE_SUPABASE_KEY
+
+        if (supabaseUrl) {
+            const edgeUrl = `${supabaseUrl}/functions/v1/news-feed`;
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+            if (anonKey) headers['Authorization'] = `Bearer ${anonKey}`;
+
+            const res = await fetch(edgeUrl, {
+                headers,
+                signal: AbortSignal.timeout(15_000),
+            });
+
+            if (res.ok) {
+                const json = await res.json();
+                const articles: InvestmentNews[] = json?.articles ?? [];
+                if (articles.length > 0) {
+                    return articles;
+                }
+            }
         }
+    } catch (err) {
+        console.warn('[news] Edge function failed:', err);
+    }
+
+    // ── 2. Fallback: rss2json.com (browser-side, may have rate limits) ──────────
+    const RSS_SOURCES = [
+        { url: 'https://www.infomoney.com.br/mercados/feed/', name: 'InfoMoney', color: '#10B981' },
+        { url: 'https://exame.com/invest/feed/', name: 'Exame Invest', color: '#8B5CF6' },
+        { url: 'https://portaldobitcoin.uol.com.br/feed/', name: 'Portal Bitcoin', color: '#F59E0B' },
     ];
 
     try {
-        // Usa rss2json para converter o feed RSS do InfoMoney em JSON (CORS-friendly)
-        const rssUrls = [
-            'https://www.infomoney.com.br/mercados/feed/',
-            'https://www.infomoney.com.br/onde-investir/feed/',
-            'https://www.infomoney.com.br/minhas-financas/feed/'
-        ];
-
-        const fetchPromises = rssUrls.map(async (rssUrl) => {
-            const encodedUrl = encodeURIComponent(rssUrl);
-            const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodedUrl}`;
-
+        const promises = RSS_SOURCES.map(async (source) => {
+            const encoded = encodeURIComponent(source.url);
+            const url = `https://api.rss2json.com/v1/api.json?rss_url=${encoded}&count=8`;
             try {
-                const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
                 if (!res.ok) return [];
-
                 const json = await res.json();
                 if (json.status !== 'ok' || !json.items) return [];
-
-                return json.items;
-            } catch (err) {
-                console.warn(`Failed to fetch ${rssUrl}:`, err);
-                return [];
-            }
+                return json.items.map((item: any) => {
+                    let image = item.thumbnail || item.enclosure?.link || '';
+                    if (!image && item.description) {
+                        const m = item.description.match(/<img[^>]+src="([^">]+)"/);
+                        if (m) image = m[1];
+                    }
+                    if (!image) image = GENERIC_IMAGES[Math.floor(Math.random() * GENERIC_IMAGES.length)];
+                    let desc = (item.description || '').replace(/<[^>]*>?/gm, '').trim().slice(0, 200);
+                    return {
+                        title: item.title,
+                        description: desc,
+                        url: item.link,
+                        image,
+                        source: source.name,
+                        sourceColor: source.color,
+                        timestamp: item.pubDate,
+                        category: detectNewsCategory(item.title, desc),
+                        sentiment: detectNewsSentiment(item.title),
+                    } as InvestmentNews;
+                });
+            } catch { return []; }
         });
 
-        const results = await Promise.all(fetchPromises);
-
-        // Combine all items into a single array
-        const allItems = results.flat();
-
-        if (allItems.length === 0) {
-            return fallbackNews;
+        const results = (await Promise.all(promises)).flat();
+        if (results.length > 0) {
+            results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            const seen = new Set<string>();
+            return results.filter(item => {
+                const k = item.title.toLowerCase().slice(0, 60);
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            }).slice(0, 30);
         }
-
-        // Sort items by published date (descending)
-        allItems.sort((a: any, b: any) => {
-            return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
-        });
-
-        return allItems.slice(0, 15).map((item: any) => {
-            // Tenta extrair a imagem do conteudo HTML (tag <img>)
-            let imageUrl: string | undefined = item.thumbnail;
-            if (!imageUrl && item.description) {
-                const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
-                if (imgMatch && imgMatch[1]) {
-                    imageUrl = imgMatch[1];
-                }
-            }
-            // Fallback para uma imagem generica se nao achar
-            if (!imageUrl) {
-                imageUrl = "https://images.unsplash.com/photo-1611974715853-2b8ef967d752?q=80&w=2070&auto=format&fit=crop";
-            }
-
-            // Limpa as tags HTML da descrição para ficar só o texto puro
-            let cleanDesc = item.description || item.content || '';
-            cleanDesc = cleanDesc.replace(/<[^>]*>?/gm, '').trim();
-            // Pega apenas um breve trecho inicial
-            if (cleanDesc.length > 180) {
-                cleanDesc = cleanDesc.substring(0, 177) + '...';
-            }
-
-            return {
-                title: item.title,
-                description: cleanDesc,
-                url: item.link,
-                image: imageUrl,
-                source: "InfoMoney",
-                timestamp: item.pubDate,
-                category: category || "Mercados",
-            };
-        });
-    } catch (err: any) {
-        console.warn('News RSS fetch failed, using fallback data:', err.message);
-        return fallbackNews;
+    } catch (err) {
+        console.warn('[news] rss2json fallback failed:', err);
     }
-}
 
+    // ── 3. Last resort: static placeholder articles ───────────────────────────
+    return STATIC_FALLBACK;
+}
 

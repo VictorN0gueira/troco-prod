@@ -2,10 +2,11 @@ import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { CreditCard, UserProfile, Transaction } from '../types';
-import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle, Wallet, Star, ShieldCheck, ShieldAlert, ShieldX, Percent, ChevronLeft, ChevronRight, BarChart2, History } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
+import { getInvoiceReferenceDate } from '../utils';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -29,6 +30,10 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
 
     // Confirmation Modal State
     const [cardToDelete, setCardToDelete] = useState<number | null>(null);
+
+    // Invoice Payment Confirmation State
+    const [invoiceToPay, setInvoiceToPay] = useState<{ id: number, amount: number, transactionIds: string[] } | null>(null);
+    const [isPayInvoiceModalOpen, setIsPayInvoiceModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     // Pagination State
@@ -38,6 +43,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
     // Invoice Visual State
     const [viewingInvoice, setViewingInvoice] = useState<CreditCard | null>(null);
     const [currentInvoiceDate, setCurrentInvoiceDate] = useState(new Date());
+    const [invoiceTab, setInvoiceTab] = useState<'transactions' | 'history'>('transactions');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -48,6 +54,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         color: '#10B981',
         brand: 'Mastercard',
         current_usage: '',
+        cashback_rate: '',
     });
 
     // Formatting Helper
@@ -70,14 +77,28 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
 
     // Helper: Get Invoice Date for a transaction
     const getTransactionInvoiceDate = (date: string, closingDay: number) => {
-        const tDate = new Date(date + 'T00:00:00');
-        const day = tDate.getDate();
-        // If transaction is on or after closing day, it belongs to next month's invoice
-        if (day >= closingDay) {
-            return new Date(tDate.getFullYear(), tDate.getMonth() + 1, 1);
-        }
-        return new Date(tDate.getFullYear(), tDate.getMonth(), 1);
+        return getInvoiceReferenceDate(date, closingDay);
     }
+
+    // ─── Health Score (0-100) ─────────────────────────────────────────────────
+    const getHealthScore = (usagePct: number): { label: string; color: string; icon: React.ReactNode; bg: string } => {
+        if (usagePct <= 30) return { label: 'Saudável', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: <ShieldCheck className="w-3.5 h-3.5" /> };
+        if (usagePct <= 70) return { label: 'Atenção', color: 'text-amber-500', bg: 'bg-amber-500/10', icon: <ShieldAlert className="w-3.5 h-3.5" /> };
+        return { label: 'Crítico', color: 'text-rose-500', bg: 'bg-rose-500/10', icon: <ShieldX className="w-3.5 h-3.5" /> };
+    };
+
+    // ─── Consolidated Summary ────────────────────────────────────────────────
+    const getConsolidatedSummary = () => {
+        let totalLimit = 0, totalUsed = 0, totalInvoice = 0, totalCashback = 0;
+        cards.forEach(card => {
+            const m = getCardMetrics(card);
+            totalLimit += card.limit_amount;
+            totalUsed += m.totalUsedLimit;
+            totalInvoice += m.invoiceAmount;
+            if (card.cashback_rate) totalCashback += m.invoiceAmount * (card.cashback_rate / 100);
+        });
+        return { totalLimit, totalUsed, totalInvoice, totalCashback, availableLimit: totalLimit - totalUsed };
+    };
 
     const getCardMetrics = (card: CreditCard) => {
         const { id: cardId, limit_amount: limit, closing_day: closingDay, current_usage: dbUsage } = card;
@@ -108,12 +129,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
     };
 
     const handleOpenModal = (card?: CreditCard) => {
-        // Super Trocô Limit Check
         const isSuper = user?.status_assinatura === 'active';
-        if (!card && !isSuper && cards.length >= 2) {
-            setIsLimitModalOpen(true);
-            return;
-        }
+        if (!card && !isSuper && cards.length >= 2) { setIsLimitModalOpen(true); return; }
 
         if (card) {
             setEditingCard(card);
@@ -125,18 +142,11 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 color: card.color,
                 brand: card.brand || 'Mastercard',
                 current_usage: card.current_usage ? formatCurrency(card.current_usage) : '',
+                cashback_rate: card.cashback_rate ? card.cashback_rate.toString() : '',
             });
         } else {
             setEditingCard(null);
-            setFormData({
-                name: '',
-                limit_amount: '',
-                closing_day: '',
-                due_day: '',
-                color: '#10B981',
-                brand: 'Mastercard',
-                current_usage: '',
-            });
+            setFormData({ name: '', limit_amount: '', closing_day: '', due_day: '', color: '#10B981', brand: 'Mastercard', current_usage: '', cashback_rate: '' });
         }
         setIsModalOpen(true);
     };
@@ -159,7 +169,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
             closing_day: parseInt(formData.closing_day),
             due_day: parseInt(formData.due_day),
             color: formData.color,
-            brand: formData.brand
+            brand: formData.brand,
+            cashback_rate: formData.cashback_rate ? parseFloat(formData.cashback_rate) : null,
         };
 
         try {
@@ -232,6 +243,19 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         setCurrentInvoiceDate(initialDate);
     };
 
+    const handlePayInvoiceClick = (id: number, amount: number, transactionIds: string[]) => {
+        setInvoiceToPay({ id, amount, transactionIds });
+        setIsPayInvoiceModalOpen(true);
+    };
+
+    const confirmPayInvoice = () => {
+        if (!invoiceToPay) return;
+        payCardInvoice(invoiceToPay.id, invoiceToPay.amount, invoiceToPay.transactionIds);
+        setViewingInvoice(null);
+        setIsPayInvoiceModalOpen(false);
+        setInvoiceToPay(null);
+    };
+
     // Invoice Navigation
     const prevInvoice = () => {
         setCurrentInvoiceDate(prev => {
@@ -249,6 +273,43 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         });
     };
 
+    const renderBrandIcon = (brandName?: string, className = "h-4") => {
+        const name = brandName?.toLowerCase() || '';
+
+        // Helper inline block para centralizar icones pequenos no formato de texto
+        const inlineClass = `inline-flex items-center justify-center ${className}`;
+
+        if (name.includes('master')) return (
+            <svg viewBox="0 0 36 24" className={className} style={{ width: 'auto' }} fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="12" fill="#FF5F00" />
+                <circle cx="24" cy="12" r="12" fill="#EB001B" />
+                <path d="M18 12C18 7.39967 20.5898 3.40002 24 1.40192v21.1962C20.5898 20.6001 18 16.6004 18 12Z" fill="#F79E1B" />
+            </svg>
+        );
+        if (name.includes('visa')) return (
+            <svg viewBox="0 0 44 18" className={className} style={{ width: 'auto' }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15.4411 0L10.1501 17.5146H5.43343L8.514 8.7573L7.769 5.86906C7.51869 4.31494 6.30514 3.12564 4.0252 2.58552L4.31686 0.162084C7.81846 0.757302 10.3242 2.37865 11.2323 5.48544L15.4411 0ZM28.5323 11.8315C28.5539 7.21557 22.0306 6.94632 22.0522 4.97445C22.0964 4.3411 22.7533 3.63371 24.1837 3.42589C24.8974 3.32185 26.262 3.16568 28.5834 4.22695L29.4187 0.443171C28.1659 -0.0558197 26.319 0.00762118 24.3725 0.00762118C20.0465 0.00762118 17.0622 2.29548 17.0396 5.83351C17.0179 8.39994 19.3444 9.83279 21.0967 10.6653C22.893 11.5178 23.4901 12.062 23.4684 12.8728C23.4449 14.1009 21.9686 14.662 20.6548 14.662C18.2323 14.662 16.5929 13.913 15.3585 13.3108L14.4847 17.2863C15.7191 17.8475 18.2117 18.1795 20.4061 18.1795C25.0456 18.2012 28.5323 15.9355 28.5323 11.8315ZM37.9575 17.5146H42.3421L39.4633 0H35.4593C34.1165 0 33.3294 0.354153 32.7481 1.68412L28.024 17.5146H32.8942L33.864 14.8142H39.8091L37.9575 17.5146ZM35.0934 11.3752L37.0336 5.89456L38.1636 11.3752H35.0934ZM4.18047 17.5146L0 0H4.76742L7.30567 13.1161L4.18047 17.5146Z" />
+            </svg>
+        );
+        if (name.includes('elo')) return (
+            <svg viewBox="0 0 40 16" className={className} style={{ width: 'auto' }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M37.36 4.67c-1.39-1.39-3.41-1.39-4.81 0-1.32 1.32-1.32 3.48 0 4.81 1.39 1.39 3.41 1.39 4.81 0 1.39-1.39 1.39-3.48 0-4.81zm-2.4 3.54c-.69.69-1.7.69-2.4 0-.69-.69-.69-1.7 0-2.4.69-.69 1.7-.69 2.4 0 .69.69.69 1.7 0 2.4zm-14.7 6.44c1.13-.19 2.33-.25 3.54-.44V1.14c-1.2-.19-2.4-.32-3.54-.44v13.95zm-3.54-5.37c-.32 1.58-1.58 3.03-3.22 3.85C9.7 14.6 5.21 12.33 4.2 8.73c-1.13-3.98 2.59-7.58 6.44-6.32 2.02.63 3.41 2.34 3.85 4.36h3.48c-.63-4.23-4.11-7.58-8.47-7.58-4.99 0-8.97 4.04-8.97 8.97s4.04 8.97 8.97 8.97c4.61 0 8.34-3.54 8.85-8.02h-3.6zM26.43 14.4c.57-.06 1.14-.13 1.71-.19V1.58c-.57-.06-1.14-.13-1.71-.19v13.01z" />
+            </svg>
+        );
+
+        if (name.includes('american') || name.includes('amex')) return (
+            <div className={`${inlineClass} px-1.5 rounded-sm border`} style={{ fontSize: '9px', lineHeight: 1 }}>
+                AMEX
+            </div>
+        );
+        if (name.includes('hipercard')) return (
+            <div className={`${inlineClass} px-1.5 rounded font-italic text-rose-700 dark:text-rose-500`} style={{ fontSize: '11px', fontStyle: 'italic' }}>
+                Hipercard
+            </div>
+        );
+        return <span className={`${inlineClass} opacity-70`} style={{ fontSize: '11px' }}>{brandName?.toUpperCase() || 'CARTÃO'}</span>;
+    };
+
     // Bank Logo Helper
     const getBankLogo = (cardName: string) => {
         const n = cardName.toLowerCase();
@@ -259,7 +320,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         if (n.includes('xp')) return <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center font-bold text-[#FFD700] text-xs">XP</div>;
         if (n.includes('bradesco')) return <div className="w-8 h-8 rounded-lg bg-[#CC092F] flex items-center justify-center font-bold text-white text-[9px]">Bradesco</div>;
         if (n.includes('bb') || n.includes('brasil')) return <div className="w-8 h-8 rounded-lg bg-[#F9D308] flex items-center justify-center font-bold text-[#003DA5] text-xs">bb</div>;
-        if (n.includes('santander')) return <div className="w-8 h-8 rounded-lg bg-[#EC0000] flex items-center justify-center font-bold text-white text-[8px]">Santander</div>;
+        if (n.includes('santander')) return <div className="w-8 h-8 rounded-lg bg-[#EC0000] flex items-center justify-center font-bold text-[8px]">Santander</div>;
         if (n.includes('btg')) return <div className="w-8 h-8 rounded-lg bg-[#002D54] flex items-center justify-center font-bold text-white text-[10px]">BTG</div>;
 
         return <CardIcon className="w-8 h-8 opacity-80" />;
@@ -281,31 +342,127 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
     };
 
+    const PRESET_COLORS = [
+        '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1', '#EF4444', '#1F2937'
+    ];
+
+    const BRANDS = [
+        'Mastercard', 'Visa', 'Elo', 'American Express', 'Hipercard', 'Outra'
+    ];
+
     return (
-        <div className="space-y-8 animate-fade-in-up">
-            <div className="flex justify-between items-center">
-                {/* ... (Header remains the same) ... */}
+        <div className="space-y-6 sm:space-y-8 animate-fade-in-up">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
-                    <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Meus Cartões</h2>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Gerencie seus limites e vencimentos</p>
-                    {/* Indicador de uso para plano free */}
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">Meus Cartões</h2>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Gerencie seus limites e vencimentos</p>
                     {user.status_assinatura !== 'active' && (
-                        <div className="mt-2 max-w-[200px]">
-                            <UsageMeter current={cards.length} max={2} label="cartões" />
-                        </div>
+                        <div className="mt-2 max-w-[200px]"><UsageMeter current={cards.length} max={2} label="cartões" /></div>
                     )}
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
-                    className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-primary-500/20 active:scale-95"
+                    className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-primary-500/20 active:scale-95 self-start sm:self-auto"
                 >
                     <Plus className="w-5 h-5" />
                     Novo Cartão
                 </button>
             </div>
 
+            {/* ── Consolidated Summary Panel ─────────────────────────────── */}
+            {cards.length > 0 && (() => {
+                const s = getConsolidatedSummary();
+                const totalPct = Math.min(100, (s.totalUsed / s.totalLimit) * 100);
+                const barColor = totalPct >= 80 ? '#EF4444' : totalPct >= 50 ? '#F59E0B' : '#10B981';
+                return (
+                    <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Wallet className="w-5 h-5 text-emerald-500" />
+                            <h3 className="font-bold text-slate-800 dark:text-white">Resumo Consolidado</h3>
+                            <span className="text-xs text-slate-400 ml-1">{cards.length} cartão{cards.length !== 1 ? 'ões' : ''}</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                            {[
+                                { label: 'Limite Total', value: s.totalLimit, color: 'text-slate-800 dark:text-white' },
+                                { label: 'Utilizado', value: s.totalUsed, color: totalPct >= 80 ? 'text-rose-500' : 'text-amber-500' },
+                                { label: 'Disponível', value: s.availableLimit, color: 'text-emerald-500' },
+                                { label: 'Faturas Abertas', value: s.totalInvoice, color: 'text-blue-500' },
+                            ].map(item => (
+                                <div key={item.label} className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3">
+                                    <p className="text-xs text-slate-400 mb-1">{item.label}</p>
+                                    <p className={`font-bold text-sm sm:text-base ${item.color}`}>
+                                        R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${totalPct}%`, background: barColor }} />
+                        </div>
+                        <div className="flex justify-between mt-1.5 text-xs text-slate-400">
+                            <span>{Math.round(totalPct)}% do limite total utilizado</span>
+                            {s.totalCashback > 0 && (
+                                <span className="flex items-center gap-1 text-emerald-500 font-semibold">
+                                    <Star className="w-3 h-3" />
+                                    Cashback estimado: R$ {s.totalCashback.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ── Due Date Timeline ──────────────────────────────────────── */}
+            {cards.length > 0 && (() => {
+                const today = new Date().getDate();
+                const sorted = [...cards].sort((a, b) => {
+                    const dA = a.due_day >= today ? a.due_day - today : a.due_day + 31 - today;
+                    const dB = b.due_day >= today ? b.due_day - today : b.due_day + 31 - today;
+                    return dA - dB;
+                });
+                return (
+                    <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Calendar className="w-5 h-5 text-blue-500" />
+                            <h3 className="font-bold text-slate-800 dark:text-white">Próximos Vencimentos</h3>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            {sorted.map(card => {
+                                let days = card.due_day - today;
+                                if (days < 0) days += 31;
+                                const urgent = days <= 3;
+                                const soon = days <= 7;
+                                const { invoiceAmount } = getCardMetrics(card);
+                                return (
+                                    <div key={card.id}
+                                        className={`flex items-center gap-3 flex-1 p-3 rounded-xl border transition-all
+                                            ${urgent ? 'border-rose-200 dark:border-rose-800/50 bg-rose-50 dark:bg-rose-900/10'
+                                                : soon ? 'border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/10'
+                                                    : 'border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30'}`}
+                                    >
+                                        <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-black text-white text-sm"
+                                            style={{ background: card.color }}>
+                                            {card.due_day}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-slate-800 dark:text-white text-sm truncate">{card.name}</p>
+                                            <p className={`text-xs font-medium ${urgent ? 'text-rose-500' : soon ? 'text-amber-500' : 'text-slate-400'}`}>
+                                                {days === 0 ? '⚠ Vence HOJE' : `${days}d restante${days !== 1 ? 's' : ''}`}
+                                            </p>
+                                            {invoiceAmount > 0 && (
+                                                <p className="text-xs text-slate-400">R$ {invoiceAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
+
             <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
                 variants={containerVariants}
                 initial="hidden"
                 animate="show"
@@ -319,11 +476,13 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                             : usagePercentage >= 75 ? '#F59E0B'
                                 : '#34D399';
                         const clampedPct = Math.min(100, usagePercentage);
+                        const health = getHealthScore(usagePercentage);
+                        const cashback = card.cashback_rate ? invoiceAmount * (card.cashback_rate / 100) : 0;
 
                         return (
                             <motion.div
                                 key={card.id}
-                                className="relative group perspective-1000"
+                                className="relative group"
                                 variants={itemVariants}
                                 layout
                                 exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
@@ -343,30 +502,34 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                         <div className="flex items-center gap-3">
                                             {getBankLogo(card.name)}
                                             <div>
-                                                <p className="text-xs font-medium opacity-80 uppercase tracking-wider">{card.brand || 'Cartão'}</p>
+                                                <div className="mb-0.5">
+                                                    {renderBrandIcon(card.brand, "h-4 text-white opacity-80 mix-blend-overlay")}
+                                                </div>
                                                 <h3 className="text-xl font-bold mt-0.5 tracking-wide">{card.name}</h3>
                                             </div>
                                         </div>
 
-                                        {/* Smart Alerts */}
+                                        {/* Right-side badges: Smart Alert → Health Score */}
                                         <div className="flex flex-col items-end gap-1">
                                             {(() => {
                                                 const today = new Date().getDate();
-                                                // Melhor dia para compra: Logo após o fechamento, até uns 3 dias depois
                                                 const bestDay = today >= card.closing_day && today <= card.closing_day + 3;
-                                                // Vence em breve: 5 dias antes do vencimento
                                                 let daysToDue = card.due_day - today;
-                                                if (daysToDue < 0) daysToDue += 30; // aproximação simples
+                                                if (daysToDue < 0) daysToDue += 30;
                                                 const dueSoon = daysToDue <= 5 && daysToDue >= 0;
-
-                                                if (bestDay) {
-                                                    return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
-                                                }
-                                                if (dueSoon) {
-                                                    return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
-                                                }
+                                                if (bestDay) return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
+                                                if (dueSoon) return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
                                                 return null;
                                             })()}
+                                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-black/20 backdrop-blur-sm ${health.color}`}>
+                                                {health.icon} {health.label}
+                                            </span>
+                                            {cashback > 0 && (
+                                                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-white/20 text-white">
+                                                    <Star className="w-3 h-3" />
+                                                    R$ {cashback.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
@@ -422,19 +585,19 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     </div>
                                 </div>
 
-                                {/* Action Buttons (Visible on Hover/Focus - Outside Card Click Area) */}
-                                <div className="absolute -top-3 -right-3 flex gap-2 z-30">
+                                {/* Action Buttons — always visible on mobile, hover on desktop */}
+                                <div className="flex gap-2 mt-2 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
-                                        className="p-2 bg-white dark:bg-slate-800 text-blue-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-800/30 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-semibold transition-all active:scale-95 border border-blue-200 dark:border-blue-700/50"
                                     >
-                                        <Edit2 className="w-4 h-4" />
+                                        <Edit2 className="w-3.5 h-3.5" /> Editar
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDeleteClick(card.id); }}
-                                        className="p-2 bg-white dark:bg-slate-800 text-red-500 rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-800/30 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold transition-all active:scale-95 border border-rose-200 dark:border-rose-700/50"
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        <Trash2 className="w-3.5 h-3.5" /> Excluir
                                     </button>
                                 </div>
                             </motion.div>
@@ -442,7 +605,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                     })}
                 </AnimatePresence>
 
-                {/* ... (Empty State) ... */}
+                {/* ── Cards Grid ─────────────────────────────────────────────── */}
                 {cards.length === 0 && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -580,10 +743,53 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     </div>
                                 </div>
 
+                                {/* Cashback Rate */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                        Cashback
+                                        <span className="ml-2 text-xs text-slate-400 font-normal">(opcional — % sobre os gastos)</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            min="0" max="10" step="0.1"
+                                            value={formData.cashback_rate}
+                                            onChange={e => setFormData({ ...formData, cashback_rate: e.target.value })}
+                                            className="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                            placeholder="Ex: 1.5"
+                                        />
+                                        <Percent className="absolute right-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                {/* Brand Selector */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bandeira</label>
+                                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                                        {BRANDS.map(brand => (
+                                            <button
+                                                key={brand}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, brand })}
+                                                className={`flex items-center gap-2.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border transition-all text-sm font-medium
+                                                    ${formData.brand === brand
+                                                        ? 'bg-primary-500 text-white border-primary-500 shadow-md ring-2 ring-primary-500/20'
+                                                        : 'bg-white hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center justify-center w-8">
+                                                    {renderBrandIcon(brand, formData.brand === brand ? "h-4 sm:h-5 text-white" : "h-4 sm:h-5 text-slate-500 dark:text-slate-400")}
+                                                </div>
+                                                <span className="truncate">{brand}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Cor do Cartão</label>
                                     <div className="flex flex-wrap gap-4 pb-2">
-                                        {['#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#6366F1', '#EF4444', '#1F2937'].map(color => (
+                                        {PRESET_COLORS.map(color => (
                                             <button
                                                 key={color}
                                                 type="button"
@@ -825,86 +1031,145 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                     ) : null;
                                 })()}
 
-                                {/* Transaction List */}
+                                {/* Transaction List or History Tabs */}
                                 <div>
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h4 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                            <TrendingUp className="w-5 h-5 text-primary-500" />
-                                            Transações nesta Fatura
-                                        </h4>
+                                    <div className="flex gap-4 mb-4 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                        <button
+                                            onClick={() => setInvoiceTab('transactions')}
+                                            className={`font-bold pb-2 border-b-2 transition-colors flex items-center gap-2 ${invoiceTab === 'transactions' ? 'text-primary-500 border-primary-500' : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                        >
+                                            <TrendingUp className="w-4 h-4" />
+                                            Fatura Atual
+                                        </button>
+                                        <button
+                                            onClick={() => setInvoiceTab('history')}
+                                            className={`font-bold pb-2 border-b-2 transition-colors flex items-center gap-2 ${invoiceTab === 'history' ? 'text-primary-500 border-primary-500' : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                        >
+                                            <History className="w-4 h-4" />
+                                            Histórico de Pagamentos
+                                        </button>
+                                    </div>
 
-                                        {(() => {
-                                            const invoiceTxs = transactions.filter(t => {
-                                                if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
-                                                const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
-                                                return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
-                                            });
-                                            // Apenas permite pagar se tiver algo pendente nessa fatura
-                                            const pendingInInvoice = invoiceTxs.filter(t => t.status === 'pending');
-                                            const pendingAmount = pendingInInvoice.reduce((s, t) => s + t.amount, 0);
+                                    {invoiceTab === 'transactions' ? (
+                                        <>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                                    Transações nesta Fatura
+                                                </h4>
 
-                                            if (pendingInInvoice.length > 0) {
+                                                {(() => {
+                                                    const invoiceTxs = transactions.filter(t => {
+                                                        if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
+                                                        const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                                        return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
+                                                    });
+                                                    // Permite pagar as que estão pendentes e pertencem a essa fatura
+                                                    const pendingInInvoice = invoiceTxs.filter(t => t.status === 'pending');
+                                                    const pendingAmount = pendingInInvoice.reduce((s, t) => s + t.amount, 0);
+
+                                                    if (pendingInInvoice.length > 0) {
+                                                        return (
+                                                            <button
+                                                                onClick={() => {
+                                                                    handlePayInvoiceClick(viewingInvoice.id, pendingAmount, pendingInInvoice.map(t => t.id));
+                                                                }}
+                                                                className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm shadow-emerald-500/20 transition-all flex items-center gap-1"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                                Pagar Fatura
+                                                            </button>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </div>
+
+                                            <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                                {(() => {
+                                                    const invoiceTxs = transactions.filter(t => {
+                                                        if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
+                                                        const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                                        return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
+                                                    })
+                                                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                                                    return (
+                                                        <>
+                                                            {invoiceTxs.map((transaction) => (
+                                                                <div key={transaction.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-colors">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center text-red-500">
+                                                                            <TrendingUp className="w-5 h-5 transform rotate-180" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-semibold text-slate-800 dark:text-white">{transaction.description}</p>
+                                                                            <p className="text-xs text-slate-400">
+                                                                                {new Date(transaction.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {transaction.category}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className="font-bold text-red-500">
+                                                                        - R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+
+                                                            {invoiceTxs.length === 0 && (
+                                                                <div className="text-center py-8 text-slate-400">
+                                                                    <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                                        <Check className="w-8 h-8 opacity-50" />
+                                                                    </div>
+                                                                    <p>Nenhuma transação nesta fatura.</p>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                            {(() => {
+                                                const historyTxs = transactions.filter(t =>
+                                                    t.cardId === viewingInvoice.id &&
+                                                    t.description.startsWith('Pagamento de Fatura') &&
+                                                    t.type === 'expense'
+                                                ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
                                                 return (
-                                                    <button
-                                                        onClick={() => {
-                                                            if (window.confirm(`Deseja pagar a fatura no valor de R$ ${pendingAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}?`)) {
-                                                                payCardInvoice(viewingInvoice.id, pendingAmount, pendingInInvoice.map(t => t.id));
-                                                                setViewingInvoice(null);
-                                                            }
-                                                        }}
-                                                        className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm shadow-emerald-500/20 transition-all flex items-center gap-1"
-                                                    >
-                                                        <Check className="w-3.5 h-3.5" />
-                                                        Pagar Fatura
-                                                    </button>
+                                                    <>
+                                                        {historyTxs.map((transaction) => (
+                                                            <div key={transaction.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                                                        <Check className="w-5 h-5" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-semibold text-slate-800 dark:text-white">{transaction.description}</p>
+                                                                        <p className="text-xs text-slate-400">
+                                                                            {new Date(transaction.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {transaction.category}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <span className="font-bold text-emerald-500">
+                                                                    R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+
+                                                        {historyTxs.length === 0 && (
+                                                            <div className="text-center py-8 text-slate-400">
+                                                                <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                                    <History className="w-8 h-8 opacity-50" />
+                                                                </div>
+                                                                <p>Nenhum pagamento registrado ainda.</p>
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 );
-                                            }
-                                            return null;
-                                        })()}
-                                    </div>
-
-                                    <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                                        {(() => {
-                                            const invoiceTxs = transactions.filter(t => {
-                                                if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
-                                                const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
-                                                return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
-                                            })
-                                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                                            return (
-                                                <>
-                                                    {invoiceTxs.map((transaction) => (
-                                                        <div key={transaction.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center text-red-500">
-                                                                    <TrendingUp className="w-5 h-5 transform rotate-180" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-semibold text-slate-800 dark:text-white">{transaction.description}</p>
-                                                                    <p className="text-xs text-slate-400">
-                                                                        {new Date(transaction.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {transaction.category}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <span className="font-bold text-red-500">
-                                                                - R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-
-                                                    {invoiceTxs.length === 0 && (
-                                                        <div className="text-center py-8 text-slate-400">
-                                                            <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                                <Check className="w-8 h-8 opacity-50" />
-                                                            </div>
-                                                            <p>Nenhuma transação nesta fatura.</p>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
+                                            })()}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -931,6 +1196,18 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 title="Limite Atingido"
                 description="No plano gratuito você pode ter até 2 cartões. Assine o Super Trocô para cadastrar cartões ilimitados e ter controle total."
                 userEmail={user?.email}
+            />
+
+            {/* Pay Invoice Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isPayInvoiceModalOpen}
+                onClose={() => setIsPayInvoiceModalOpen(false)}
+                onConfirm={confirmPayInvoice}
+                title="Pagar Fatura"
+                message={`Tem certeza que deseja registrar o pagamento desta fatura no valor de R$ ${invoiceToPay?.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}? As transações serão marcadas como pagas e o limite do cartão será liberado.`}
+                confirmText="Pagar Fatura"
+                cancelText="Cancelar"
+                type="info"
             />
         </div>
     );

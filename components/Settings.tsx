@@ -14,12 +14,15 @@ import {
   AlertTriangle,
   HelpCircle,
   MessageCircle,
-  ExternalLink
+  ExternalLink,
+  Scale,
+  FileText
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../supabaseClient';
 import { PushManager } from './PushManager';
 import { useNotification } from '../contexts/NotificationContext';
+import LegalModal from './LegalModal';
 
 interface SettingsProps {
   user: UserProfile;
@@ -61,6 +64,15 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // Legal Modal State
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<'privacidade' | 'seguranca' | 'termos' | 'lgpd'>('termos');
+
+  const handleOpenLegal = (tab: 'privacidade' | 'seguranca' | 'termos' | 'lgpd') => {
+    setLegalTab(tab);
+    setIsLegalModalOpen(true);
+  };
 
   // File Input Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -514,8 +526,67 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
               </a>
             </div>
           </div>
+
+          {/* Legal Card */}
+          <div className="bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none space-y-6">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-1">
+                <Scale className="w-5 h-5 text-primary-500" />
+                Central Jurídica
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Transparência e respeito aos dados.
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => handleOpenLegal('termos')}
+                className="w-full flex items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+              >
+                <div className="p-2 bg-slate-100 dark:bg-slate-900 text-slate-500 group-hover:text-primary-500 rounded-lg mr-3 transition-colors">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-primary-500 transition-colors">
+                  Termos de Uso
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleOpenLegal('privacidade')}
+                className="w-full flex items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+              >
+                <div className="p-2 bg-slate-100 dark:bg-slate-900 text-slate-500 group-hover:text-primary-500 rounded-lg mr-3 transition-colors">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-primary-500 transition-colors">
+                  Privacidade
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleOpenLegal('lgpd')}
+                className="w-full flex items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+              >
+                <div className="p-2 bg-slate-100 dark:bg-slate-900 text-slate-500 group-hover:text-primary-500 rounded-lg mr-3 transition-colors">
+                  <Scale className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-primary-500 transition-colors">
+                  LGPD
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Legal Modal Component */}
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        activeTab={legalTab}
+        setActiveTab={setLegalTab}
+      />
 
       {/* Password Change Modal */}
       {isPasswordModalOpen && (

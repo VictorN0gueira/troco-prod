@@ -52,6 +52,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
     const [addAmount, setAddAmount] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
+    const [showIconPicker, setShowIconPicker] = useState(false);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -103,6 +104,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
         setDeadline(getTodayLocalDate());
         setColor('#3b82f6');
         setIcon('Target');
+        setShowIconPicker(false);
         setIsModalOpen(true);
     };
 
@@ -114,6 +116,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
         setDeadline(goal.deadline);
         setColor(goal.color || PRESET_COLORS[0].value);
         setIcon(goal.icon || PRESET_ICONS[0]);
+        setShowIconPicker(false);
         setIsModalOpen(true);
     };
 
@@ -463,118 +466,144 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
 
             {/* Modal Nova/Editar Meta */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 w-full max-w-md relative z-10 shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
-                        <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-700/50 p-2 rounded-full">
-                            <X className="w-5 h-5" />
-                        </button>
-                        <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
-                            <Target className="w-7 h-7 text-primary-500" />
-                            {editingGoal ? 'Editar Meta' : 'Nova Meta'}
-                        </h3>
-
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Nome da Meta</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                    placeholder="Ex: Viagem para Europa"
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Valor Alvo (R$)</label>
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    required
-                                    value={targetAmount}
-                                    onChange={e => setTargetAmount(formatCurrencyInput(e.target.value))}
-                                    placeholder="Ex: 5000.00"
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                                />
-                            </div>
-
-                            {editingGoal && (
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Valor Atual (R$)</label>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        required
-                                        value={currentAmount}
-                                        onChange={e => setCurrentAmount(formatCurrencyInput(e.target.value))}
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                                    />
-                                    <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
-                                        <AlertCircle className="w-3 h-3" />
-                                        Edite apenas se precisar fazer uma correção manual.
-                                    </p>
-                                </div>
-                            )}
-
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Data Limite</label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={deadline}
-                                    onChange={e => setDeadline(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Cor da Meta</label>
-                                <div className="flex flex-wrap gap-3">
-                                    {PRESET_COLORS.map(c => (
-                                        <button
-                                            key={c.value}
-                                            type="button"
-                                            onClick={() => setColor(c.value)}
-                                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${color === c.value ? 'ring-4 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-800 scale-110' : 'hover:scale-110'}`}
-                                            style={{ backgroundColor: c.value }}
-                                            title={c.label}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Ícone</label>
-                                <div className="grid grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                                    {PRESET_ICONS.map(i => (
-                                        <button
-                                            key={i}
-                                            type="button"
-                                            onClick={() => setIcon(i)}
-                                            className={`aspect-square rounded-xl flex items-center justify-center transition-all ${icon === i ? 'bg-primary-500 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}
-                                        >
-                                            {renderIcon(i)}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full py-4 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 active:scale-95 transition-all shadow-lg shadow-primary-500/30 disabled:opacity-70 flex justify-center items-center gap-2"
-                                >
-                                    {isLoading ? 'Salvando...' : editingGoal ? 'Salvar Alterações' : 'Criar Meta'}
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md relative z-10 shadow-2xl animate-scale-in">
+                            <div className="p-6 md:p-8">
+                                <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-700/50 p-2 rounded-full">
+                                    <X className="w-5 h-5" />
                                 </button>
+                                <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+                                    <Target className="w-7 h-7 text-primary-500" />
+                                    {editingGoal ? 'Editar Meta' : 'Nova Meta'}
+                                </h3>
+
+                                <form onSubmit={handleSubmit} className="space-y-5">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Nome da Meta</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            placeholder="Ex: Viagem para Europa"
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Valor Alvo (R$)</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            required
+                                            value={targetAmount}
+                                            onChange={e => setTargetAmount(formatCurrencyInput(e.target.value))}
+                                            placeholder="Ex: 5000.00"
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                        />
+                                    </div>
+
+                                    {editingGoal && (
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Valor Atual (R$)</label>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                required
+                                                value={currentAmount}
+                                                onChange={e => setCurrentAmount(formatCurrencyInput(e.target.value))}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                            />
+                                            <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                                                <AlertCircle className="w-3 h-3" />
+                                                Edite apenas se precisar fazer uma correção manual.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Data Limite</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={deadline}
+                                            onChange={e => setDeadline(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Cor da Meta</label>
+                                        <div className="flex flex-wrap gap-3">
+                                            {PRESET_COLORS.map(c => (
+                                                <button
+                                                    key={c.value}
+                                                    type="button"
+                                                    onClick={() => setColor(c.value)}
+                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${color === c.value ? 'ring-4 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-800 scale-110' : 'hover:scale-110'}`}
+                                                    style={{ backgroundColor: c.value }}
+                                                    title={c.label}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Ícone — seletor compacto */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Ícone</label>
+                                        <div className="flex items-center gap-3">
+                                            {/* Preview do ícone selecionado */}
+                                            <div
+                                                className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                                                style={{ backgroundColor: `${color}20`, color }}
+                                            >
+                                                {renderIcon(icon, 'w-6 h-6')}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowIconPicker(p => !p)}
+                                                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left"
+                                            >
+                                                {showIconPicker ? 'Fechar seleção' : 'Trocar ícone'}
+                                            </button>
+                                        </div>
+                                        {/* Grid expansível */}
+                                        {showIconPicker && (
+                                            <div className="grid grid-cols-8 gap-2 mt-3 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                                                {PRESET_ICONS.map(i => (
+                                                    <button
+                                                        key={i}
+                                                        type="button"
+                                                        onClick={() => { setIcon(i); setShowIconPicker(false); }}
+                                                        className={`aspect-square rounded-xl flex items-center justify-center transition-all p-1.5 ${icon === i
+                                                                ? 'bg-primary-500 text-white shadow-md'
+                                                                : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                                                            }`}
+                                                    >
+                                                        {renderIcon(i, 'w-5 h-5')}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={isLoading}
+                                            className="w-full py-4 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 active:scale-95 transition-all shadow-lg shadow-primary-500/30 disabled:opacity-70 flex justify-center items-center gap-2"
+                                        >
+                                            {isLoading ? 'Salvando...' : editingGoal ? 'Salvar Alterações' : 'Criar Meta'}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
-            )
-            }
+            )}
 
             {/* Modal Adicionar Dinheiro */}
             {

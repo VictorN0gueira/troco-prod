@@ -13,3 +13,4 @@ generate_vapid.cjs
 generate_vapid.js
 validate_key.js
 test_insert.ts
+.vercel

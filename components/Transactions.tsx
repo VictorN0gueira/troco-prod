@@ -512,7 +512,10 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                       </div>
                     </div>
                     <button
-                      onClick={() => handleOpenEdit(t)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEdit(t);
+                      }}
                       className="p-2 -mt-2 -mr-2 text-slate-400 hover:text-primary-500"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -537,7 +540,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                         {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
                       </span>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setTransactionToDelete(t.id);
                           setIsDeleteModalOpen(true);
                         }}

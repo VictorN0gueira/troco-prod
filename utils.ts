@@ -21,6 +21,18 @@ export const formatDateDisplay = (dateString: string): string => {
 };
 
 /**
+ * Helper para gerar ID de transação (Estilo N8N/WhatsApp)
+ */
+export const generateTransactionId = (length: number = 5): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+/**
  * Retorna um objeto Date configurado para o início do dia (00:00:00) no horário local.
  * Essencial para comparar datas de filtros com datas do banco.
  */
