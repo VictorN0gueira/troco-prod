@@ -279,34 +279,12 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         // Helper inline block para centralizar icones pequenos no formato de texto
         const inlineClass = `inline-flex items-center justify-center ${className}`;
 
-        if (name.includes('master')) return (
-            <svg viewBox="0 0 36 24" className={className} style={{ width: 'auto' }} fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="12" fill="#FF5F00" />
-                <circle cx="24" cy="12" r="12" fill="#EB001B" />
-                <path d="M18 12C18 7.39967 20.5898 3.40002 24 1.40192v21.1962C20.5898 20.6001 18 16.6004 18 12Z" fill="#F79E1B" />
-            </svg>
-        );
-        if (name.includes('visa')) return (
-            <svg viewBox="0 0 44 18" className={className} style={{ width: 'auto' }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15.4411 0L10.1501 17.5146H5.43343L8.514 8.7573L7.769 5.86906C7.51869 4.31494 6.30514 3.12564 4.0252 2.58552L4.31686 0.162084C7.81846 0.757302 10.3242 2.37865 11.2323 5.48544L15.4411 0ZM28.5323 11.8315C28.5539 7.21557 22.0306 6.94632 22.0522 4.97445C22.0964 4.3411 22.7533 3.63371 24.1837 3.42589C24.8974 3.32185 26.262 3.16568 28.5834 4.22695L29.4187 0.443171C28.1659 -0.0558197 26.319 0.00762118 24.3725 0.00762118C20.0465 0.00762118 17.0622 2.29548 17.0396 5.83351C17.0179 8.39994 19.3444 9.83279 21.0967 10.6653C22.893 11.5178 23.4901 12.062 23.4684 12.8728C23.4449 14.1009 21.9686 14.662 20.6548 14.662C18.2323 14.662 16.5929 13.913 15.3585 13.3108L14.4847 17.2863C15.7191 17.8475 18.2117 18.1795 20.4061 18.1795C25.0456 18.2012 28.5323 15.9355 28.5323 11.8315ZM37.9575 17.5146H42.3421L39.4633 0H35.4593C34.1165 0 33.3294 0.354153 32.7481 1.68412L28.024 17.5146H32.8942L33.864 14.8142H39.8091L37.9575 17.5146ZM35.0934 11.3752L37.0336 5.89456L38.1636 11.3752H35.0934ZM4.18047 17.5146L0 0H4.76742L7.30567 13.1161L4.18047 17.5146Z" />
-            </svg>
-        );
-        if (name.includes('elo')) return (
-            <svg viewBox="0 0 40 16" className={className} style={{ width: 'auto' }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M37.36 4.67c-1.39-1.39-3.41-1.39-4.81 0-1.32 1.32-1.32 3.48 0 4.81 1.39 1.39 3.41 1.39 4.81 0 1.39-1.39 1.39-3.48 0-4.81zm-2.4 3.54c-.69.69-1.7.69-2.4 0-.69-.69-.69-1.7 0-2.4.69-.69 1.7-.69 2.4 0 .69.69.69 1.7 0 2.4zm-14.7 6.44c1.13-.19 2.33-.25 3.54-.44V1.14c-1.2-.19-2.4-.32-3.54-.44v13.95zm-3.54-5.37c-.32 1.58-1.58 3.03-3.22 3.85C9.7 14.6 5.21 12.33 4.2 8.73c-1.13-3.98 2.59-7.58 6.44-6.32 2.02.63 3.41 2.34 3.85 4.36h3.48c-.63-4.23-4.11-7.58-8.47-7.58-4.99 0-8.97 4.04-8.97 8.97s4.04 8.97 8.97 8.97c4.61 0 8.34-3.54 8.85-8.02h-3.6zM26.43 14.4c.57-.06 1.14-.13 1.71-.19V1.58c-.57-.06-1.14-.13-1.71-.19v13.01z" />
-            </svg>
-        );
+        if (name.includes('master')) return <img src="/brands/mastercard.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Mastercard" />;
+        if (name.includes('visa')) return <img src="/brands/visa.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Visa" />;
+        if (name.includes('elo')) return <img src="/brands/elo.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Elo" />;
+        if (name.includes('american') || name.includes('amex')) return <img src="/brands/amex.svg" className={className} style={{ width: 'auto', objectFit: 'contain', borderRadius: '1.5px' }} alt="Amex" />;
+        if (name.includes('hipercard')) return <img src="/brands/hipercard.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Hipercard" />;
 
-        if (name.includes('american') || name.includes('amex')) return (
-            <div className={`${inlineClass} px-1.5 rounded-sm border`} style={{ fontSize: '9px', lineHeight: 1 }}>
-                AMEX
-            </div>
-        );
-        if (name.includes('hipercard')) return (
-            <div className={`${inlineClass} px-1.5 rounded font-italic text-rose-700 dark:text-rose-500`} style={{ fontSize: '11px', fontStyle: 'italic' }}>
-                Hipercard
-            </div>
-        );
         return <span className={`${inlineClass} opacity-70`} style={{ fontSize: '11px' }}>{brandName?.toUpperCase() || 'CARTÃO'}</span>;
     };
 
