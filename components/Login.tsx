@@ -635,7 +635,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold text-emerald-700 dark:text-emerald-400 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-100 dark:border-emerald-800 hover:shadow-md hover:shadow-emerald-500/10 hover:-translate-y-0.5 transition-all active:scale-[.98]"
                   >
                     <Sparkles className="w-4 h-4 text-emerald-500" />
-                    Assinar Super Trocô — R$ 19,90/mês
+                    Assinar Super Trocô — R$ 29,90/mês
                     <ExternalLink className="w-3 h-3 opacity-50" />
                   </a>
                 </div>

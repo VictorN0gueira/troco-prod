@@ -412,7 +412,7 @@ const LandingPage: React.FC = () => {
                         <div className="glass p-10 rounded-[2.5rem] bg-white dark:bg-slate-900/50 flex flex-col border border-slate-100 dark:border-slate-800 transition-all hover:scale-[1.02]">
                             <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Plano Mensal</h4>
                             <div className="flex items-baseline gap-1 mb-6">
-                                <span className="text-4xl font-black text-slate-900 dark:text-white">R$ 19,90</span>
+                                <span className="text-4xl font-black text-slate-900 dark:text-white">R$ 29,90</span>
                                 <span className="text-slate-500 dark:text-slate-400 text-sm">/mês</span>
                             </div>
                             <ul className="space-y-4 mb-10 flex-1 text-slate-600 dark:text-slate-300">
@@ -447,10 +447,10 @@ const LandingPage: React.FC = () => {
                             </div>
                             <h4 className="text-lg font-bold mb-2 relative z-20">Plano Anual</h4>
                             <div className="flex items-baseline gap-1 mb-1 relative z-20">
-                                <span className="text-4xl font-black">R$ 14,90</span>
+                                <span className="text-4xl font-black">R$ 19,90</span>
                                 <span className="opacity-60 text-sm">/mês*</span>
                             </div>
-                            <p className="text-[10px] opacity-50 mb-6 relative z-20">*Cobrado anualmente (R$ 178,80)</p>
+                            <p className="text-[10px] opacity-50 mb-6 relative z-20">*Cobrado anualmente (R$ 238,80)</p>
 
                             <ul className="space-y-4 mb-10 flex-1 relative z-20">
                                 <li className="flex items-center gap-3">
