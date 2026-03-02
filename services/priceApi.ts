@@ -15,7 +15,28 @@
 import { Investment, InvestmentType, InvestmentNews } from '../types';
 import { supabase } from '../supabaseClient';
 
+// Helper function to replace AbortSignal.timeout which crashes on older iOS Safari
+async function fetchWithTimeout(resource: RequestInfo | URL, options: RequestInit & { timeout?: number } = {}) {
+    const { timeout = 8000 } = options;
+
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
+
 // ─── Result types ──────────────────────────────────────────────────────────────
+
 
 export interface PriceResult {
     investmentId: string;   // Investment.id
@@ -117,7 +138,7 @@ async function fetchBrapiQuotes(
             // Fallback para uso direto consumindo do env localmente em modo dev ou se Edge function falhar/não existir
             const token = import.meta.env.VITE_BRAPI_TOKEN;
             const fallbackUrl = `${BRAPI_BASE}/quote/${joined}?currency=${currency}${token ? `&token=${token}` : ''}`;
-            const res = await fetch(fallbackUrl, { signal: AbortSignal.timeout(10_000) });
+            const res = await fetchWithTimeout(fallbackUrl, { timeout: 10_000 });
             if (!res.ok) throw new Error(`Brapi HTTP ${res.status}`);
             const fallbackJson = await res.json();
 
@@ -193,7 +214,7 @@ async function fetchCoinGeckoPrices(
     const url = `${COINGECKO_BASE}/simple/price?ids=${ids}&vs_currencies=brl&include_24hr_change=true&include_24hr_vol=true`;
 
     try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+        const res = await fetchWithTimeout(url, { timeout: 10_000 });
         if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
         const json = await res.json();
 
@@ -299,9 +320,9 @@ async function fetchIbovData(): Promise<any> {
         if (supabaseUrl) {
             const edgeUrl = `${supabaseUrl}/functions/v1/brapi?tickers=%5EBVSP&currency=BRL`;
             const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-            const res = await fetch(edgeUrl, {
+            const res = await fetchWithTimeout(edgeUrl, {
                 headers: anonKey ? { Authorization: `Bearer ${anonKey}` } : {},
-                signal: AbortSignal.timeout(8_000),
+                timeout: 8_000,
             });
             if (res.ok) {
                 const data = await res.json();
@@ -314,7 +335,7 @@ async function fetchIbovData(): Promise<any> {
     try {
         const token = import.meta.env.VITE_BRAPI_TOKEN;
         const url = `${BRAPI_BASE}/quote/BOVA11${token ? `?token=${token}` : ''}`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+        const res = await fetchWithTimeout(url, { timeout: 8_000 });
         if (res.ok) return res.json();
     } catch { /* fall through */ }
 
@@ -322,7 +343,7 @@ async function fetchIbovData(): Promise<any> {
     try {
         const token = import.meta.env.VITE_BRAPI_TOKEN;
         const url = `${BRAPI_BASE}/quote/%5EBVSP${token ? `?token=${token}` : ''}`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+        const res = await fetchWithTimeout(url, { timeout: 8_000 });
         if (res.ok) return res.json();
     } catch { /* fall through */ }
 
@@ -333,8 +354,8 @@ async function fetchIbovData(): Promise<any> {
 async function fetchSelicRate(): Promise<number | null> {
     // BrasilAPI correct endpoint: returns { nome: "SELIC", valor: 15 } (annual %)
     try {
-        const res = await fetch('https://brasilapi.com.br/api/taxas/v1/selic', {
-            signal: AbortSignal.timeout(8_000)
+        const res = await fetchWithTimeout('https://brasilapi.com.br/api/taxas/v1/selic', {
+            timeout: 8_000
         });
         if (res.ok) {
             const json = await res.json();
@@ -346,8 +367,8 @@ async function fetchSelicRate(): Promise<number | null> {
 
     // Fallback: all rates from BrasilAPI
     try {
-        const res = await fetch('https://brasilapi.com.br/api/taxas/v1', {
-            signal: AbortSignal.timeout(8_000)
+        const res = await fetchWithTimeout('https://brasilapi.com.br/api/taxas/v1', {
+            timeout: 8_000
         });
         if (res.ok) {
             const arr = await res.json();
@@ -374,21 +395,21 @@ export async function fetchMarketOverview(): Promise<MarketOverview> {
     const [awesomeJson, mbBtcJson, cgCryptoJson, brapiIbovJson, selicRate] = await Promise.all([
         // USD/BRL + EUR/BRL + XAU/BRL — AwesomeAPI (free, CORS-friendly, no key)
         safe(
-            fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,XAU-BRL', {
-                signal: AbortSignal.timeout(8_000),
+            fetchWithTimeout('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,XAU-BRL', {
+                timeout: 8_000,
             }).then(r => r.ok ? r.json() : null)
         ),
         // BTC price — Mercado Bitcoin (Brazilian exchange, always available, CORS ok)
         safe(
-            fetch('https://www.mercadobitcoin.net/api/BTC/ticker/', {
-                signal: AbortSignal.timeout(8_000),
+            fetchWithTimeout('https://www.mercadobitcoin.net/api/BTC/ticker/', {
+                timeout: 8_000,
             }).then(r => r.ok ? r.json() : null)
         ),
         // BTC + ETH price & 24h change — CoinGecko free tier (CORS ok)
         safe(
-            fetch(
+            fetchWithTimeout(
                 `${COINGECKO_BASE}/simple/price?ids=bitcoin,ethereum&vs_currencies=brl&include_24hr_change=true`,
-                { signal: AbortSignal.timeout(8_000) },
+                { timeout: 8_000 },
             ).then(r => r.ok ? r.json() : null)
         ),
         // IBOV — via helper with multiple fallbacks
@@ -542,9 +563,9 @@ export async function fetchInvestmentNews(): Promise<InvestmentNews[]> {
             };
             if (anonKey) headers['Authorization'] = `Bearer ${anonKey}`;
 
-            const res = await fetch(edgeUrl, {
+            const res = await fetchWithTimeout(edgeUrl, {
                 headers,
-                signal: AbortSignal.timeout(15_000),
+                timeout: 15_000,
             });
 
             if (res.ok) {
@@ -571,7 +592,7 @@ export async function fetchInvestmentNews(): Promise<InvestmentNews[]> {
             const encoded = encodeURIComponent(source.url);
             const url = `https://api.rss2json.com/v1/api.json?rss_url=${encoded}&count=8`;
             try {
-                const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+                const res = await fetchWithTimeout(url, { timeout: 8_000 });
                 if (!res.ok) return [];
                 const json = await res.json();
                 if (json.status !== 'ok' || !json.items) return [];

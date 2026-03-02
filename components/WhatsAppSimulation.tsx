@@ -93,7 +93,7 @@ const WhatsAppSimulation: React.FC = () => {
                     setMessages(prev => [...prev, {
                         id: 'inv',
                         text: (
-                            <div className="flex items-center gap-3 min-w-[200px] py-1">
+                            <div className="flex items-center gap-3 min-w-[150px] sm:min-w-[200px] py-1">
                                 <button className="w-9 h-9 rounded-full bg-[#00a884] flex items-center justify-center shrink-0">
                                     <Play className="w-4 h-4 text-white ml-0.5" />
                                 </button>
@@ -219,7 +219,7 @@ const WhatsAppSimulation: React.FC = () => {
 
 
     return (
-        <div className="w-full max-w-sm mx-auto bg-[#0b141a] rounded-[2.5rem] overflow-hidden border-8 border-slate-800 shadow-2xl relative flex flex-col h-[550px]">
+        <div className="w-full sm:max-w-sm mx-auto bg-[#0b141a] sm:rounded-[2.5rem] rounded-2xl overflow-hidden sm:border-8 border-4 border-slate-800 shadow-2xl relative flex flex-col h-[500px] sm:h-[550px]">
             {/* Header */}
             <div className="bg-[#202c33] px-4 py-3 flex items-center gap-3 z-10 shrink-0 shadow-sm">
                 <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center shrink-0 overflow-hidden relative border border-emerald-400">

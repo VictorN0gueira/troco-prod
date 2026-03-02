@@ -488,7 +488,76 @@ const AppContent: React.FC = () => {
   });
 
   // Offline Hook
-  const { addToQueue, isOnline } = useOffline();
+  const { addToQueue, isOnline, queue, removeFromQueue } = useOffline();
+
+  // --- PROCESSAR FILA OFFLINE ---
+  useEffect(() => {
+    const processQueue = async () => {
+      if (!isOnline || queue.length === 0 || user.id === 0) return;
+
+      console.log(`[Offline Sync] Processando ${queue.length} item(s) na fila...`);
+      for (const action of queue) {
+        try {
+          if (action.type === 'ADD') {
+            const tx = action.payload as Transaction;
+            const dbType = tx.type === 'income' ? 'Receita' : 'Despesa';
+            const isPaid = tx.status === 'completed' || String(tx.status).toLowerCase() === 'pago';
+
+            const { error } = await supabase.from('transacoes').insert({
+              user_id: user.id,
+              descricao: tx.description,
+              valor: tx.amount,
+              tipo: dbType,
+              categoria: tx.category,
+              data: tx.date,
+              esta_pago: isPaid,
+              identificador: tx.id,
+              is_recurring: tx.isRecurring,
+              card_id: tx.cardId,
+              installment_group: tx.installment_group
+            });
+            if (error) throw error;
+            removeFromQueue(action.id);
+          }
+          else if (action.type === 'UPDATE') {
+            const tx = action.payload as Transaction;
+            const dbType = tx.type === 'income' ? 'Receita' : 'Despesa';
+            const isPaid = tx.status === 'completed' || String(tx.status).toLowerCase() === 'pago';
+
+            const { error } = await supabase.from('transacoes').update({
+              descricao: tx.description,
+              valor: tx.amount,
+              tipo: dbType,
+              categoria: tx.category,
+              data: tx.date,
+              esta_pago: isPaid,
+              is_recurring: tx.isRecurring,
+              card_id: tx.cardId
+            }).eq('user_id', user.id).eq('identificador', tx.id);
+            if (error) throw error;
+            removeFromQueue(action.id);
+          }
+          else if (action.type === 'DELETE') {
+            const txId = action.payload as string;
+            const isNumericId = !isNaN(Number(txId));
+
+            const deleteQuery = supabase.from('transacoes').delete().eq('user_id', user.id);
+            const { error } = isNumericId
+              ? await deleteQuery.eq('id', Number(txId))
+              : await deleteQuery.eq('identificador', txId);
+
+            if (error) throw error;
+            removeFromQueue(action.id);
+          }
+        } catch (error) {
+          console.error(`[Offline Sync] Erro ao sincronizar ação ${action.id}:`, error);
+          // Se falhou, mantemos na fila para a próxima tentativa
+        }
+      }
+    };
+
+    processQueue();
+  }, [isOnline, queue, user.id, removeFromQueue]);
 
   const { showNotification } = useNotification();
 
@@ -538,15 +607,16 @@ const AppContent: React.FC = () => {
   const togglePrivacyMode = () => setPrivacyMode(!privacyMode);
 
   // --- AUTO-LOGOUT LOGIC ---
-  const resetInactivityTimer = useCallback(() => {
+  const lastActivityTime = useRef<number>(Date.now());
+
+  const checkInactivity = useCallback(() => {
     if (!isAuthenticated) return;
+    const now = Date.now();
+    const timeSinceLastActivity = now - lastActivityTime.current;
 
-    if (inactivityTimer.current) {
-      clearTimeout(inactivityTimer.current);
-    }
-
-    inactivityTimer.current = setTimeout(() => {
-      console.log("Tempo de inatividade excedido. Deslogando...");
+    // Se o tempo desde a última atividade for maior que o limite, desloga
+    if (timeSinceLastActivity > INACTIVITY_LIMIT) {
+      console.log("Tempo de inatividade excedido (Background/Foreground). Deslogando...");
       handleLogout();
       showNotification({
         title: 'Sessão Expirada',
@@ -554,8 +624,12 @@ const AppContent: React.FC = () => {
         type: 'warning',
         duration: 8000
       });
-    }, INACTIVITY_LIMIT);
-  }, [isAuthenticated, handleLogout]);
+    }
+  }, [isAuthenticated, handleLogout, showNotification]);
+
+  const updateActivityTime = useCallback(() => {
+    lastActivityTime.current = Date.now();
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -564,20 +638,33 @@ const AppContent: React.FC = () => {
 
     const setupActivityListeners = () => {
       events.forEach(event => {
-        window.addEventListener(event, resetInactivityTimer);
+        window.addEventListener(event, updateActivityTime, { passive: true });
       });
-      resetInactivityTimer();
+      // Atualiza o tempo inicial
+      updateActivityTime();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Quando o app volta para o foreground (tela do celular liga, ou troca de aba), checa a inatividade
+        checkInactivity();
+      }
     };
 
     setupActivityListeners();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Checagem periódica normal também (caso o usuário fique com a tela parada mas aberta)
+    const interval = setInterval(checkInactivity, 60000); // Checa a cada minuto
 
     return () => {
-      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       events.forEach(event => {
-        window.removeEventListener(event, resetInactivityTimer);
+        window.removeEventListener(event, updateActivityTime);
       });
     };
-  }, [isAuthenticated, resetInactivityTimer]);
+  }, [isAuthenticated, updateActivityTime, checkInactivity]);
 
 
   // --- SUPABASE AUTH & DATA LISTENER ---
@@ -627,46 +714,10 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (user.id === 0) return;
 
-    const formatTransaction = (t: any): Transaction => {
-      // 1. Normalização de Tipo (Banco -> Frontend)
-      // O banco pode ter: 'Receita', 'Despesa', 'income', 'expense' (legado/bug)
-      // O frontend DEVE receber: 'income' ou 'expense'
-      let finalType: 'income' | 'expense' = 'expense'; // Default
-      const typeLower = (t.tipo || '').toLowerCase();
+    // --- Canais Realtime para sincronização multi-aba ---
 
-      if (typeLower === 'receita' || typeLower === 'income') {
-        finalType = 'income';
-      } else if (typeLower === 'despesa' || typeLower === 'expense') {
-        finalType = 'expense';
-      } else {
-        // Heurística de Fallback (apenas se tipo estiver vazio/inválido)
-        const descLower = (t.descricao || '').toLowerCase();
-        const incomeKeywords = [
-          'salário', 'salario', 'recebimento', 'venda', 'pix recebido',
-          'depósito', 'cashback', 'lucro', 'rendimento', 'reembolso'
-        ];
-        if (incomeKeywords.some(k => descLower.includes(k))) {
-          finalType = 'income';
-        }
-      }
-
-      return {
-        id: t.identificador || t.id.toString(),
-        description: t.descricao,
-        amount: Number(t.valor),
-        type: finalType,
-        category: t.categoria || 'Outros',
-        date: t.data,
-        status: t.esta_pago ? 'completed' : 'pending',
-        isRecurring: t.is_recurring, // Map DB snake_case to Frontend camelCase
-        installment_group: t.installment_group
-      };
-    };
-
-    console.log(`Iniciando canal Realtime para user_id: ${user.id}`);
-
-    // Canal com nome único por usuário para evitar conflitos com múltiplas abas
-    const channel = supabase
+    // Canal de Transações
+    const channelTx = supabase
       .channel(`realtime:transactions:${user.id}`)
       .on(
         'postgres_changes',
@@ -679,7 +730,11 @@ const AppContent: React.FC = () => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newTx = formatTransaction(payload.new);
-            setTransactions((prev) => [newTx, ...prev]);
+            setTransactions((prev) => {
+              // Evita duplicatas vindas do Realtime se já estiver no estado (Optimistic UI / Sync Fila)
+              if (prev.some(t => t.id === newTx.id)) return prev;
+              return [newTx, ...prev];
+            });
           }
           else if (payload.eventType === 'UPDATE') {
             const updatedTx = formatTransaction(payload.new);
@@ -697,8 +752,41 @@ const AppContent: React.FC = () => {
       )
       .subscribe();
 
+    // Canal de Cartões
+    const channelCards = supabase
+      .channel(`realtime:cards:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'credit_cards', filter: `user_id=eq.${user.id}` },
+        () => fetchCards(user.id) // Refetch é mais simples para manter consistência de totais
+      )
+      .subscribe();
+
+    // Canal de Metas
+    const channelGoals = supabase
+      .channel(`realtime:goals:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'metas', filter: `user_id=eq.${user.id}` },
+        () => fetchGoals(user.id)
+      )
+      .subscribe();
+
+    // Canal de Investimentos
+    const channelInvestments = supabase
+      .channel(`realtime:investments:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'investments', filter: `user_id=eq.${user.id}` },
+        () => fetchInvestments(user.id)
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelTx);
+      supabase.removeChannel(channelCards);
+      supabase.removeChannel(channelGoals);
+      supabase.removeChannel(channelInvestments);
     };
   }, [user.id]);
 
