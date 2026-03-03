@@ -20,25 +20,61 @@ const TOUR_STEPS: Step[] = [
         disableBeacon: true,
     },
     {
-        target: '#tour-nav-menu',
-        placement: 'right',
-        content: (
-            <div>
-                <h3 className="font-bold text-slate-800 dark:text-white mb-2">Menu Principal</h3>
-                <p className="text-slate-600 dark:text-slate-300 text-sm">
-                    Aqui você navega por todas as áreas do app: registre Transações, gerencie Cartões, acompanhe Metas e Investimentos. Tudo a um clique!
-                </p>
-            </div>
-        ),
-    },
-    {
         target: '#tour-dashboard-balance',
         placement: 'bottom',
         content: (
             <div>
                 <h3 className="font-bold text-slate-800 dark:text-white mb-2">Seu Painel de Controle</h3>
                 <p className="text-slate-600 dark:text-slate-300 text-sm">
-                    Este é o seu saldo. Ele calcula automaticamente o que você já recebeu e o que já pagou no mês atual. Você pode arrastar esses cartões para reorganizar a tela!
+                    Este é o seu saldo principal. Ele calcula automaticamente o que você já recebeu e o que já pagou no mês atual, te dando uma visão clara da sua saúde financeira.
+                </p>
+            </div>
+        ),
+    },
+    {
+        target: '#tour-nav-transactions',
+        placement: 'right',
+        content: (
+            <div>
+                <h3 className="font-bold text-slate-800 dark:text-white mb-2">Transações Diárias</h3>
+                <p className="text-slate-600 dark:text-slate-300 text-sm">
+                    Acesse esta aba para registrar e gerenciar todas as suas receitas e despesas. É o coração do controle do seu fluxo de caixa diário.
+                </p>
+            </div>
+        ),
+    },
+    {
+        target: '#tour-nav-cards',
+        placement: 'right',
+        content: (
+            <div>
+                <h3 className="font-bold text-slate-800 dark:text-white mb-2">Cartões de Crédito</h3>
+                <p className="text-slate-600 dark:text-slate-300 text-sm">
+                    Crie e gerencie seus cartões aqui. O Trocô permite lançar despesas diretamente na fatura de um cartão e calcula seu limite disponível em tempo real!
+                </p>
+            </div>
+        ),
+    },
+    {
+        target: '#tour-nav-goals',
+        placement: 'right',
+        content: (
+            <div>
+                <h3 className="font-bold text-slate-800 dark:text-white mb-2">Metas Financeiras</h3>
+                <p className="text-slate-600 dark:text-slate-300 text-sm">
+                    Quer viajar ou comprar um carro? Crie e acompanhe metas, e destine dinheiro para elas até atingir o seu objetivo.
+                </p>
+            </div>
+        ),
+    },
+    {
+        target: '#tour-nav-investments',
+        placement: 'right',
+        content: (
+            <div>
+                <h3 className="font-bold text-slate-800 dark:text-white mb-2">Investimentos</h3>
+                <p className="text-slate-600 dark:text-slate-300 text-sm">
+                    Acompanhe sua carteira de investimentos (Ações, FIIs, Crypto, etc) registrando suas compras e rentabilidades de um jeito simples.
                 </p>
             </div>
         ),
@@ -62,7 +98,7 @@ const TOUR_STEPS: Step[] = [
             <div>
                 <h3 className="font-bold text-slate-800 dark:text-white mb-2">Modo Escuro</h3>
                 <p className="text-slate-600 dark:text-slate-300 text-sm">
-                    Você prefere o lado sombrio? Alterne entre o tema claro e o tema escuro sempre que quiser.
+                    Você prefere o lado sombrio? Alterne entre o tema claro e o escuro com apenas um clique.
                 </p>
             </div>
         ),
@@ -74,7 +110,7 @@ const TOUR_STEPS: Step[] = [
             <div className="text-center space-y-3">
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white">Tudo pronto! 🚀</h3>
                 <p className="text-slate-600 dark:text-slate-300 text-sm">
-                    Agora é com você. Explore a plataforma e transforme sua vida financeira. Precisando de ajuda, nosso agente de WhatsApp está sempre no menu.
+                    Agora é com você. Explore a plataforma, arraste os cartões do dashboard para personalizar, e cuide bem do seu dinheiro! Se precisar, a IA no WhatsApp está à disposição.
                 </p>
             </div>
         ),

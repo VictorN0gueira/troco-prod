@@ -123,6 +123,7 @@ const Layout: React.FC<LayoutProps> = ({
             return (
               <NavLink
                 key={item.path}
+                id={`tour-nav-${item.path.replace('/', '')}`}
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
                 className={({ isActive }) => `
