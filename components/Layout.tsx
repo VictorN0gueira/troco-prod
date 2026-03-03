@@ -101,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+        <nav id="tour-nav-menu" className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
 
@@ -201,6 +201,7 @@ const Layout: React.FC<LayoutProps> = ({
             {/* Privacy Toggle with Eye Animation */}
             {togglePrivacyMode && (
               <button
+                id="tour-privacy-toggle"
                 onClick={togglePrivacyMode}
                 className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative w-10 h-10 flex items-center justify-center overflow-hidden"
                 title={privacyMode ? "Mostrar valores" : "Ocultar valores"}
@@ -221,6 +222,7 @@ const Layout: React.FC<LayoutProps> = ({
             )}
 
             <button
+              id="tour-theme-toggle"
               onClick={toggleDarkMode}
               className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >

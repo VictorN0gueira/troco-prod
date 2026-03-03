@@ -23,6 +23,7 @@ import { OfflineProvider, useOffline } from './components/OfflineContext';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
+import OnboardingTour from './components/OnboardingTour';
 
 const OfflineIndicator = () => {
   const { isOnline, isSyncing, queueSize } = useOffline();
@@ -1399,6 +1400,7 @@ const AppContent: React.FC = () => {
 
   return (
     <HashRouter>
+      <OnboardingTour userId={user.id} />
       <RecoveryModal isOpen={showRecoveryModal} onSubmit={handleRecoveryPasswordSubmit} />
       <AppRoutes
         isAuthenticated={isAuthenticated}

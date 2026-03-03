@@ -255,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
     switch (type) {
       case 'balance':
         return (
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden group h-full">
+          <div id="tour-dashboard-balance" className="bg-slate-900 dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden group h-full">
             {/* Border Beam */}
             <div className="border-beam" />
 
