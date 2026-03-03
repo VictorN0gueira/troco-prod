@@ -226,6 +226,9 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
         invested_amount: investment && isSimpleType(investment.type)
             ? numToBR(investment.purchase_price * (investment.quantity || 1))
             : '',
+        current_amount: investment && isSimpleType(investment.type)
+            ? numToBR(investment.current_price * (investment.quantity || 1))
+            : '',
         purchase_date: investment?.purchase_date || new Date().toISOString().split('T')[0],
         broker: investment?.broker || '',
         notes: investment?.notes || '',
@@ -235,10 +238,10 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
 
     const isSimple = isSimpleType(form.type);
 
-    // For simple types, we track just a single monetary amount (quantity=1, purchase=current=amount)
+    // For simple types, we track just a single monetary amount (quantity=1)
     const qtyNum = isSimple ? 1 : parseNumberBR(form.quantity);
     const buyNum = isSimple ? parseNumberBR(form.invested_amount) : parseNumberBR(form.purchase_price);
-    const curNum = isSimple ? parseNumberBR(form.invested_amount) : parseNumberBR(form.current_price);
+    const curNum = isSimple ? parseNumberBR(form.current_amount) : parseNumberBR(form.current_price);
     const currentValue = qtyNum * curNum;
     const cost = qtyNum * buyNum;
     const pnl = currentValue - cost;
@@ -250,9 +253,10 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
 
         const simple = isSimpleType(form.type);
         const investedAmt = parseNumberBR(form.invested_amount);
+        const currentAmt = form.current_amount.trim() === '' ? investedAmt : parseNumberBR(form.current_amount);
         const qty = simple ? 1 : parseNumberBR(form.quantity);
         const buyPrice = simple ? investedAmt : parseNumberBR(form.purchase_price);
-        const curPrice = simple ? investedAmt : parseNumberBR(form.current_price);
+        const curPrice = simple ? currentAmt : parseNumberBR(form.current_price);
 
         if (!form.name.trim()) { setError('Nome do ativo é obrigatório.'); return; }
         if (simple && investedAmt <= 0) { setError('Valor investido deve ser maior que zero.'); return; }
@@ -411,18 +415,41 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
                                 </div>
                             </div>
                         ) : (
-                            /* Simple type: just total amount invested */
-                            <div>
-                                <label className={labelClass}>Valor Investido (R$) *</label>
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    className={inputClass}
-                                    placeholder="0,00"
-                                    value={form.invested_amount}
-                                    onChange={e => set('invested_amount', formatNumberBR(e.target.value, true))}
-                                />
-                                <p className="text-xs text-slate-400 mt-1.5">💡 Para {form.type}, basta o valor total aplicado. Sem necessidade de cotas ou preço unitário.</p>
+                            /* Simple type: just total amount invested and current balance */
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Valor Investido (Custo) *</label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        className={inputClass}
+                                        placeholder="0,00"
+                                        value={form.invested_amount}
+                                        onChange={e => {
+                                            const val = formatNumberBR(e.target.value, true);
+                                            setForm(prev => {
+                                                const next = { ...prev, invested_amount: val };
+                                                if (!prev.current_amount || prev.current_amount === prev.invested_amount) {
+                                                    next.current_amount = val;
+                                                }
+                                                return next;
+                                            });
+                                        }}
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1.5 leading-snug">💡 Total que você aplicou.</p>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Saldo Atual *</label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        className={inputClass}
+                                        placeholder="0,00"
+                                        value={form.current_amount}
+                                        onChange={e => set('current_amount', formatNumberBR(e.target.value, true))}
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1.5 leading-snug">💡 Valor de hoje (com rendimentos).</p>
+                                </div>
                             </div>
                         )}
 
@@ -967,20 +994,20 @@ const Investments: React.FC<InvestmentsProps> = ({
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Score Diversificação</p>
                     <div className="flex items-end gap-2 mt-1">
                         <p className={`text-xl font-bold ${diversificationScore >= 7 ? 'text-emerald-600 dark:text-emerald-400'
-                                : diversificationScore >= 4 ? 'text-amber-500'
-                                    : 'text-rose-500'
+                            : diversificationScore >= 4 ? 'text-amber-500'
+                                : 'text-rose-500'
                             }`}>{diversificationScore.toFixed(1)}<span className="text-slate-400 text-sm font-medium">/10</span></p>
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full mb-0.5 ${diversificationScore >= 7 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                                : diversificationScore >= 4 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
-                                    : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'
+                            : diversificationScore >= 4 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+                                : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'
                             }`}>
                             {diversificationScore >= 7 ? '✓ Boa' : diversificationScore >= 4 ? '~ Média' : '✗ Baixa'}
                         </span>
                     </div>
                     <div className="mt-2 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div className={`h-full rounded-full transition-all duration-700 ${diversificationScore >= 7 ? 'bg-emerald-500'
-                                : diversificationScore >= 4 ? 'bg-amber-400'
-                                    : 'bg-rose-500'
+                            : diversificationScore >= 4 ? 'bg-amber-400'
+                                : 'bg-rose-500'
                             }`} style={{ width: `${diversificationScore * 10}%` }} />
                     </div>
                     <p className="text-xs text-slate-400 mt-2">{allocationData.length} tipos · {investments.length} ativos</p>
@@ -1318,11 +1345,15 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                             </td>
                                                             <td className="px-5 py-4">
                                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <button onClick={() => openEdit(inv)}
+                                                                    <button onClick={() => openEdit(inv)} title="Atualizar Valor"
+                                                                        className="p-2 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors">
+                                                                        <RefreshCw className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button onClick={() => openEdit(inv)} title="Editar"
                                                                         className="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
                                                                         <Pencil className="w-4 h-4" />
                                                                     </button>
-                                                                    <button onClick={() => setDeletingId(inv.id)}
+                                                                    <button onClick={() => setDeletingId(inv.id)} title="Excluir"
                                                                         className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
                                                                         <Trash2 className="w-4 h-4" />
                                                                     </button>
@@ -1381,6 +1412,10 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                                        <button onClick={() => openEdit(inv)}
+                                                            className="flex-1 py-2 rounded-xl text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1">
+                                                            <RefreshCw className="w-3 h-3" /> Atualizar
+                                                        </button>
                                                         <button onClick={() => openEdit(inv)}
                                                             className="flex-1 py-2 rounded-xl text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
                                                             <Pencil className="w-3 h-3" /> Editar
