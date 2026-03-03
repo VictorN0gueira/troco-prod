@@ -52,6 +52,7 @@ export interface UserProfile {
   notificacoes_push?: boolean;
   notificacoes_marketing?: boolean;
   notificacoes_whatsapp?: boolean;
+  created_at?: string;
 }
 
 export interface Transaction {

@@ -896,7 +896,8 @@ const AppContent: React.FC = () => {
           notificacoes_email: data.notificacoes_email ?? true,
           notificacoes_push: data.notificacoes_push ?? false,
           notificacoes_marketing: data.notificacoes_marketing ?? false,
-          notificacoes_whatsapp: data.notificacoes_whatsapp ?? false
+          notificacoes_whatsapp: data.notificacoes_whatsapp ?? false,
+          created_at: data.created_at
         };
 
         setUser(mappedUser);
@@ -1400,7 +1401,7 @@ const AppContent: React.FC = () => {
 
   return (
     <HashRouter>
-      <OnboardingTour userId={user.id} />
+      <OnboardingTour userId={user.id} user={user} />
       <RecoveryModal isOpen={showRecoveryModal} onSubmit={handleRecoveryPasswordSubmit} />
       <AppRoutes
         isAuthenticated={isAuthenticated}

@@ -3,6 +3,7 @@ import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 
 interface OnboardingTourProps {
     userId: number;
+    user?: any;
 }
 
 const TOUR_STEPS: Step[] = [
@@ -117,27 +118,42 @@ const TOUR_STEPS: Step[] = [
     }
 ];
 
-const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId }) => {
+const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user }) => {
     const [run, setRun] = useState(false);
 
     useEffect(() => {
         // Apenas rodar quando o ID do usuário for válido (logado com sucesso)
         // E apenas rodar na raiz/dashboard (para os elementos existirem)
-        if (userId === 0) return;
+        if (!userId || userId === 0 || !user) return;
 
         // Evita rodar na tela de edição ou configurações se o login foi profundo
         if (window.location.hash !== '#/dashboard') return;
 
         // Verificar se o tour já foi completado
         const tourStatus = localStorage.getItem(`troco_tour_completed_${userId}`);
+
         if (!tourStatus) {
+            // Check if user is old (created more than 3 days ago)
+            // If so, let's not bother them with the onboarding tour.
+            if (user?.created_at) {
+                const createdAt = new Date(user.created_at);
+                const now = new Date();
+                const diffTime = Math.abs(now.getTime() - createdAt.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 3) {
+                    localStorage.setItem(`troco_tour_completed_${userId}`, 'true');
+                    return;
+                }
+            }
+
             // Pequeno delay para garantir que o React renderizou a DOM e as animações de entrada acabaram
             const timer = setTimeout(() => {
                 setRun(true);
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, [userId]);
+    }, [userId, user]);
 
     const handleJoyrideCallback = (data: CallBackProps) => {
         const { status } = data;
@@ -163,12 +179,13 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId }) => {
                 options: {
                     zIndex: 10000,
                     primaryColor: '#10B981', // Emerald-500
-                    textColor: '#334155',
+                    textColor: '#1e293b', // Slate-800 for better contrast
                     backgroundColor: '#ffffff',
                     overlayColor: 'rgba(15, 23, 42, 0.7)', // Slate-900 at 70% opacity
                 },
                 buttonNext: {
                     backgroundColor: '#10B981',
+                    color: '#ffffff', // Explicitly white for contrast
                     borderRadius: '8px',
                     padding: '8px 16px',
                     fontSize: '14px',
@@ -176,10 +193,12 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId }) => {
                 },
                 buttonBack: {
                     marginRight: 10,
-                    color: '#64748b',
+                    color: '#475569', // Slate-600
+                    fontWeight: 500,
                 },
                 buttonSkip: {
                     color: '#94a3b8',
+                    fontWeight: 500,
                 },
                 tooltipContainer: {
                     textAlign: 'left' as const,
@@ -187,12 +206,13 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId }) => {
                 tooltip: {
                     padding: 24,
                     borderRadius: '16px',
+                    backgroundColor: '#ffffff', // Guarantee white bg
                 }
             }}
             locale={{
                 back: 'Voltar',
                 close: 'Fechar',
-                last: 'Concluir',
+                last: 'Concluir Tour',
                 next: 'Próximo',
                 skip: 'Pular Tour',
             }}
