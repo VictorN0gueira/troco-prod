@@ -21,7 +21,8 @@ import {
   HelpCircle,
   XCircle,
   RefreshCw,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useNotification } from '../contexts/NotificationContext';
@@ -44,6 +45,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   const { showNotification } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState(''); // Formato YYYY-MM
+  const [quickFilter, setQuickFilter] = useState<'all' | 'pending' | 'income' | 'expense' | 'credit'>('all');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -117,7 +119,13 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
 
       const matchesDate = filterDate ? t.date.startsWith(filterDate) : true;
 
-      return matchesSearch && matchesDate;
+      let matchesQuick = true;
+      if (quickFilter === 'pending') matchesQuick = t.status === 'pending';
+      else if (quickFilter === 'income') matchesQuick = t.type === 'income';
+      else if (quickFilter === 'expense') matchesQuick = t.type === 'expense';
+      else if (quickFilter === 'credit') matchesQuick = !!t.cardId;
+
+      return matchesSearch && matchesDate && matchesQuick;
     })
     .sort((a, b) => {
       // ALTERAÇÃO APLICADA AQUI:
@@ -138,6 +146,17 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+  // 3. Summary Calculations
+  const summary = React.useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    filteredTransactions.forEach(t => {
+      if (t.type === 'income') income += t.amount;
+      else expense += t.amount;
+    });
+    return { income, expense, balance: income - expense };
+  }, [filteredTransactions]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -191,6 +210,12 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     });
     setEditingId(t.id);
     setIsModalOpen(true);
+  };
+
+  const handleToggleStatus = (t: Transaction, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedTransaction = { ...t, status: t.status === 'completed' ? 'pending' : 'completed' } as Transaction;
+    onEdit(updatedTransaction);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -280,6 +305,15 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     return <IconComponent className={className} />;
   };
 
+  const setSmartDate = (daysOffset: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    setFormData({ ...formData, date: `${y}-${m}-${d}` });
+  };
+
   // Variants para a animação staggered
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -313,41 +347,85 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         </div>
       )}
 
+      {/* Summary Miny Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 rounded-xl">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase">Entradas</p>
+            <p className="text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(summary.income)}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+          <div className="p-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl">
+            <TrendingDown className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase">Saídas</p>
+            <p className="text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(summary.expense)}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
+          <div className={`p-3 rounded-xl ${summary.balance >= 0 ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-500' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'}`}>
+            <Activity className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase">Balanço Mensal</p>
+            <p className={`text-lg font-bold ${summary.balance >= 0 ? 'text-primary-600 dark:text-primary-400' : 'text-rose-500'}`}>
+              {summary.balance >= 0 ? '+' : ''}{formatCurrency(summary.balance)}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Action Bar */}
       <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
 
-        {/* Search and Date Filter Group */}
-        <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Buscar transações..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500 text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none transition-all"
-            />
+        {/* Search, Filter and Quick Pills Group */}
+        <div className="flex flex-col w-full xl:w-auto flex-1 gap-3">
+          <div className="flex flex-col md:flex-row gap-3 w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar transações..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500 text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none transition-all"
+              />
+            </div>
+
+            <div className="relative">
+              <input
+                type="month"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="w-full md:w-auto px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500 text-slate-700 dark:text-slate-200 outline-none transition-all cursor-pointer"
+              />
+              {filterDate && (
+                <button
+                  onClick={() => setFilterDate('')}
+                  className="absolute right-8 md:right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="relative">
-            <input
-              type="month"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="w-full md:w-auto px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500 text-slate-700 dark:text-slate-200 outline-none transition-all cursor-pointer"
-            />
-            {filterDate && (
-              <button
-                onClick={() => setFilterDate('')}
-                className="absolute right-8 md:right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <XCircle className="w-4 h-4" />
-              </button>
-            )}
+          {/* Quick Filters */}
+          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar w-full hide-scroll-indicator text-sm font-medium">
+            <button onClick={() => setQuickFilter('all')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'all' ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Tudo</button>
+            <button onClick={() => setQuickFilter('pending')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Pendentes</button>
+            <button onClick={() => setQuickFilter('income')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'income' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Entradas</button>
+            <button onClick={() => setQuickFilter('expense')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'expense' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Saídas</button>
+            {cards.length > 0 && <button onClick={() => setQuickFilter('credit')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'credit' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Cartão</button>}
           </div>
         </div>
 
-        <div className="flex gap-3 w-full xl:w-auto">
+        <div className="flex gap-3 w-full xl:w-auto h-full items-start mt-1 xl:mt-0">
           <button className="flex-1 xl:flex-none flex items-center justify-center px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium">
             <Filter className="w-5 h-5 mr-2" />
             <span className="hidden sm:inline">Filtrar</span>
@@ -432,15 +510,21 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {t.status === 'completed' ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> {t.type === 'income' ? 'Recebido' : 'Pago'}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-                          <Clock className="w-3 h-3 mr-1" /> Pendente
-                        </span>
-                      )}
+                      <button
+                        onClick={(e) => handleToggleStatus(t, e)}
+                        title="Clique pra alterar o status"
+                        className="transition-transform active:scale-95 focus:outline-none"
+                      >
+                        {t.status === 'completed' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/20">
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> {t.type === 'income' ? 'Recebido' : 'Pago'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/20">
+                            <Clock className="w-3 h-3 mr-1" /> Pendente
+                          </span>
+                        )}
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -523,17 +607,17 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                   </div>
 
                   <div className="flex justify-between items-center mt-3">
-                    <div className="flex items-center gap-2">
+                    <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-2 active:scale-95 transition-transform focus:outline-none">
                       {t.status === 'completed' ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-200">
                           {t.type === 'income' ? 'Recebido' : 'Pago'}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 hover:bg-amber-200">
                           Pendente
                         </span>
                       )}
-                    </div>
+                    </button>
 
                     <div className="flex items-center gap-3">
                       <span className={`text-base font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -715,7 +799,13 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                   </div>
 
                   <div className="relative z-0">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Data</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data</label>
+                      <div className="flex gap-1">
+                        <button type="button" onClick={() => setSmartDate(-1)} className="text-[10px] px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-md transition-colors">Ontem</button>
+                        <button type="button" onClick={() => setSmartDate(0)} className="text-[10px] px-2 py-1 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 text-primary-600 dark:text-primary-400 rounded-md transition-colors">Hoje</button>
+                      </div>
+                    </div>
                     <input
                       type="date"
                       required
