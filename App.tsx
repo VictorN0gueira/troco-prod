@@ -24,6 +24,7 @@ import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import OnboardingTour from './components/OnboardingTour';
+import TermsModal from './components/TermsModal';
 
 const OfflineIndicator = () => {
   const { isOnline, isSyncing, queueSize } = useOffline();
@@ -897,6 +898,7 @@ const AppContent: React.FC = () => {
           notificacoes_push: data.notificacoes_push ?? false,
           notificacoes_marketing: data.notificacoes_marketing ?? false,
           notificacoes_whatsapp: data.notificacoes_whatsapp ?? false,
+          contrato_assinado: data.contrato_assinado ?? false,
           created_at: data.created_at
         };
 
@@ -1403,6 +1405,12 @@ const AppContent: React.FC = () => {
     <HashRouter>
       <OnboardingTour userId={user.id} user={user} />
       <RecoveryModal isOpen={showRecoveryModal} onSubmit={handleRecoveryPasswordSubmit} />
+      {isAuthenticated && user.id !== 0 && user.contrato_assinado === false && (
+        <TermsModal
+          user={user}
+          onAccept={() => setUser(prev => ({ ...prev, contrato_assinado: true }))}
+        />
+      )}
       <AppRoutes
         isAuthenticated={isAuthenticated}
         loading={loading}

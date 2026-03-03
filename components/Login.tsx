@@ -354,7 +354,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             notificacoes_email: true,
             notificacoes_push: true,
             notificacoes_marketing: true,
-            notificacoes_whatsapp: true
+            notificacoes_whatsapp: true,
+            contrato_assinado: false
           }
         ]);
         if (dbError && !dbError.message.includes('duplicate key value')) {
