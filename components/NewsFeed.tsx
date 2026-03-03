@@ -559,13 +559,22 @@ const NewsFeed = ({ user }: { user: UserProfile }) => {
             setSavedUrls(prev => { const s = new Set(prev); s.delete(item.url); return s; });
             setSavedNews(prev => prev.filter(n => n.url !== item.url));
             showToast('Notícia removida dos salvos');
-            await supabase.from('saved_news').delete().eq('user_id', user.id).eq('url', item.url);
+            const { error } = await supabase.from('saved_news').delete().eq('user_id', user.id).eq('url', item.url);
+            if (error) {
+                console.error("Erro ao remover notícia", error);
+                showToast('Erro ao remover notícia');
+                // Revert
+                setSavedUrls(prev => new Set(prev).add(item.url));
+                setSavedNews(prev => [item, ...prev]);
+            }
         } else {
             // Optimistic add
             setSavedUrls(prev => new Set(prev).add(item.url));
             setSavedNews(prev => [item, ...prev]);
             showToast('Notícia salva! 🔖');
-            await supabase.from('saved_news').upsert({
+
+            // Supabase upsert expects primary key unless onConflict is specified if there is a UNIQUE constraint
+            const { error } = await supabase.from('saved_news').upsert({
                 user_id: user.id,
                 url: item.url,
                 title: item.title,
@@ -576,7 +585,15 @@ const NewsFeed = ({ user }: { user: UserProfile }) => {
                 category: item.category,
                 sentiment: item.sentiment,
                 timestamp: item.timestamp,
-            });
+            }, { onConflict: 'user_id,url' });
+
+            if (error) {
+                console.error("Erro ao salvar notícia", error);
+                showToast('Erro ao salvar notícia (' + error.message + ')');
+                // Revert
+                setSavedUrls(prev => { const s = new Set(prev); s.delete(item.url); return s; });
+                setSavedNews(prev => prev.filter(n => n.url !== item.url));
+            }
         }
     }, [savedUrls, user.id]);
 
