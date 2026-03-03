@@ -1345,10 +1345,6 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                             </td>
                                                             <td className="px-5 py-4">
                                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <button onClick={() => openEdit(inv)} title="Atualizar Valor"
-                                                                        className="p-2 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors">
-                                                                        <RefreshCw className="w-4 h-4" />
-                                                                    </button>
                                                                     <button onClick={() => openEdit(inv)} title="Editar"
                                                                         className="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
                                                                         <Pencil className="w-4 h-4" />
@@ -1412,10 +1408,6 @@ const Investments: React.FC<InvestmentsProps> = ({
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-                                                        <button onClick={() => openEdit(inv)}
-                                                            className="flex-1 py-2 rounded-xl text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1">
-                                                            <RefreshCw className="w-3 h-3" /> Atualizar
-                                                        </button>
                                                         <button onClick={() => openEdit(inv)}
                                                             className="flex-1 py-2 rounded-xl text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
                                                             <Pencil className="w-3 h-3" /> Editar
