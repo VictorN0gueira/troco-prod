@@ -20,6 +20,7 @@ import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-r
 import { LOGO_URL } from './constants';
 import { getTodayLocalDate, formatTransaction, generateTransactionId } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
+import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB } from './localdb';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -807,25 +808,33 @@ const AppContent: React.FC = () => {
   // Fetch Goals Function
   const fetchGoals = async (userId: number) => {
     try {
+      if (!navigator.onLine) {
+        const cached = await goalsDB.getItem(`goals_${userId}`) as Goal[] | null;
+        if (cached) setGoals(cached);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('metas')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setGoals(
-        (data || []).map((g: any): Goal => ({
-          id: g.id.toString(),
-          user_id: g.user_id,
-          name: g.name,
-          target_amount: Number(g.target_amount),
-          current_amount: Number(g.current_amount),
-          deadline: g.deadline,
-          color: g.color,
-          icon: g.icon,
-          created_at: g.created_at,
-        }))
-      );
+
+      const mapped = (data || []).map((g: any): Goal => ({
+        id: g.id.toString(),
+        user_id: g.user_id,
+        name: g.name,
+        target_amount: Number(g.target_amount),
+        current_amount: Number(g.current_amount),
+        deadline: g.deadline,
+        color: g.color,
+        icon: g.icon,
+        created_at: g.created_at,
+      }));
+
+      setGoals(mapped);
+      await goalsDB.setItem(`goals_${userId}`, mapped);
     } catch (error) {
       console.error('Error fetching goals:', error);
     }
@@ -834,28 +843,36 @@ const AppContent: React.FC = () => {
   // Fetch Investments Function
   const fetchInvestments = async (userId: number) => {
     try {
+      if (!navigator.onLine) {
+        const cached = await investmentsDB.getItem(`investments_${userId}`) as Investment[] | null;
+        if (cached) setInvestments(cached);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('investments')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setInvestments(
-        (data || []).map((i: any): Investment => ({
-          id: i.id.toString(),
-          user_id: i.user_id,
-          name: i.name,
-          ticker: i.ticker || undefined,
-          type: i.type,
-          quantity: Number(i.quantity),
-          purchase_price: Number(i.purchase_price),
-          current_price: Number(i.current_price),
-          purchase_date: i.purchase_date,
-          broker: i.broker || undefined,
-          notes: i.notes || undefined,
-          created_at: i.created_at,
-        }))
-      );
+
+      const mapped = (data || []).map((i: any): Investment => ({
+        id: i.id.toString(),
+        user_id: i.user_id,
+        name: i.name,
+        ticker: i.ticker || undefined,
+        type: i.type,
+        quantity: Number(i.quantity),
+        purchase_price: Number(i.purchase_price),
+        current_price: Number(i.current_price),
+        purchase_date: i.purchase_date,
+        broker: i.broker || undefined,
+        notes: i.notes || undefined,
+        created_at: i.created_at,
+      }));
+
+      setInvestments(mapped);
+      await investmentsDB.setItem(`investments_${userId}`, mapped);
     } catch (error) {
       console.error('Error fetching investments:', error);
     }
@@ -864,6 +881,12 @@ const AppContent: React.FC = () => {
   // Fetch Cards Function
   const fetchCards = async (userId: number) => {
     try {
+      if (!navigator.onLine) {
+        const cached = await cardsDB.getItem(`cards_${userId}`) as CreditCard[] | null;
+        if (cached) setCards(cached);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('credit_cards')
         .select('*')
@@ -871,7 +894,9 @@ const AppContent: React.FC = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setCards(data || []);
+      const mapped = data || [];
+      setCards(mapped);
+      await cardsDB.setItem(`cards_${userId}`, mapped);
     } catch (error) {
       console.error('Error fetching cards:', error);
     }
@@ -880,6 +905,18 @@ const AppContent: React.FC = () => {
   // Update fetchUserProfileByEmail to call fetchCards
   const fetchUserProfileByEmail = async (email: string, retries = 3) => {
     try {
+      if (!navigator.onLine) {
+        const cachedUser = await userDB.getItem('last_user') as UserProfile | null;
+        if (cachedUser && cachedUser.email === email) {
+          setUser(cachedUser);
+          fetchTransactions(cachedUser.id);
+          fetchCards(cachedUser.id);
+          fetchInvestments(cachedUser.id);
+          fetchGoals(cachedUser.id);
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from('usuarios')
         .select('*')
@@ -903,6 +940,7 @@ const AppContent: React.FC = () => {
         };
 
         setUser(mappedUser);
+        await userDB.setItem('last_user', mappedUser);
         fetchTransactions(data.id);
         fetchCards(data.id); // Fetch Cards too!
         fetchInvestments(data.id); // Fetch Investments too!
@@ -927,6 +965,12 @@ const AppContent: React.FC = () => {
     if (!numericUserId || numericUserId === 0) return;
 
     try {
+      if (!navigator.onLine) {
+        const cached = await transactionsDB.getItem(`tx_${numericUserId}`) as Transaction[] | null;
+        if (cached) setTransactions(cached);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('transacoes')
         .select('*')
@@ -939,6 +983,7 @@ const AppContent: React.FC = () => {
         // Usar formatTransaction centralizado em utils.ts
         const formatted: Transaction[] = data.map(formatTransaction);
         setTransactions(formatted);
+        await transactionsDB.setItem(`tx_${numericUserId}`, formatted);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);

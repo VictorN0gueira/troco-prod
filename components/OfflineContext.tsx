@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { offlineQueueService } from '../localdb';
 
 // Tipos para as ações offline
 type OfflineActionType = 'ADD' | 'UPDATE' | 'DELETE';
@@ -29,20 +30,18 @@ export const OfflineProvider = ({ children }: { children: ReactNode }) => {
     const [queue, setQueue] = useState<OfflineAction[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // 1. Carregar fila salva do LocalStorage ao montar
+    // 1. Carregar fila salva do LocalForage ao montar
     useEffect(() => {
-        try {
-            const savedQueue = localStorage.getItem('offlineQueue');
-            if (savedQueue) {
-                const parsed = JSON.parse(savedQueue);
-                if (Array.isArray(parsed)) setQueue(parsed);
+        const loadQueue = async () => {
+            const savedQueue = await offlineQueueService.getQueue();
+            if (savedQueue && savedQueue.length > 0) {
+                setQueue(savedQueue);
             }
-        } catch {
-            localStorage.removeItem('offlineQueue');
-        }
+        };
+        loadQueue();
     }, []);
 
-    // 2. Monitorar status da rede
+    // 2. Monitorar status da rede e visibilidade
     useEffect(() => {
         const handleOnline = () => {
             console.log('[Offline] Online detectado.');
@@ -53,17 +52,26 @@ export const OfflineProvider = ({ children }: { children: ReactNode }) => {
             setIsOnline(false);
         };
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && navigator.onLine) {
+                // Força re-checagem do estado online ao voltar pro app
+                setIsOnline(true);
+            }
+        };
+
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 
-    // 3. Persistir fila no LocalStorage sempre que mudar
+    // 3. Persistir fila no LocalForage sempre que mudar
     useEffect(() => {
-        localStorage.setItem('offlineQueue', JSON.stringify(queue));
+        offlineQueueService.saveQueue(queue);
     }, [queue]);
 
     // 4. Adicionar ação à fila
