@@ -12,6 +12,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip
 
 import LimitPaywallModal from './LimitPaywallModal';
 import { UsageMeter } from './FreePlanBadge';
+import { MastercardIcon, VisaIcon, EloIcon, AmexIcon, HipercardIcon, GenericCardIcon } from './BrandIcons';
 
 interface CreditCardsProps {
     user: UserProfile;
@@ -279,13 +280,13 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
         // Helper inline block para centralizar icones pequenos no formato de texto
         const inlineClass = `inline-flex items-center justify-center ${className}`;
 
-        if (name.includes('master')) return <img src="/brands/mastercard.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Mastercard" />;
-        if (name.includes('visa')) return <img src="/brands/visa.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Visa" />;
-        if (name.includes('elo')) return <img src="/brands/elo.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Elo" />;
-        if (name.includes('american') || name.includes('amex')) return <img src="/brands/amex.svg" className={className} style={{ width: 'auto', objectFit: 'contain', borderRadius: '1.5px' }} alt="Amex" />;
-        if (name.includes('hipercard')) return <img src="/brands/hipercard.svg" className={className} style={{ width: 'auto', objectFit: 'contain' }} alt="Hipercard" />;
+        if (name.includes('master')) return <MastercardIcon className={className} />;
+        if (name.includes('visa')) return <VisaIcon className={className} />;
+        if (name.includes('elo')) return <EloIcon className={className} />;
+        if (name.includes('american') || name.includes('amex')) return <AmexIcon className={className} />;
+        if (name.includes('hipercard')) return <HipercardIcon className={className} />;
 
-        return <span className={`${inlineClass} opacity-70`} style={{ fontSize: '11px' }}>{brandName?.toUpperCase() || 'CARTÃO'}</span>;
+        return <GenericCardIcon className={className} />;
     };
 
     // Bank Logo Helper
@@ -481,7 +482,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                             {getBankLogo(card.name)}
                                             <div>
                                                 <div className="mb-0.5">
-                                                    {renderBrandIcon(card.brand, "h-4 text-white opacity-80 mix-blend-overlay")}
+                                                    {renderBrandIcon(card.brand, "h-5 text-white/90")}
                                                 </div>
                                                 <h3 className="text-xl font-bold mt-0.5 tracking-wide">{card.name}</h3>
                                             </div>
@@ -756,7 +757,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                                     }`}
                                             >
                                                 <div className="flex items-center justify-center w-8">
-                                                    {renderBrandIcon(brand, formData.brand === brand ? "h-4 sm:h-5 text-white" : "h-4 sm:h-5 text-slate-500 dark:text-slate-400")}
+                                                    {renderBrandIcon(brand, formData.brand === brand ? "h-5 text-white" : "h-5 text-slate-500 dark:text-slate-400")}
                                                 </div>
                                                 <span className="truncate">{brand}</span>
                                             </button>
