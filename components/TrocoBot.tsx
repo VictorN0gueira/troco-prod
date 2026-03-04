@@ -222,19 +222,19 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setIsOpen(true)}
                         // IMPORTANT: Removed fixed bottom-6 right-6 here as we will wrap both in a high z-index wrapper that is truly global
-                        className="fixed bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] right-6 z-[9999] w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-[0_10px_40px_-5px_var(--tw-shadow-color)] shadow-primary-500/40 flex items-center justify-center cursor-pointer border-[3px] border-white dark:border-slate-800 bg-gradient-to-tr from-slate-900 via-slate-800 to-primary-900 group"
+                        className="fixed bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] right-6 z-[9999] w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-[0_10px_40px_-5px_var(--tw-shadow-color)] shadow-primary-500/40 flex items-center justify-center cursor-pointer border-[3px] border-white dark:border-slate-800 bg-white dark:bg-slate-800 group"
                     >
                         <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_50%)]"></div>
                         </div>
                         {/* Ícone Genérico de Mensagem quando minimizado */}
                         <MessageCircle
-                            className="w-6 h-6 sm:w-7 sm:h-7 text-white transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 relative z-10"
+                            className="w-6 h-6 sm:w-7 sm:h-7 text-primary-500 transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 relative z-10"
                             strokeWidth={2.5}
                         />
 
                         {/* Status Indicator (Removido overflow-hidden do container pai para não cortar a bolinha) */}
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full z-20 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]" />
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white dark:border-slate-800 rounded-full z-20 shadow-[0_0_10px_rgba(244,63,94,0.6)] animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]" />
 
                         {/* Premium Glow effect behind it */}
                         <div className="absolute -inset-1 blur-lg rounded-full bg-gradient-to-r from-emerald-500 to-primary-500 opacity-60 group-hover:opacity-100 transition-opacity z-[-1]"></div>
@@ -283,7 +283,6 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                         <div>
                                             <h3 className="font-bold text-slate-800 dark:text-white text-lg tracking-tight flex items-center gap-2">
                                                 Trocô<span className="text-primary-500">Bot</span>
-                                                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-md border border-emerald-500/20 ml-1">AI</span>
                                             </h3>
                                             <p className="text-slate-500 dark:text-slate-400 text-xs font-medium tracking-wide flex items-center gap-1.5 mt-0.5">
                                                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
