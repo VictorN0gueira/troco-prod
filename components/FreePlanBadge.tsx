@@ -6,6 +6,8 @@ interface FreePlanBadgeProps {
     onClick?: () => void;
     /** Compact: para sidebar / Full: para local de destaque */
     variant?: 'compact' | 'full';
+    /** Oculta o texto para caber em espaços muitos curtos como sidebar fechado */
+    hideText?: boolean;
 }
 
 /**
@@ -14,7 +16,8 @@ interface FreePlanBadgeProps {
  */
 export const FreePlanBadge: React.FC<FreePlanBadgeProps> = ({
     onClick,
-    variant = 'compact'
+    variant = 'compact',
+    hideText = false
 }) => {
     if (variant === 'full') {
         return (
@@ -82,7 +85,7 @@ export const FreePlanBadge: React.FC<FreePlanBadgeProps> = ({
     return (
         <button
             onClick={onClick}
-            className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all duration-200 hover:scale-105 focus:outline-none"
+            className={`group relative inline-flex items-center justify-center ${hideText ? 'w-8 h-8 p-0 rounded-full' : 'gap-1.5 px-3 py-1.5 rounded-full'} text-[11px] font-bold uppercase tracking-wider transition-all duration-200 hover:scale-105 focus:outline-none`}
             style={{
                 background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))',
                 border: '1px solid rgba(99, 102, 241, 0.4)',
@@ -91,8 +94,8 @@ export const FreePlanBadge: React.FC<FreePlanBadgeProps> = ({
             }}
             title="Você está no plano gratuito. Clique para ver planos."
         >
-            <Zap className="w-3 h-3 fill-current" />
-            <span>Free</span>
+            <Zap className="w-4 h-4 fill-current" />
+            {!hideText && <span>Free</span>}
         </button>
     );
 };

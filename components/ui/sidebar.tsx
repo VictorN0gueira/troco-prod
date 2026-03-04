@@ -38,7 +38,6 @@ export const SidebarProvider = ({
     animate?: boolean;
 }) => {
     const [openState, setOpenState] = useState(false);
-
     const open = openProp !== undefined ? openProp : openState;
     const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
 
@@ -85,13 +84,13 @@ export const DesktopSidebar = ({
     return (
         <motion.div
             className={cn(
-                "h-full px-4 py-4 hidden lg:flex lg:flex-col bg-white dark:bg-slate-850 w-[280px] flex-shrink-0 border-r border-slate-200 dark:border-slate-800 custom-scrollbar z-50",
+                "h-full px-4 py-4 hidden lg:flex lg:flex-col bg-white dark:bg-slate-900 w-[280px] flex-shrink-0 border-r border-slate-200 dark:border-slate-800 z-50",
                 className
             )}
             animate={{
-                width: animate ? (open ? "280px" : "80px") : "280px",
+                width: animate ? (open ? "280px" : "68px") : "280px",
             }}
-            initial={{ width: "80px" }}
+            initial={{ width: "68px" }}
             onMouseEnter={() => setOpen(true)}
             onMouseLeave={() => setOpen(false)}
             {...props}
@@ -110,7 +109,7 @@ export const MobileSidebar = ({
     return (
         <div
             className={cn(
-                "h-16 px-4 py-4 flex flex-row lg:hidden items-center justify-between bg-white dark:bg-slate-900 w-full z-50 border-b border-slate-200 dark:border-slate-800"
+                "h-16 px-4 flex flex-row lg:hidden items-center justify-between bg-white dark:bg-slate-900 w-full z-50 border-b border-slate-200 dark:border-slate-800"
             )}
             {...props}
         >
@@ -163,12 +162,12 @@ export const SidebarLink = ({
         <NavLink
             to={link.href}
             onClick={() => {
-                if (window.innerWidth < 1024) setOpen(false); // Close mobile menu on click
+                if (window.innerWidth < 1024) setOpen(false);
                 if (props.onClick) props.onClick();
             }}
             className={({ isActive }) => cn(
-                "flex items-center justify-start gap-4 group/sidebar py-3 px-3 rounded-xl transition-all duration-300",
-                isActive ? "bg-primary-500 text-white shadow-lg shadow-primary-500/30" : "text-slate-500 hover:text-primary-500 hover:bg-slate-100 dark:hover:bg-slate-800",
+                "flex items-center justify-start gap-4 group/sidebar py-2 px-2 rounded-lg transition-all duration-300",
+                isActive ? "bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 font-semibold" : "text-slate-500 hover:text-primary-500 hover:bg-slate-100 dark:hover:bg-slate-800/50",
                 className
             )}
         >
