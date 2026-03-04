@@ -22,12 +22,14 @@ import {
   XCircle,
   RefreshCw,
   ArrowRightLeft,
-  Activity
+  Activity,
+  UploadCloud
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useNotification } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
 import LimitPaywallModal from './LimitPaywallModal';
+import ImportModal from './ImportModal';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -48,6 +50,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   const [quickFilter, setQuickFilter] = useState<'all' | 'pending' | 'income' | 'expense' | 'credit'>('all');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -430,6 +433,16 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
             <Filter className="w-5 h-5 mr-2" />
             <span className="hidden sm:inline">Filtrar</span>
             <span className="sm:hidden">Filtrar</span>
+          </button>
+
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex-1 xl:flex-none flex items-center justify-center px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium border border-slate-200 dark:border-slate-700 shadow-sm"
+            title="Importar de arquivo OFX ou CSV"
+          >
+            <UploadCloud className="w-5 h-5 mr-2 text-primary-500" />
+            <span className="hidden sm:inline">Importar</span>
+            <span className="sm:hidden">Import</span>
           </button>
 
           {/* Indicador de uso mensal - removido daqui (agora está no cabeçalho) */}
@@ -958,6 +971,18 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         title="Limite Atingido"
         description="No plano gratuito você pode ter até 30 lançamentos por mês. Assine o Super Trocô para ter lançamentos ilimitados e controle total."
         userEmail={user?.email}
+      />
+
+      {/* Import Statement Modal (OFX / CSV) */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={(txs) => {
+          if (onAddMultiple) {
+            onAddMultiple(txs);
+            showNotification({ message: `${txs.length} transações importadas com sucesso!`, type: 'success' });
+          }
+        }}
       />
     </div>
   );
