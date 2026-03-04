@@ -185,14 +185,46 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
 
     const getRandomTip = () => {
         const tips = [
+            // Mindset e Hábitos
             "A regra 50-30-20 sugere 50% da renda para necessidades, 30% para desejos e maravilhosos 20% para multiplicar (investir).",
             "Pague a si mesmo primeiro! A regra de ouro é: Caiu o salário? Separe o % do bilhão antes de ir pagar o primeiro boleto.",
+            "Demitir assinaturas fantasmas de streaming! Aquilo que você não acessa a 30 dias não merece seu precioso dinheiro.",
+            "O seu padrão de vida deve caber em 70% do que você ganha. Os outros 30% são a sua passagem para a liberdade.",
+            "Dinheiro não aceita desaforo. Anotar todos os seus gastos não é ser 'pão duro', é ter inteligência financeira adulta.",
+            "O cartão de crédito não é uma extensão do seu salário. É apenas um meio de pagamento. Use com sabedoria e ganhe cashback!",
+            "Evite o 'efeito Diderot' (comprar algo novo e sentir a necessidade de atualizar todo o resto para combinar).",
+            "Não compre o que você não precisa, com o dinheiro que você não tem, para impressionar quem você não conhece.",
+
+            // Investimentos
             "Você sabia que o Juro Composto é a 8ª Maravilha do Mundo? O tempo é o ingrediente secreto dos bilionários. Comece hoje.",
             "Reserva de Emergência é oxigênio. Tente juntar entre 3 a 6 meses do seu CUSTO de Vida (Não do seu ganho) na renda fixa.",
-            "Demitir assinaturas fantasmas de streaming! Aquilo que você não acessa a 30 dias não merece seu precioso dinheiro.",
-            "Vise sempre a qualidade das empresas (Ações e FIIs) que te pagam dividendos ao invés de tentar acertar a loteria."
+            "Vise sempre a qualidade das empresas (Ações e FIIs) que te pagam dividendos ao invés de tentar acertar a loteria.",
+            "Diversificação é a única refeição grátis do mercado financeiro. Não coloque todos os seus ovos na mesma cesta.",
+            "Investir não é sobre ficar rico rápido, é sobre ficar rico com certeza. O jogo é focado no longo prazo (anos e décadas).",
+            "Ações não são bilhetes de loteria, elas representam frações de negócios reais. Seja sócio de boas empresas.",
+            "Fundos Imobiliários (FIIs) são uma excelente forma de receber 'aluguéis' todos os meses sem a dor de cabeça de um inquilino real.",
+            "Não tente adivinhar o momento perfeito do mercado (Market Timing). Aportes constantes vencem qualquer bola de cristal.",
+            "O medo de ficar de fora (FOMO) é o maior destruidor de patrimônio. Nunca invista na dica quente do taxista ou do cunhado.",
+            "Renda Fixa não é fixa se você vender antes do vencimento (Marcação a Mercado). Estude os títulos do Tesouro Direto!",
+
+            // Compras e Economia Diária
+            "A regra das 24 horas: Viu algo na internet e quis comprar? Coloque no carrinho e espere 24h. Na maioria das vezes, o desejo passa.",
+            "Fazer supermercado com fome e sem lista é pedir para gastar 30% a mais na conta final. Vá alimentado!",
+            "Reavalie anualmente seus seguros (carro, vida, residencial) e planos de celular/internet. A lealdade raramente compensa.",
+            "Marmita é a maior arma secreta contra faturas altas de cartão de crédito no almoço. Cozinhe em casa e veja a mágica.",
+            "O custo de um carro vai muito além da parcela. Calcule IPVA, seguro, manutenção, gasolina e a desvalorização antes de comprar.",
+            "Pechinchar não é vergonha, é habilidade. Pedir desconto pagando à vista sempre te deixará com mais dinheiro no bolso.",
+            "Em eletrodomésticos, o 'barato sai caro' aplica-se quase sempre. Compre marcas que duram anos, e não meses.",
+
+            // Estratégia
+            "Transforme seus hobbies em renda extra. Se você gosta de editar fotos ou consertar coisas, por que não fazer uns trocados no final de semana?",
+            "Educação é o ativo de maior ROI (Retorno sobre Investimento). Um curso de R$100 que te ensina a ganhar R$2.000 mensais é a melhor ação da bolsa.",
+            "Acompanhe seu Patrimônio Líquido a cada 3 meses. Somar tudo que você tem menos o que você deve, é a métrica definitiva do sucesso financeiro.",
+            "Suas metas precisam ter nome, valor e prazo! 'Quero viajar' é um desejo. 'Viagem para o Chile por R$4.000 em 24 meses' é uma META.",
+            "Automatize seus investimentos. Programe a transferência da corretora para o mesmo dia do pagamento do salário.",
+            "Aumentar a renda é muito mais poderoso do que apenas cortar o cafezinho. Foque energia em ser mais valioso para o mercado."
         ];
-        return "💡 A dica de milhões de hoje:\n" + tips[Math.floor(Math.random() * tips.length)];
+        return "💡 Pílula de Sabedoria:\n\n" + tips[Math.floor(Math.random() * tips.length)];
     };
 
     const getRecentTransactions = () => {
