@@ -26,6 +26,7 @@ import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import OnboardingTour from './components/OnboardingTour';
 import TermsModal from './components/TermsModal';
+import TrocoBot from './components/TrocoBot';
 
 const OfflineIndicator = () => {
   const { isOnline, isSyncing, queueSize } = useOffline();
@@ -61,7 +62,9 @@ const ProtectedLayout = ({
   user,
   isExiting,
   privacyMode,
-  togglePrivacyMode
+  togglePrivacyMode,
+  transactions,
+  goals
 }: {
   isAuthenticated: boolean;
   darkMode: boolean;
@@ -71,6 +74,8 @@ const ProtectedLayout = ({
   isExiting: boolean;
   privacyMode: boolean;
   togglePrivacyMode: () => void;
+  transactions: Transaction[];
+  goals: Goal[];
 }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
@@ -87,6 +92,7 @@ const ProtectedLayout = ({
       >
         <Outlet />
       </Layout>
+      <TrocoBot transactions={transactions} goals={goals} user={user} />
     </div>
   );
 };
@@ -204,6 +210,8 @@ const AppRoutes = ({
           isExiting={isExiting}
           privacyMode={privacyMode}
           togglePrivacyMode={togglePrivacyMode}
+          transactions={transactions}
+          goals={goals}
         />
       }>
         <Route path="/dashboard" element={
