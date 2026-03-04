@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle } from 'lucide-react';
+import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle, Trash2, History, Plus, Minus } from 'lucide-react';
 import { Transaction, Goal, UserProfile, CreditCard, Investment } from '../types';
 
 interface TrocoBotProps {
@@ -22,6 +22,7 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [isTyping, setIsTyping] = useState(false);
+    const [showAllPrompts, setShowAllPrompts] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const BOT_ICON_URL = "https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2FGemini_Generated_Image_s9cllds9cllds9cl.png&version_id=null";
@@ -34,6 +35,15 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
     useEffect(() => {
         scrollToBottom();
     }, [messages, isTyping]);
+
+    // Scroll para o fim ao abrir a janela
+    useEffect(() => {
+        if (isOpen) {
+            setTimeout(() => {
+                scrollToBottom();
+            }, 150);
+        }
+    }, [isOpen]);
 
     // Mensagem inicial de boas-vindas
     useEffect(() => {
@@ -185,9 +195,34 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         return "💡 A dica de milhões de hoje:\n" + tips[Math.floor(Math.random() * tips.length)];
     };
 
+    const getRecentTransactions = () => {
+        if (transactions.length === 0) return "Você ainda não tem transações registradas. Comece a anotar tudo para ter controle total!";
+
+        const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 3);
+        let text = "Aqui estão suas 3 movimentações mais recentes:\n\n";
+
+        sorted.forEach(t => {
+            const icon = t.type === 'income' ? '🟢' : '🔴';
+            const dateStr = new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+            text += `${icon} **${t.description || 'Transação'}**: ${formatCurrency(Number(t.amount))} em ${dateStr}\n`;
+        });
+
+        return text;
+    };
+
     // --- Handlers Interativos ---
 
-    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv') => {
+    const handleClearChat = () => {
+        setMessages([
+            {
+                id: Date.now().toString(),
+                sender: 'bot',
+                text: `Chat limpo! Prontinho, lousa em branco 🧼.\nComo posso ajudar você a multiplicar seus ganhos hoje? 🚀`,
+            }
+        ]);
+    };
+
+    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv' | 'recent') => {
         // 1. Mensagem do usuário
         const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: actionText };
         setMessages(prev => [...prev, userMsg]);
@@ -202,6 +237,7 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
             else if (actionType === 'tip') botText = getRandomTip();
             else if (actionType === 'cards') botText = getCardsSummary();
             else if (actionType === 'inv') botText = getInvestmentsSummary();
+            else if (actionType === 'recent') botText = getRecentTransactions();
 
             const botMsg: Message = { id: (Date.now() + 1).toString(), sender: 'bot', text: botText };
             setIsTyping(false);
@@ -284,12 +320,22 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                             </p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setIsOpen(false)}
-                                        className="w-9 h-9 rounded-full bg-slate-200/50 hover:bg-slate-300/50 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-300 transition-colors backdrop-blur-sm"
-                                    >
-                                        <ChevronDown className="w-5 h-5" />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleClearChat}
+                                            className="w-9 h-9 rounded-full bg-slate-200/50 hover:bg-slate-300/50 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 hover:text-rose-500 dark:text-slate-300 dark:hover:text-rose-400 transition-colors backdrop-blur-sm"
+                                            title="Limpar Chat"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => setIsOpen(false)}
+                                            className="w-9 h-9 rounded-full bg-slate-200/50 hover:bg-slate-300/50 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-300 transition-colors backdrop-blur-sm"
+                                            title="Minimizar"
+                                        >
+                                            <ChevronDown className="w-5 h-5" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Chat Area - Scroll Smooth e Glass BG */}
@@ -339,8 +385,16 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                 </div>
 
                                 {/* Prompts Injetáveis da Interface Premium - Borda Fina no Topo */}
-                                <div className="p-4 sm:p-5 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 shrink-0 relative z-20">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 mb-3">Tópicos de Análise V2</p>
+                                <div className="p-4 sm:p-5 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 shrink-0 relative z-20 transition-all duration-300">
+                                    <div className="flex items-center justify-between mb-3 pl-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tópicos de Análise V2</p>
+                                        <button
+                                            onClick={() => setShowAllPrompts(!showAllPrompts)}
+                                            className="text-[10px] font-bold text-primary-500 uppercase tracking-wider flex items-center gap-1 hover:underline"
+                                        >
+                                            {showAllPrompts ? <><Minus className="w-3 h-3" /> Ver Menos</> : <><Plus className="w-3 h-3" /> Mais Opções</>}
+                                        </button>
+                                    </div>
                                     <div className="flex flex-wrap items-center gap-2 pb-2">
                                         <button
                                             onClick={() => handleActionClick("Resumo do Mês", 'summary')}
@@ -363,13 +417,27 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                             <CardIcon className="w-3.5 h-3.5 text-amber-500" />
                                             Faturas
                                         </button>
-                                        <button
-                                            onClick={() => handleActionClick("Meus Investimentos", 'inv')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                                            Investimentos
-                                        </button>
+
+                                        {/* Core view vs Expanded view */}
+                                        {(showAllPrompts) && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleActionClick("Investimentos", 'inv')}
+                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
+                                                >
+                                                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                                                    Investimentos
+                                                </button>
+                                                <button
+                                                    onClick={() => handleActionClick("Transações", 'recent')}
+                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
+                                                >
+                                                    <History className="w-3.5 h-3.5 text-blue-500" />
+                                                    Transações Recentes
+                                                </button>
+                                            </>
+                                        )}
+
                                         <button
                                             onClick={() => handleActionClick("Minhas Metas", 'goals')}
                                             className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
