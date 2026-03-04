@@ -92,7 +92,6 @@ const ProtectedLayout = ({
       >
         <Outlet />
       </Layout>
-      <TrocoBot transactions={transactions} goals={goals} user={user} />
     </div>
   );
 };
@@ -1495,6 +1494,17 @@ const AppContent: React.FC = () => {
         deleteGoal={deleteGoal}
         addMoneyToGoal={addMoneyToGoal}
       />
+
+      {/* TrocoBot Global V2 - Outside of Layout transform wrappers */}
+      {isAuthenticated && user.id !== 0 && (
+        <TrocoBot
+          transactions={transactions}
+          goals={goals}
+          cards={cards}
+          investments={investments}
+          user={user}
+        />
+      )}
     </HashRouter>
   );
 };
