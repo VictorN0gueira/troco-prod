@@ -225,11 +225,11 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                         className="fixed bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] right-6 z-[9999] w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-[0_10px_40px_-5px_var(--tw-shadow-color)] shadow-primary-500/40 flex items-center justify-center cursor-pointer border-[3px] border-white dark:border-slate-800 bg-gradient-to-tr from-slate-900 via-slate-800 to-primary-900 group overflow-hidden"
                     >
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_50%)]"></div>
-                        {/* Imagem do Porquinho como Robô */}
+                        {/* Imagem do Porquinho como Robô (Ajuste visual min) */}
                         <img
                             src={BOT_ICON_URL}
                             alt="TrocôBot Premium"
-                            className="w-full h-full object-cover transform scale-110 group-hover:scale-125 group-hover:-rotate-3 transition-all duration-300 relative z-10"
+                            className="w-[85%] h-[85%] object-contain transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 relative z-10"
                         />
 
                         {/* Status Indicator */}
@@ -282,10 +282,10 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                         <div>
                                             <h3 className="font-bold text-slate-800 dark:text-white text-lg tracking-tight flex items-center gap-2">
                                                 Trocô<span className="text-primary-500">Bot</span>
-                                                <span className="bg-primary-500/10 text-primary-500 text-[9px] uppercase font-black px-1.5 py-0.5 rounded-md border border-primary-500/20">AI</span>
+                                                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-md border border-emerald-500/20 ml-1">AI</span>
                                             </h3>
-                                            <p className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold tracking-wide flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium tracking-wide flex items-center gap-1.5 mt-0.5">
+                                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                                                 Online e Preparado
                                             </p>
                                         </div>
@@ -313,10 +313,10 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                         >
                                             <div
                                                 className={`max-w-[85%] rounded-[1.25rem] p-4 text-[14px] leading-relaxed shadow-sm backdrop-blur-sm relative overflow-hidden ${msg.sender === 'user'
-                                                        // Bolha Premium do Usuário
-                                                        ? 'bg-primary-600 dark:bg-primary-500 text-white rounded-br-sm border border-primary-500/50 shadow-primary-500/20'
-                                                        // Bolha Premium do Bot
-                                                        : 'bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 rounded-bl-sm inset-shadow-sm'
+                                                    // Bolha Premium do Usuário
+                                                    ? 'bg-primary-600 dark:bg-primary-500 text-white rounded-br-sm border border-primary-500/50 shadow-primary-500/20'
+                                                    // Bolha Premium do Bot
+                                                    : 'bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 rounded-bl-sm inset-shadow-sm'
                                                     }`}
                                                 style={{ whiteSpace: 'pre-wrap' }}
                                             >
@@ -347,48 +347,48 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                 {/* Prompts Injetáveis da Interface Premium - Borda Fina no Topo */}
                                 <div className="p-4 sm:p-5 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 shrink-0 relative z-20">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 mb-3">Tópicos de Análise V2</p>
-                                    <div className="flex flex-row overflow-x-auto gap-2 pb-2 custom-scrollbar snap-x">
+                                    <div className="flex flex-wrap items-center gap-2 pb-2">
                                         <button
                                             onClick={() => handleActionClick("Resumo do Mês", 'summary')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                                         >
-                                            <Sparkles className="w-4 h-4 text-primary-500" />
+                                            <Sparkles className="w-3.5 h-3.5 text-primary-500" />
                                             Balanço Mês
                                         </button>
                                         <button
                                             onClick={() => handleActionClick("Maior Despesa", 'expense')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                                         >
-                                            <TrendingDown className="w-4 h-4 text-rose-500" />
+                                            <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
                                             Maior Ralo
                                         </button>
                                         <button
                                             onClick={() => handleActionClick("Analisar Cartões", 'cards')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                                         >
-                                            <CardIcon className="w-4 h-4 text-amber-500" />
-                                            Faturas (Cartão)
+                                            <CardIcon className="w-3.5 h-3.5 text-amber-500" />
+                                            Faturas
                                         </button>
                                         <button
                                             onClick={() => handleActionClick("Meus Investimentos", 'inv')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                                         >
-                                            <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
                                             Investimentos
                                         </button>
                                         <button
                                             onClick={() => handleActionClick("Minhas Metas", 'goals')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                                         >
-                                            <Target className="w-4 h-4 text-purple-500" />
+                                            <Target className="w-3.5 h-3.5 text-purple-500" />
                                             Metas Futuras
                                         </button>
                                         <button
                                             onClick={() => handleActionClick("Me Dê Uma Dica!", 'tip')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[13px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                                         >
-                                            <Lightbulb className="w-4 h-4 text-indigo-500" />
-                                            Pílula de Sabedoria
+                                            <Lightbulb className="w-3.5 h-3.5 text-indigo-500" />
+                                            Dica Rápida
                                         </button>
                                     </div>
                                 </div>
