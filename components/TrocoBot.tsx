@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon } from 'lucide-react';
+import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle } from 'lucide-react';
 import { Transaction, Goal, UserProfile, CreditCard, Investment } from '../types';
 
 interface TrocoBotProps {
@@ -222,18 +222,19 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setIsOpen(true)}
                         // IMPORTANT: Removed fixed bottom-6 right-6 here as we will wrap both in a high z-index wrapper that is truly global
-                        className="fixed bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] right-6 z-[9999] w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-[0_10px_40px_-5px_var(--tw-shadow-color)] shadow-primary-500/40 flex items-center justify-center cursor-pointer border-[3px] border-white dark:border-slate-800 bg-gradient-to-tr from-slate-900 via-slate-800 to-primary-900 group overflow-hidden"
+                        className="fixed bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] right-6 z-[9999] w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-[0_10px_40px_-5px_var(--tw-shadow-color)] shadow-primary-500/40 flex items-center justify-center cursor-pointer border-[3px] border-white dark:border-slate-800 bg-gradient-to-tr from-slate-900 via-slate-800 to-primary-900 group"
                     >
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_50%)]"></div>
-                        {/* Imagem do Porquinho como Robô (Ajuste visual min) */}
-                        <img
-                            src={BOT_ICON_URL}
-                            alt="TrocôBot Premium"
-                            className="w-[85%] h-[85%] object-contain transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 relative z-10"
+                        <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_50%)]"></div>
+                        </div>
+                        {/* Ícone Genérico de Mensagem quando minimizado */}
+                        <MessageCircle
+                            className="w-6 h-6 sm:w-7 sm:h-7 text-white transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 relative z-10"
+                            strokeWidth={2.5}
                         />
 
-                        {/* Status Indicator */}
-                        <div className="absolute top-0 right-0 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-slate-900 rounded-full z-20 shadow-md shadow-emerald-500/50" />
+                        {/* Status Indicator (Removido overflow-hidden do container pai para não cortar a bolinha) */}
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full z-20 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]" />
 
                         {/* Premium Glow effect behind it */}
                         <div className="absolute -inset-1 blur-lg rounded-full bg-gradient-to-r from-emerald-500 to-primary-500 opacity-60 group-hover:opacity-100 transition-opacity z-[-1]"></div>
