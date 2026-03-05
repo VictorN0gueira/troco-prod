@@ -384,7 +384,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
       </div>
 
       {/* Action Bar */}
-      <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 w-full overflow-hidden">
 
         {/* Search, Filter and Quick Pills Group */}
         <div className="flex flex-col w-full xl:w-auto flex-1 gap-3">
@@ -419,16 +419,17 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
           </div>
 
           {/* Quick Filters */}
-          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar w-full hide-scroll-indicator text-sm font-medium">
-            <button onClick={() => setQuickFilter('all')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'all' ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Tudo</button>
-            <button onClick={() => setQuickFilter('pending')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Pendentes</button>
-            <button onClick={() => setQuickFilter('income')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'income' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Entradas</button>
-            <button onClick={() => setQuickFilter('expense')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'expense' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Saídas</button>
-            {cards.length > 0 && <button onClick={() => setQuickFilter('credit')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors ${quickFilter === 'credit' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Cartão</button>}
+          <div className="flex flex-wrap gap-2 w-full text-sm font-medium mt-1 mb-1">
+            <button onClick={() => setQuickFilter('all')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors flex-grow sm:flex-grow-0 text-center ${quickFilter === 'all' ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Tudo</button>
+            <button onClick={() => setQuickFilter('pending')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors flex-grow sm:flex-grow-0 text-center ${quickFilter === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Pendentes</button>
+            <button onClick={() => setQuickFilter('income')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors flex-grow sm:flex-grow-0 text-center ${quickFilter === 'income' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Entradas</button>
+            <button onClick={() => setQuickFilter('expense')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors flex-grow sm:flex-grow-0 text-center ${quickFilter === 'expense' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Saídas</button>
+            {cards.length > 0 && <button onClick={() => setQuickFilter('credit')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors flex-grow sm:flex-grow-0 text-center ${quickFilter === 'credit' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>Cartão</button>}
           </div>
         </div>
 
-        <div className="flex gap-3 w-full xl:w-auto h-full items-start mt-1 xl:mt-0">
+        {/* Botoes de acao (agora com flex-wrap para telas pequenas) */}
+        <div className="flex flex-wrap gap-3 w-full xl:w-auto mt-2 xl:mt-0">
           <button className="flex-1 xl:flex-none flex items-center justify-center px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium">
             <Filter className="w-5 h-5 mr-2" />
             <span className="hidden sm:inline">Filtrar</span>
