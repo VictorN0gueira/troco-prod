@@ -142,7 +142,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
           {/* Selo de Plano Gratuito (apenas para usuários sem plano) */}
-          {user.status_assinatura !== 'active' && (
+          {user.id !== 0 && user.status_assinatura !== 'active' && (
             <FreePlanBadge
               variant="full"
               onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
@@ -232,7 +232,7 @@ const Layout: React.FC<LayoutProps> = ({
 
             <div className="flex items-center gap-3 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
               {/* Selo Free compacto no header */}
-              {user.status_assinatura !== 'active' && (
+              {user.id !== 0 && user.status_assinatura !== 'active' && (
                 <FreePlanBadge
                   variant="compact"
                   onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}

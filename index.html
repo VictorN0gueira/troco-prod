@@ -25,6 +25,10 @@
     content="Trocô - Transforme suas finanças em liberdade. Controle seu patrimônio com uma interface intuitiva, relatórios detalhados e gestão simplificada de transações.">
   <meta property="twitter:image" content="/og-image.png">
 
+  <!-- Preload TrocoBot Avatar -->
+  <link rel="preload" as="image"
+    href="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2FGemini_Generated_Image_s9cllds9cllds9cl.png&version_id=null">
+
   <!-- Favicon -->
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
@@ -166,16 +170,22 @@
       0% {
         transform: translateZ(0) rotate(0);
       }
-      15%, 35% {
+
+      15%,
+      35% {
         transform: translateZ(0) rotate(90deg);
       }
-      65%, 85% {
+
+      65%,
+      85% {
         transform: translateZ(0) rotate(270deg);
       }
+
       100% {
         transform: translateZ(0) rotate(360deg);
       }
     }
+
     .animate-spin-around {
       animation: spin-around calc(var(--speed) * 2) infinite linear;
     }
@@ -185,6 +195,7 @@
         transform: translate(calc(100cqw - 100%), 0);
       }
     }
+
     .animate-slide {
       animation: slide var(--speed) ease-in-out infinite alternate;
     }
