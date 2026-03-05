@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle, Trash2, History, Plus, Minus } from 'lucide-react';
+import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle, Trash2, History, Plus, Minus, Activity, CalendarDays } from 'lucide-react';
 import { Transaction, Goal, UserProfile, CreditCard, Investment } from '../types';
 
 interface TrocoBotProps {
@@ -81,14 +81,24 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         });
 
         const balance = income - expense;
-        let text = `Neste mês, você embolsou **${formatCurrency(income)}** e investiu/gastou **${formatCurrency(expense)}**.\n`;
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const monthElapsed = (now.getDate() / daysInMonth) * 100;
+
+        let text = `📅 **Resumo do Mês (${now.getDate()}/${now.getMonth() + 1})**\n`;
+        text += `Entrou: **${formatCurrency(income)}**\nSaiu: **${formatCurrency(expense)}**\n`;
+
+        if (income > 0) {
+            const spentRatio = (expense / income) * 100;
+            text += `\nJá se foram **${monthElapsed.toFixed(0)}%** dos dias do mês e você já engoliu **${spentRatio.toFixed(0)}%** da sua renda monetária do período.\n`;
+
+            if (spentRatio > monthElapsed + 15) text += `\n⚠️ Ritmo alucinante! Você está queimando o limite mais rápido do que os dias passam. Ajuste os freios!`;
+            else if (spentRatio < monthElapsed) text += `\n✅ Passo de tartaruga e carteira de leão! Você está gastando bem menos do que o ritmo do mês dita. Mantenha assim.`;
+        }
 
         if (balance > 0) {
-            text += `Excelente performance! Você tem um saldo superavitário de **${formatCurrency(balance)}** livres. Já pensou onde vai investir? 💸`;
+            text += `\nSeu saldo superavitário atual é **${formatCurrency(balance)}** livres. Já pensou onde vai focar o aporte? �`;
         } else if (balance < 0) {
-            text += `Atenção: Seu déficit atual é de **${formatCurrency(Math.abs(balance))}**. Estamos gastando mais do que entra, hora de segurar as pontas! 🚨`;
-        } else {
-            text += `Tudo no azul, exatamente zero a zero! Cada centavo que entrou, casou com uma despesa. ⚖️`;
+            text += `\nSeu déficit atual é de **${formatCurrency(Math.abs(balance))}**. Estamos vivendo do cheque especial interno! 🚨`;
         }
 
         return text;
@@ -96,24 +106,27 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
 
     const getTopExpense = () => {
         const expenses = currentMonthTransactions.filter(t => t.type === 'expense');
-        if (expenses.length === 0) return "Perfeito! Você não tem *nenhuma* despesa catalogada neste mês até o momento. Um monge financeiro! 🧘‍♂️";
+        if (expenses.length === 0) return "Perfeito! Você não tem *nenhuma* despesa catalogada neste mês até o momento. Um autêntico monge financeiro! 🧘‍♂️";
+
+        const totalExpense = expenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
 
         const byCategory = expenses.reduce((acc, curr) => {
             acc[curr.category] = (acc[curr.category] || 0) + Number(curr.amount);
             return acc;
         }, {} as Record<string, number>);
 
-        let maxCategory = '';
-        let maxAmount = 0;
+        const sortedCategories = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
 
-        Object.entries(byCategory).forEach(([cat, amt]) => {
-            if (amt > maxAmount) {
-                maxAmount = amt;
-                maxCategory = cat;
-            }
+        let text = `🛒 **Seus Top 3 Ralos Financeiros deste mês**:\n\n`;
+        const medals = ['🥇', '🥈', '🥉'];
+
+        sortedCategories.slice(0, 3).forEach(([cat, amt], index) => {
+            const perc = ((amt / totalExpense) * 100).toFixed(1);
+            text += `${medals[index]} **${cat}**: ${formatCurrency(amt)} (${perc}% de tudo que saiu)\n`;
         });
 
-        return `O seu calcanhar de aquiles este mês é **${maxCategory}**. Você já despendeu **${formatCurrency(maxAmount)}** apenas nessa categoria. Vale a pena revisar! 🔍`;
+        text += `\nDe olho no campeão (${sortedCategories[0][0]}). Diminuir 20% do orçamento do ${medals[0]} lugar faz mais diferença do que cortar o cafezinho! 🔍`;
+        return text;
     };
 
     const getGoalsStatus = () => {
@@ -138,6 +151,52 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         }
 
         return text;
+    };
+
+    const getHealthScoreDetails = () => {
+        let income = 0;
+        let expense = 0;
+        currentMonthTransactions.forEach(t => {
+            const val = Number(t.amount);
+            if (t.type === 'income') income += val;
+            else expense += val;
+        });
+
+        if (income === 0 && expense === 0) return "Sua saúde financeira está em stand-by neste mês. Cadastre suas rendas e gastos para eu poder te avaliar!";
+        if (income === 0) return `Você gastou **${formatCurrency(expense)}** mas não registrou nenhuma entrada ainda. Cuidado para não queimar suas reservas! ⚠️`;
+
+        const savedPerc = ((income - expense) / income) * 100;
+
+        let text = `🩺 **Raio-X da sua Saúde Financeira**\n\n`;
+        text += `Você guardou/investiu **${savedPerc.toFixed(1)}%** de toda a grana que fez neste mês.\n`;
+
+        if (savedPerc >= 20) text += `\n🌟 Padrão Ouro! Você está seguindo à risca a literatura financeira e poupando agressivamente. Seu eu do futuro agradece!`;
+        else if (savedPerc > 0) text += `\n👍 Caminho certo, mas pode melhorar. Tente poupar um pouco mais cortando os excessos para acelerar sua riqueza.`;
+        else text += `\n🚨 UTI Financeira! Você está gastando mais do que ganha (-${Math.abs(savedPerc).toFixed(1)}%). É hora de um freio emergencial nos cartões!`;
+
+        return text;
+    };
+
+    const getYearTopExpense = () => {
+        const yearExpenses = transactions.filter(t => t.type === 'expense' && new Date(t.date).getFullYear() === now.getFullYear());
+        if (yearExpenses.length === 0) return "Nenhuma despesa registrada neste ano ainda.";
+
+        const byCategory = yearExpenses.reduce((acc, curr) => {
+            acc[curr.category] = (acc[curr.category] || 0) + Number(curr.amount);
+            return acc;
+        }, {} as Record<string, number>);
+
+        let maxCategory = '';
+        let maxAmount = 0;
+
+        Object.entries(byCategory).forEach(([cat, amt]) => {
+            if (amt > maxAmount) {
+                maxAmount = amt;
+                maxCategory = cat;
+            }
+        });
+
+        return `No acumulado do ANO, o seu maior dreno financeiro é **${maxCategory}** com bizarros **${formatCurrency(maxAmount)}** vazados. \n\nImagine esse valor investido a juros compostos? É hora de rebaixar essa categoria! 🔪`;
     };
 
     const getCardsSummary = () => {
@@ -254,7 +313,7 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         ]);
     };
 
-    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv' | 'recent') => {
+    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv' | 'recent' | 'health' | 'yearexpense') => {
         // 1. Mensagem do usuário
         const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: actionText };
         setMessages(prev => [...prev, userMsg]);
@@ -270,6 +329,8 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
             else if (actionType === 'cards') botText = getCardsSummary();
             else if (actionType === 'inv') botText = getInvestmentsSummary();
             else if (actionType === 'recent') botText = getRecentTransactions();
+            else if (actionType === 'health') botText = getHealthScoreDetails();
+            else if (actionType === 'yearexpense') botText = getYearTopExpense();
 
             const botMsg: Message = { id: (Date.now() + 1).toString(), sender: 'bot', text: botText };
             setIsTyping(false);
@@ -466,6 +527,20 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                                 >
                                                     <History className="w-3.5 h-3.5 text-blue-500" />
                                                     Transações Recentes
+                                                </button>
+                                                <button
+                                                    onClick={() => handleActionClick("Saúde Financeira", 'health')}
+                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
+                                                >
+                                                    <Activity className="w-3.5 h-3.5 text-teal-500" />
+                                                    Saúde Financeira
+                                                </button>
+                                                <button
+                                                    onClick={() => handleActionClick("Maior Custo Anual", 'yearexpense')}
+                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
+                                                >
+                                                    <CalendarDays className="w-3.5 h-3.5 text-orange-500" />
+                                                    Maior Custo Anual
                                                 </button>
                                             </>
                                         )}
