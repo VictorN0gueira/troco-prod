@@ -1,3 +1,13 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+/**
+ * Combina classes Tailwind de forma segura, resolvendo conflitos.
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 /**
  * Retorna a data atual no formato YYYY-MM-DD baseada no fuso horário LOCAL do usuário.
  * Evita o problema do toISOString() que converte para UTC e pode retornar o dia seguinte/anterior.

@@ -161,7 +161,35 @@
 
     /* --- 21st.dev / Magic UI Style Animations --- */
 
-    /* Shimmer Effect */
+    /* Spin & Slide Effect (Shimmer Button Aceternity) */
+    @keyframes spin-around {
+      0% {
+        transform: translateZ(0) rotate(0);
+      }
+      15%, 35% {
+        transform: translateZ(0) rotate(90deg);
+      }
+      65%, 85% {
+        transform: translateZ(0) rotate(270deg);
+      }
+      100% {
+        transform: translateZ(0) rotate(360deg);
+      }
+    }
+    .animate-spin-around {
+      animation: spin-around calc(var(--speed) * 2) infinite linear;
+    }
+
+    @keyframes slide {
+      to {
+        transform: translate(calc(100cqw - 100%), 0);
+      }
+    }
+    .animate-slide {
+      animation: slide var(--speed) ease-in-out infinite alternate;
+    }
+
+    /* Shimmer Effect (Text/Bg) */
     @keyframes shimmer {
       0% {
         background-position: 0% 50%;
@@ -278,7 +306,7 @@
 }
 </script>
   <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.11/dist/dotlottie-wc.js" type="module"></script>
-  <script type="module" crossorigin src="/assets/index-BDisXPN9.js"></script>
+  <script type="module" crossorigin src="/assets/index-Bi3caKx4.js"></script>
 <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
 
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">

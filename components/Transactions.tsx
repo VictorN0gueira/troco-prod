@@ -28,6 +28,9 @@ import {
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useNotification } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
+import { SpotlightCard } from './ui/spotlight-card';
+import NumberTicker from './ui/number-ticker';
+import { ShimmerButton } from './ui/shimmer-button';
 import LimitPaywallModal from './LimitPaywallModal';
 import ImportModal from './ImportModal';
 
@@ -350,37 +353,43 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         </div>
       )}
 
-      {/* Summary Miny Cards */}
+      {/* Summary Miny Cards (Now Spotlight Cards) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 rounded-xl">
+        <SpotlightCard className="flex items-center gap-4 p-4 dark:bg-slate-850">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 rounded-xl z-10 w-12 h-12 flex items-center justify-center shrink-0">
             <TrendingUp className="w-6 h-6" />
           </div>
-          <div>
+          <div className="z-10 bg-transparent flex flex-col justify-center">
             <p className="text-xs font-semibold text-slate-500 uppercase">Entradas</p>
-            <p className="text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(summary.income)}</p>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
-          <div className="p-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl">
-            <TrendingDown className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase">Saídas</p>
-            <p className="text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(summary.expense)}</p>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-850 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-4">
-          <div className={`p-3 rounded-xl ${summary.balance >= 0 ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-500' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'}`}>
-            <Activity className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase">Balanço Mensal</p>
-            <p className={`text-lg font-bold ${summary.balance >= 0 ? 'text-primary-600 dark:text-primary-400' : 'text-rose-500'}`}>
-              {summary.balance >= 0 ? '+' : ''}{formatCurrency(summary.balance)}
+            <p className="text-lg font-bold text-slate-800 dark:text-white bg-transparent">
+              <NumberTicker value={summary.income} isCurrency decimalPlaces={2} prefix="R$ " />
             </p>
           </div>
-        </div>
+        </SpotlightCard>
+
+        <SpotlightCard className="flex items-center gap-4 p-4 dark:bg-slate-850">
+          <div className="p-3 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl z-10 w-12 h-12 flex items-center justify-center shrink-0">
+            <TrendingDown className="w-6 h-6" />
+          </div>
+          <div className="z-10 bg-transparent flex flex-col justify-center">
+            <p className="text-xs font-semibold text-slate-500 uppercase">Saídas</p>
+            <p className="text-lg font-bold text-slate-800 dark:text-white bg-transparent">
+              <NumberTicker value={summary.expense} isCurrency decimalPlaces={2} prefix="R$ " />
+            </p>
+          </div>
+        </SpotlightCard>
+
+        <SpotlightCard className="flex items-center gap-4 p-4 dark:bg-slate-850">
+          <div className={`p-3 rounded-xl z-10 w-12 h-12 flex items-center justify-center shrink-0 ${summary.balance >= 0 ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-500' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'}`}>
+            <Activity className="w-6 h-6" />
+          </div>
+          <div className="z-10 bg-transparent flex flex-col justify-center">
+            <p className="text-xs font-semibold text-slate-500 uppercase">Balanço Mensal</p>
+            <p className={`text-lg font-bold bg-transparent overflow-hidden ${summary.balance >= 0 ? 'text-primary-600 dark:text-primary-400' : 'text-rose-500'}`}>
+              <NumberTicker value={summary.balance} isCurrency decimalPlaces={2} prefix={summary.balance >= 0 ? "+R$ " : "-R$ "} />
+            </p>
+          </div>
+        </SpotlightCard>
       </div>
 
       {/* Action Bar */}
@@ -448,14 +457,19 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
 
           {/* Indicador de uso mensal - removido daqui (agora está no cabeçalho) */}
 
-          <button
+          <ShimmerButton
             onClick={handleOpenCreate}
-            className="flex-1 xl:flex-none flex items-center justify-center px-6 py-3 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-all shadow-lg shadow-primary-500/30 font-semibold"
+            className="flex-1 xl:flex-none"
+            background="#10B981"
+            borderRadius="12px"
+            shimmerColor="#ffffff"
           >
-            <Plus className="w-5 h-5 mr-2" />
-            <span className="hidden sm:inline">Nova Transação</span>
-            <span className="sm:hidden">Nova</span>
-          </button>
+            <div className="flex items-center justify-center font-semibold z-10 pointer-events-none">
+              <Plus className="w-5 h-5 mr-2" />
+              <span className="hidden sm:inline">Nova Transação</span>
+              <span className="sm:hidden">Nova</span>
+            </div>
+          </ShimmerButton>
         </div>
       </div>
 

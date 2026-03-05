@@ -13,6 +13,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip
 import LimitPaywallModal from './LimitPaywallModal';
 import { UsageMeter } from './FreePlanBadge';
 import { MastercardIcon, VisaIcon, EloIcon, AmexIcon, HipercardIcon, GenericCardIcon } from './BrandIcons';
+import { GlareCard } from './ui/glare-card';
 
 interface CreditCardsProps {
     user: UserProfile;
@@ -467,102 +468,104 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                 exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                             >
                                 {/* 3D Card Visual */}
-                                <div
-                                    className="h-64 w-full rounded-2xl p-6 text-white shadow-xl transition-transform duration-500 transform group-hover:-translate-y-2 relative overflow-hidden flex flex-col justify-between cursor-pointer"
-                                    style={{ background: getGradient(card.color) }}
-                                    onClick={() => handleViewInvoice(card)}
-                                >
-                                    {/* ... (Card Visuals remain the same) ... */}
-                                    {/* Background Pattern */}
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5"></div>
+                                <GlareCard className="w-full">
+                                    <div
+                                        className="h-64 w-full rounded-2xl p-6 text-white shadow-xl relative overflow-hidden flex flex-col justify-between cursor-pointer"
+                                        style={{ background: getGradient(card.color) }}
+                                        onClick={() => handleViewInvoice(card)}
+                                    >
+                                        {/* ... (Card Visuals remain the same) ... */}
+                                        {/* Background Pattern */}
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5"></div>
 
-                                    <div className="flex justify-between items-start relative z-10">
-                                        <div className="flex items-center gap-3">
-                                            {getBankLogo(card.name)}
-                                            <div>
-                                                <div className="mb-0.5">
-                                                    {renderBrandIcon(card.brand, "h-5 text-white/90")}
+                                        <div className="flex justify-between items-start relative z-10">
+                                            <div className="flex items-center gap-3">
+                                                {getBankLogo(card.name)}
+                                                <div>
+                                                    <div className="mb-0.5">
+                                                        {renderBrandIcon(card.brand, "h-5 text-white/90")}
+                                                    </div>
+                                                    <h3 className="text-xl font-bold mt-0.5 tracking-wide">{card.name}</h3>
                                                 </div>
-                                                <h3 className="text-xl font-bold mt-0.5 tracking-wide">{card.name}</h3>
                                             </div>
-                                        </div>
 
-                                        {/* Right-side badges: Smart Alert → Health Score */}
-                                        <div className="flex flex-col items-end gap-1">
-                                            {(() => {
-                                                const today = new Date().getDate();
-                                                const bestDay = today >= card.closing_day && today <= card.closing_day + 3;
-                                                let daysToDue = card.due_day - today;
-                                                if (daysToDue < 0) daysToDue += 30;
-                                                const dueSoon = daysToDue <= 5 && daysToDue >= 0;
-                                                if (bestDay) return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
-                                                if (dueSoon) return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
-                                                return null;
-                                            })()}
-                                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-black/20 backdrop-blur-sm ${health.color}`}>
-                                                {health.icon} {health.label}
-                                            </span>
-                                            {cashback > 0 && (
-                                                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-white/20 text-white">
-                                                    <Star className="w-3 h-3" />
-                                                    R$ {cashback.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            {/* Right-side badges: Smart Alert → Health Score */}
+                                            <div className="flex flex-col items-end gap-1">
+                                                {(() => {
+                                                    const today = new Date().getDate();
+                                                    const bestDay = today >= card.closing_day && today <= card.closing_day + 3;
+                                                    let daysToDue = card.due_day - today;
+                                                    if (daysToDue < 0) daysToDue += 30;
+                                                    const dueSoon = daysToDue <= 5 && daysToDue >= 0;
+                                                    if (bestDay) return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
+                                                    if (dueSoon) return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
+                                                    return null;
+                                                })()}
+                                                <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-black/20 backdrop-blur-sm ${health.color}`}>
+                                                    {health.icon} {health.label}
                                                 </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4 relative z-10">
-                                        <div>
-                                            {/* Usage header row */}
-                                            <div className="flex justify-between text-xs mb-1 opacity-90">
-                                                <span>Valor Consumido</span>
-                                                <span className="font-bold">R$ {totalUsedLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                            </div>
-
-                                            {/* Colour-coded limit progress bar */}
-                                            <div className="relative w-full bg-black/30 rounded-full h-3 overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full transition-all duration-700 ease-out"
-                                                    style={{ width: `${clampedPct}%`, background: barColor, boxShadow: `0 0 8px ${barColor}99` }}
-                                                />
-                                                {/* Overflow flash when over limit */}
-                                                {isOverLimit && (
-                                                    <div className="absolute inset-0 rounded-full animate-pulse bg-red-500/30" />
+                                                {cashback > 0 && (
+                                                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-white/20 text-white">
+                                                        <Star className="w-3 h-3" />
+                                                        R$ {cashback.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </span>
                                                 )}
                                             </div>
-
-                                            {/* Bottom row */}
-                                            <div className="flex justify-between text-xs mt-1.5 opacity-90">
-                                                <span className="flex items-center gap-1">
-                                                    {isOverLimit
-                                                        ? <span className="font-black text-red-300 animate-pulse">⚠ ESTOURADO</span>
-                                                        : <span>Disponível</span>
-                                                    }
-                                                </span>
-                                                <span className="font-bold" style={{ color: isOverLimit ? '#FCA5A5' : 'white' }}>
-                                                    R$ {Math.abs(availableLimit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
                                         </div>
 
-                                        <div className="flex justify-between items-center text-sm pt-2 border-t border-white/20">
-                                            <div className="flex items-center gap-1.5">
-                                                <CalendarClock className="w-4 h-4 opacity-75" />
-                                                <span>Fecha dia {card.closing_day}</span>
+                                        <div className="space-y-4 relative z-10">
+                                            <div>
+                                                {/* Usage header row */}
+                                                <div className="flex justify-between text-xs mb-1 opacity-90">
+                                                    <span>Valor Consumido</span>
+                                                    <span className="font-bold">R$ {totalUsedLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                </div>
+
+                                                {/* Colour-coded limit progress bar */}
+                                                <div className="relative w-full bg-black/30 rounded-full h-3 overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-700 ease-out"
+                                                        style={{ width: `${clampedPct}%`, background: barColor, boxShadow: `0 0 8px ${barColor}99` }}
+                                                    />
+                                                    {/* Overflow flash when over limit */}
+                                                    {isOverLimit && (
+                                                        <div className="absolute inset-0 rounded-full animate-pulse bg-red-500/30" />
+                                                    )}
+                                                </div>
+
+                                                {/* Bottom row */}
+                                                <div className="flex justify-between text-xs mt-1.5 opacity-90">
+                                                    <span className="flex items-center gap-1">
+                                                        {isOverLimit
+                                                            ? <span className="font-black text-red-300 animate-pulse">⚠ ESTOURADO</span>
+                                                            : <span>Disponível</span>
+                                                        }
+                                                    </span>
+                                                    <span className="font-bold" style={{ color: isOverLimit ? '#FCA5A5' : 'white' }}>
+                                                        R$ {Math.abs(availableLimit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <Calendar className="w-4 h-4 opacity-75" />
-                                                <span>Vence dia {card.due_day}</span>
+
+                                            <div className="flex justify-between items-center text-sm pt-2 border-t border-white/20">
+                                                <div className="flex items-center gap-1.5">
+                                                    <CalendarClock className="w-4 h-4 opacity-75" />
+                                                    <span>Fecha dia {card.closing_day}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Calendar className="w-4 h-4 opacity-75" />
+                                                    <span>Vence dia {card.due_day}</span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 backdrop-blur-[2px] rounded-2xl z-20">
+                                            <span className="bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                                                Ver Fatura
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 backdrop-blur-[2px] rounded-2xl z-20">
-                                        <span className="bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                                            Ver Fatura
-                                        </span>
-                                    </div>
-                                </div>
+                                </GlareCard>
 
                                 {/* Action Buttons — always visible on mobile, hover on desktop */}
                                 <div className="flex gap-2 mt-2 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">

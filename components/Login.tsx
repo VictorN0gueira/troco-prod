@@ -524,10 +524,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-slate-50 dark:bg-[#0d1117] relative overflow-hidden">
 
           {/* Mobile background orbs */}
-          <div className="lg:hidden absolute top-[-50px] right-[-50px] w-64 h-64 rounded-full bg-emerald-400/8 blur-3xl pointer-events-none" />
-          <div className="lg:hidden absolute bottom-[-50px] left-[-50px] w-48 h-48 rounded-full bg-teal-400/8 blur-3xl pointer-events-none" />
+          <div className="lg:hidden absolute top-[-50px] right-[-50px] w-64 h-64 rounded-full bg-emerald-400/8 blur-3xl pointer-events-none z-0" />
+          <div className="lg:hidden absolute bottom-[-50px] left-[-50px] w-48 h-48 rounded-full bg-teal-400/8 blur-3xl pointer-events-none z-0" />
 
-          <div className="w-full max-w-[400px]">
+          <div className="w-full max-w-[400px] z-10">
 
             {/* Mobile logo */}
             <div className="lg:hidden flex flex-col items-center mb-8 fade-up">

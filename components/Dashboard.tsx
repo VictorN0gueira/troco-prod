@@ -6,6 +6,8 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip as PieTooltip, Legend
 } from 'recharts';
+import { SpotlightCard } from './ui/spotlight-card';
+import NumberTicker from './ui/number-ticker';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -255,7 +257,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
     switch (type) {
       case 'balance':
         return (
-          <div id="tour-dashboard-balance" className="bg-slate-900 dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden group h-full">
+          <SpotlightCard id="tour-dashboard-balance" className="bg-slate-900 border-none dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl group h-full">
             {/* Border Beam */}
             <div className="border-beam" />
 
@@ -272,7 +274,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                   <span className="text-[10px] bg-slate-700/50 px-2 py-0.5 rounded text-slate-300 border border-slate-600">Mês Atual</span>
                 </div>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 md:mt-2 truncate">
-                  <BlurText>{formatCurrency(stats.balance.realized)}</BlurText>
+                  <BlurText><NumberTicker value={stats.balance.realized} isCurrency decimalPlaces={2} prefix={stats.balance.realized >= 0 ? "+R$ " : "-R$ "} /></BlurText>
                 </h2>
               </div>
 
@@ -281,17 +283,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                   <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-md">
                     <AlertCircle className="w-4 h-4 text-amber-400" />
                     <span>
-                      Previsto: <strong className="text-white"><BlurText>{formatCurrency(stats.balance.projected)}</BlurText></strong>
+                      Previsto: <strong className="text-white"><BlurText><NumberTicker value={stats.balance.projected} isCurrency decimalPlaces={2} prefix={stats.balance.projected >= 0 ? "R$ " : "-R$ "} /></BlurText></strong>
                     </span>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+          </SpotlightCard>
         );
       case 'income':
         return (
-          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 transition-transform hover:-translate-y-1 duration-300 h-full relative overflow-hidden">
+          <SpotlightCard className="bg-white border-transparent shadow shadow-emerald-500/10 dark:bg-slate-850 rounded-3xl p-5 md:p-6 transition-transform hover:-translate-y-1 duration-300 h-full">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(16,185,129,0.05),transparent_50%)] pointer-events-none" />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
@@ -300,23 +302,23 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                 </div>
                 {stats.income.pending > 0 && (
                   <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                    +<BlurText>{formatCurrency(stats.income.pending)}</BlurText> pendente
+                    +<BlurText><NumberTicker value={stats.income.pending} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> pendente
                   </span>
                 )}
               </div>
               <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Receitas Totais</p>
               <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
-                <BlurText>{formatCurrency(stats.income.total)}</BlurText>
+                <BlurText><NumberTicker value={stats.income.total} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText>
               </h3>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-                <BlurText>{formatCurrency(stats.income.paid)}</BlurText> recebidos
+                <BlurText><NumberTicker value={stats.income.paid} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> recebidos
               </p>
             </div>
-          </div>
+          </SpotlightCard>
         );
       case 'expense':
         return (
-          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 transition-transform hover:-translate-y-1 duration-300 h-full relative overflow-hidden">
+          <SpotlightCard className="bg-white border-transparent shadow shadow-rose-500/10 dark:bg-slate-850 rounded-3xl p-5 md:p-6 transition-transform hover:-translate-y-1 duration-300 h-full">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(244,63,94,0.05),transparent_50%)] pointer-events-none" />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
@@ -325,19 +327,19 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                 </div>
                 {stats.expense.pending > 0 && (
                   <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                    +<BlurText>{formatCurrency(stats.expense.pending)}</BlurText> pendente
+                    +<BlurText><NumberTicker value={stats.expense.pending} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> pendente
                   </span>
                 )}
               </div>
               <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Despesas Totais</p>
               <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
-                <BlurText>{formatCurrency(stats.expense.total)}</BlurText>
+                <BlurText><NumberTicker value={stats.expense.total} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText>
               </h3>
               <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-medium">
-                <BlurText>{formatCurrency(stats.expense.paid)}</BlurText> pagos
+                <BlurText><NumberTicker value={stats.expense.paid} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> pagos
               </p>
             </div>
-          </div>
+          </SpotlightCard>
         );
       case 'chart':
         return (
