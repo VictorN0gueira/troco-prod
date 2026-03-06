@@ -320,6 +320,7 @@ const AppRoutes = ({
               user={user}
               onDeleteTransaction={deleteTransaction}
               onUpdateTransaction={updateTransaction}
+              onAddTransaction={addTransaction}
             />
           </motion.div>
         } />
