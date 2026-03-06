@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { SpotlightCard } from './ui/spotlight-card';
 import NumberTicker from './ui/number-ticker';
+import NoSpendCalendar from './ui/no-spend-calendar';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -553,6 +554,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
           </div>
         ))}
       </div>
+
+      {/* No Spend Days Calendar */}
+      <NoSpendCalendar transactions={transactions} />
     </div>
   );
 };
