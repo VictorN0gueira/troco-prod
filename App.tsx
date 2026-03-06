@@ -319,6 +319,7 @@ const AppRoutes = ({
               transactions={transactions}
               user={user}
               onDeleteTransaction={deleteTransaction}
+              onUpdateTransaction={updateTransaction}
             />
           </motion.div>
         } />
