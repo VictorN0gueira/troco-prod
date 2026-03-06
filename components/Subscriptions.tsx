@@ -12,6 +12,7 @@ import {
 import { Transaction, UserProfile } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, generateTransactionId } from '../utils';
+import LimitPaywallModal from './LimitPaywallModal';
 
 interface SubscriptionsProps {
     transactions: Transaction[];
@@ -20,6 +21,9 @@ interface SubscriptionsProps {
     onUpdateTransaction: (t: Transaction) => Promise<void>;
     onAddTransaction: (t: Transaction) => Promise<void>;
 }
+
+const FREE_SUBSCRIPTION_LIMIT = 5;
+
 
 interface SubscriptionGroup {
     key: string;
@@ -310,7 +314,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ title, message, onConfirm, on
 //  Main Page Component
 // ╚══════════════════════════════════════════════════════════╝
 const Subscriptions: React.FC<SubscriptionsProps> = ({
-    transactions, onDeleteTransaction, onUpdateTransaction, onAddTransaction,
+    transactions, user, onDeleteTransaction, onUpdateTransaction, onAddTransaction,
 }) => {
     const [cancelList, setCancelList] = useState<Set<string>>(new Set());
     const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -319,6 +323,7 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
     const [showAdd, setShowAdd] = useState(false);
+    const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Transaction | null>(null);
     const [deleteOneTarget, setDeleteOneTarget] = useState<{ id: string } | null>(null);
     const [deleteAllTarget, setDeleteAllTarget] = useState<SubscriptionGroup | null>(null);
@@ -396,6 +401,18 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
         return n;
     });
 
+    const isFree = user?.status_assinatura !== 'active';
+
+    // Guard for free plan
+    const handleOpenAdd = () => {
+        if (isFree && subscriptions.length >= FREE_SUBSCRIPTION_LIMIT) {
+            setIsLimitModalOpen(true);
+            return;
+        }
+        setShowAdd(true);
+    };
+
+
     const handleDeleteAll = useCallback(async (sub: SubscriptionGroup) => {
         for (const tx of sub.occurrences) await onDeleteTransaction(tx.id);
     }, [onDeleteTransaction]);
@@ -452,10 +469,32 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                         )}
                     </p>
                 </div>
-                <button onClick={() => setShowAdd(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-primary-500/30 active:scale-95 transition-all flex-shrink-0">
-                    <Plus className="w-4 h-4" />Nova Assinatura
-                </button>
+                {/* Button + free usage bar */}
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <button onClick={handleOpenAdd}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-primary-500/30 active:scale-95 transition-all">
+                        <Plus className="w-4 h-4" />Nova Assinatura
+                    </button>
+                    {isFree && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-28 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-500 ${subscriptions.length >= FREE_SUBSCRIPTION_LIMIT
+                                            ? 'bg-rose-500'
+                                            : subscriptions.length >= FREE_SUBSCRIPTION_LIMIT - 1
+                                                ? 'bg-amber-400'
+                                                : 'bg-primary-500'
+                                        }`}
+                                    style={{ width: `${Math.min((subscriptions.length / FREE_SUBSCRIPTION_LIMIT) * 100, 100)}%` }}
+                                />
+                            </div>
+                            <span className={`text-[11px] font-semibold ${subscriptions.length >= FREE_SUBSCRIPTION_LIMIT ? 'text-rose-500' : 'text-slate-400'
+                                }`}>
+                                {subscriptions.length}/{FREE_SUBSCRIPTION_LIMIT} grátis
+                            </span>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* ── Summary Cards ── */}
@@ -569,7 +608,7 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                             </div>
                             <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Nenhuma assinatura</h3>
                             <p className="text-sm text-slate-400 max-w-xs mb-5">Adicione transações recorrentes ou crie uma assinatura aqui mesmo.</p>
-                            <button onClick={() => setShowAdd(true)}
+                            <button onClick={handleOpenAdd}
                                 className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-semibold shadow shadow-primary-500/30">
                                 <Plus className="w-4 h-4" />Nova Assinatura
                             </button>
@@ -732,6 +771,15 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                         onClose={() => setDeleteAllTarget(null)} />
                 )}
             </AnimatePresence>
+
+            {/* Free plan paywall */}
+            <LimitPaywallModal
+                isOpen={isLimitModalOpen}
+                onClose={() => setIsLimitModalOpen(false)}
+                title="Limite de Assinaturas Atingido"
+                description={`No plano gratuito você pode gerenciar até ${FREE_SUBSCRIPTION_LIMIT} assinaturas recorrentes. Assine o Super Trocô para adicionar assinaturas ilimitadas e ter controle total dos seus gastos fixos.`}
+                userEmail={user?.email}
+            />
         </div>
     );
 };
