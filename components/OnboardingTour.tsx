@@ -69,6 +69,18 @@ const TOUR_STEPS: Step[] = [
         ),
     },
     {
+        target: '#tour-nav-subscriptions',
+        placement: 'right',
+        content: (
+            <div>
+                <h3 className="font-bold text-slate-800 dark:text-white mb-2">Gestor de Assinaturas 🔄</h3>
+                <p className="text-slate-600 dark:text-slate-300 text-sm">
+                    Visualize todas as suas assinaturas recorrentes em um painel dedicado. Veja quanto você gasta mensalmente e anualmente — e descubra o que pode cancelar.
+                </p>
+            </div>
+        ),
+    },
+    {
         target: '#tour-nav-investments',
         placement: 'right',
         content: (

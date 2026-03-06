@@ -18,7 +18,9 @@ import {
     Newspaper,
     Clock,
     ExternalLink,
-    Target
+    Target,
+    Repeat,
+    XCircle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
@@ -259,6 +261,7 @@ const LandingPage: React.FC = () => {
                             { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10', title: 'Investimentos', desc: 'Sua carteira consolidada com cotações em tempo real e análise de performance.' },
                             { icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10', title: 'Contas e Lembretes', desc: 'Nunca mais esqueça de pagar um boleto. Notificações inteligentes de vencimento.' },
                             { icon: MessageCircle, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10', title: 'Agente WhatsApp', desc: 'Interaja com seu assistente financeiro direto pelo WhatsApp via comandos de voz ou texto.' },
+                            { icon: Repeat, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10', title: 'Gestor de Assinaturas', desc: 'Visualize, analise e controle todos seus gastos recorrentes em um painel dedicado. Saiba exatamente quanto suas assinaturas custam ao ano.' },
                             { icon: Target, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10', title: 'Metas Financeiras', desc: 'Defina, acompanhe e alcance seus objetivos financeiros mais rápido com metas inteligentes.' }
                         ].map((f, i) => (
                             <div key={i} className="flex-1 min-w-[280px] max-w-[320px] group p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-primary-500/50 hover:shadow-2xl hover:shadow-primary-500/10 transition-all duration-500">
@@ -400,77 +403,72 @@ const LandingPage: React.FC = () => {
             </section>
 
             {/* --- Pricing Section --- */}
-            <section id="pricing" className="py-24 relative overflow-hidden">
+            <section id="pricing" className="py-24 relative overflow-hidden bg-slate-50 dark:bg-slate-900">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-6">Investimento que se paga.</h2>
-                        <p className="text-slate-500 dark:text-slate-400">Escolha o plano que melhor se adapta ao seu momento.</p>
+                        <h2 className="text-xs font-black text-primary-500 uppercase tracking-widest mb-4">Planos e Preços</h2>
+                        <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-6">Investimento que se paga.</h3>
+                        <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Comece grátis e faça upgrade quando precisar de mais poder.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                        {/* Plano Mensal */}
-                        <div className="glass p-10 rounded-[2.5rem] bg-white dark:bg-slate-900/50 flex flex-col border border-slate-100 dark:border-slate-800 transition-all hover:scale-[1.02]">
-                            <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Plano Mensal</h4>
-                            <div className="flex items-baseline gap-1 mb-6">
-                                <span className="text-4xl font-black text-slate-900 dark:text-white">R$ 29,90</span>
-                                <span className="text-slate-500 dark:text-slate-400 text-sm">/mês</span>
+                    {/* Comparison Table */}
+                    <div className="max-w-5xl mx-auto">
+                        {/* Header */}
+                        <div className="hidden md:grid grid-cols-4 gap-4 mb-4 text-center">
+                            <div className="text-left text-sm font-bold text-slate-500 dark:text-slate-400 px-4">Funcionalidade</div>
+                            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                <p className="font-bold text-slate-800 dark:text-white">Grátis</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">R$ 0</p>
+                                <p className="text-xs text-slate-400 mt-1">para sempre</p>
                             </div>
-                            <ul className="space-y-4 mb-10 flex-1 text-slate-600 dark:text-slate-300">
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                                    Todas as Funcionalidades Pro
-                                </li>
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                                    Agente WhatsApp IA
-                                </li>
-                                <li className="flex items-center gap-3 opacity-50">
-                                    <CheckCircle2 className="w-5 h-5 text-slate-300" />
-                                    Economia de 35% no Anual
-                                </li>
-                            </ul>
-                            <button
-                                onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
-                                className="w-full py-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:scale-105 transition-all"
-                            >
-                                Assinar Agora
-                            </button>
+                            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                <p className="font-bold text-slate-800 dark:text-white">Mensal</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">R$ 29,90</p>
+                                <p className="text-xs text-slate-400 mt-1">/mês</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-gradient-to-br from-primary-600 to-emerald-600 border-none text-white relative overflow-hidden">
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-amber-400 text-amber-900 text-[9px] font-black uppercase tracking-widest rounded-full">Melhor oferta</div>
+                                <p className="font-bold">Anual</p>
+                                <p className="text-2xl font-black mt-2">R$ 19,90</p>
+                                <p className="text-xs opacity-70 mt-1">/mês (35% off)</p>
+                            </div>
                         </div>
 
-                        {/* Plano Anual - Destaque */}
-                        <div className="relative p-10 rounded-[2.5rem] bg-slate-900 dark:bg-white text-white dark:text-slate-950 flex flex-col shadow-2xl shadow-primary-500/20 scale-105 z-10 overflow-hidden">
-                            {/* Border Beam Effect */}
-                            <div className="border-beam" />
-
-                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full z-20">
-                                Melhor Custo-Benefício
+                        {/* Feature Rows */}
+                        {[
+                            { feature: 'Lançamentos / mês', free: '30', monthly: 'Ilimitados', annual: 'Ilimitados' },
+                            { feature: 'Assinaturas recorrentes', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
+                            { feature: 'Lembretes pendentes', free: '10', monthly: 'Ilimitados', annual: 'Ilimitados' },
+                            { feature: 'Metas financeiras', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
+                            { feature: 'Gestão de Cartões', free: true, monthly: true, annual: true },
+                            { feature: 'Investimentos', free: true, monthly: true, annual: true },
+                            { feature: 'Relatórios avançados', free: true, monthly: true, annual: true },
+                            { feature: 'Agente WhatsApp IA', free: false, monthly: true, annual: true },
+                            { feature: 'Gestor de Assinaturas', free: true, monthly: true, annual: true },
+                            { feature: 'Suporte prioritário', free: false, monthly: false, annual: true },
+                        ].map((row, i) => (
+                            <div key={i} className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-2 items-center ${i % 2 === 0 ? 'rounded-2xl bg-white dark:bg-slate-800/60' : ''} px-4 py-3`}>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 col-span-2 md:col-span-1">{row.feature}</p>
+                                {[row.free, row.monthly, row.annual].map((val, j) => (
+                                    <div key={j} className={`text-center text-sm font-bold ${j === 2 ? 'text-primary-500 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                                        {typeof val === 'boolean' ? (
+                                            val ? <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto" /> : <XCircle className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto" />
+                                        ) : val}
+                                    </div>
+                                ))}
                             </div>
-                            <h4 className="text-lg font-bold mb-2 relative z-20">Plano Anual</h4>
-                            <div className="flex items-baseline gap-1 mb-1 relative z-20">
-                                <span className="text-4xl font-black">R$ 19,90</span>
-                                <span className="opacity-60 text-sm">/mês*</span>
-                            </div>
-                            <p className="text-[10px] opacity-50 mb-6 relative z-20">*Cobrado anualmente (R$ 238,80)</p>
+                        ))}
 
-                            <ul className="space-y-4 mb-10 flex-1 relative z-20">
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-5 h-5 text-primary-500" />
-                                    Acesso Total Ilimitado
-                                </li>
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-5 h-5 text-primary-500" />
-                                    Suporte Prioritário
-                                </li>
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-5 h-5 text-primary-500" />
-                                    Economia de 35% ao ano
-                                </li>
-                            </ul>
-                            <button
-                                onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
-                                className="w-full py-4 rounded-xl bg-primary-500 text-white font-bold hover:scale-105 transition-all relative z-20"
-                            >
-                                Aproveitar Desconto
+                        {/* CTA Buttons */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 md:ml-[25%]">
+                            <button onClick={() => navigate('/login')} className="py-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:scale-105 transition-all text-sm">
+                                Entrar Grátis
+                            </button>
+                            <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="py-3.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:scale-105 transition-all text-sm">
+                                Assinar Mensal
+                            </button>
+                            <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="py-3.5 rounded-xl bg-gradient-to-r from-primary-600 to-emerald-500 text-white font-bold hover:scale-105 transition-all shadow-lg shadow-primary-500/30 text-sm">
+                                Aproveitar 35% Off →
                             </button>
                         </div>
                     </div>

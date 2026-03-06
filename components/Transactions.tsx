@@ -95,6 +95,42 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     };
   }, []);
 
+  // --- Category Auto-Suggest Rules ---
+  const CATEGORY_KEYWORD_RULES: { keywords: string[]; category: string }[] = [
+    { keywords: ['mercado', 'supermercado', 'hortifruti', 'feira', 'pao', 'padaria', 'açougue'], category: 'Alimentação' },
+    { keywords: ['netflix', 'spotify', 'prime', 'disney', 'hbo', 'youtube', 'crunchyroll', 'globoplay', 'deezer', 'apple music'], category: 'Assinaturas' },
+    { keywords: ['uber', '99', 'cabify', 'taxi', 'ônibus', 'metro', 'metrô', 'gasolina', 'combustivel', 'posto', 'transporte'], category: 'Transporte' },
+    { keywords: ['luz', 'energia', 'agua', 'água', 'gas', 'gás', 'internet', 'tv', 'telefone', 'celular', 'aluguel'], category: 'Moradia' },
+    { keywords: ['farmácia', 'remedio', 'remédio', 'médico', 'medico', 'dentista', 'hospital', 'plano de saude', 'plano saude'], category: 'Saúde' },
+    { keywords: ['academia', 'gym', 'esporte', 'futebol', 'tennis', 'tênis', 'corrida', 'pilates', 'yoga', 'cinema', 'teatro'], category: 'Lazer' },
+    { keywords: ['salario', 'salário', 'freela', 'freelance', 'pagamento', 'renda', 'bonus', 'bônus', 'comissao', 'comissão'], category: 'Salário' },
+    { keywords: ['escola', 'faculdade', 'curso', 'livro', 'mensalidade', 'aula', 'unixi', 'usp', 'unifor'], category: 'Educação' },
+    { keywords: ['restaurante', 'lanchonete', 'pizza', 'hambúrguer', 'hamburguer', 'ifood', 'rappi', 'delivery'], category: 'Restaurantes' },
+    { keywords: ['roupa', 'sapato', 'tenis', 'tênis', 'camisa', 'calça', 'calcinha', 'cueca', 'americanas', 'shopee', 'amazon', 'shein', 'zara', 'renner'], category: 'Compras' },
+    { keywords: ['investimento', 'ação', 'acao', 'fundo', 'renda fixa', 'tesouro', 'corretora', 'b3', 'nubank', 'xp'], category: 'Investimentos' },
+  ];
+
+  const getSuggestedCategory = (desc: string): string | null => {
+    const normalized = desc.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    for (const rule of CATEGORY_KEYWORD_RULES) {
+      if (rule.keywords.some(kw => normalized.includes(kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '')))) {
+        return rule.category;
+      }
+    }
+    return null;
+  };
+
+  const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
+
+  // Description history for autocomplete (unique sorted descriptions from prior transactions)
+  const descriptionHistory = React.useMemo(() => {
+    const seen = new Set<string>();
+    return transactions
+      .map(t => t.description)
+      .filter(d => { if (seen.has(d)) return false; seen.add(d); return true; })
+      .slice(0, 50);
+  }, [transactions]);
+
   // Reset pagination when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
@@ -816,12 +852,34 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Descrição</label>
                   <input
                     type="text"
+                    list="desc-history"
                     required
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, description: val });
+                      const suggestion = val.length >= 3 ? getSuggestedCategory(val) : null;
+                      setSuggestedCategory(suggestion);
+                    }}
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                     placeholder="Ex: Conta de Luz"
                   />
+                  <datalist id="desc-history">
+                    {descriptionHistory.map((d, i) => <option key={i} value={d} />)}
+                  </datalist>
+                  {/* Category auto-suggestion chip */}
+                  {suggestedCategory && suggestedCategory !== formData.category && (
+                    <div className="mt-2 flex items-center gap-2 animate-fade-in-up">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Categoria sugerida:</span>
+                      <button
+                        type="button"
+                        onClick={() => { setFormData({ ...formData, description: formData.description, category: suggestedCategory }); setSuggestedCategory(null); }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 text-primary-600 dark:text-primary-400 text-xs font-bold hover:bg-primary-100 dark:hover:bg-primary-800/30 transition-all active:scale-95"
+                      >
+                        ✨ {suggestedCategory} — aplicar
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

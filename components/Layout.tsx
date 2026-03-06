@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 // ... imports
 import {
@@ -34,6 +34,8 @@ interface LayoutProps {
   user: UserProfile;
   privacyMode?: boolean;
   togglePrivacyMode?: () => void;
+  privacyPlusMode?: boolean;
+  togglePrivacyPlusMode?: () => void;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -57,7 +59,9 @@ const Layout: React.FC<LayoutProps> = ({
   onLogout,
   user,
   privacyMode = false,
-  togglePrivacyMode
+  togglePrivacyMode,
+  privacyPlusMode = false,
+  togglePrivacyPlusMode
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
@@ -201,27 +205,37 @@ const Layout: React.FC<LayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Privacy Toggle with Eye Animation */}
+            {/* Privacy Toggle: Normal → Blur → Privacy+ */}
             {togglePrivacyMode && (
-              <button
-                id="tour-privacy-toggle"
-                onClick={togglePrivacyMode}
-                className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative w-10 h-10 flex items-center justify-center overflow-hidden"
-                title={privacyMode ? "Mostrar valores" : "Ocultar valores"}
-              >
-                <div className="relative w-5 h-5">
-                  {/* Olho Aberto: Escala Y vai a 0 quando ativa privacy (fecha pálpebra) */}
-                  <Eye
-                    className={`absolute inset-0 w-5 h-5 transition-all duration-300 ease-in-out origin-center ${privacyMode ? 'scale-y-0 opacity-0' : 'scale-y-100 opacity-100'
-                      }`}
-                  />
-                  {/* Olho Fechado: Escala Y sobe de 0 a 1 quando ativa privacy */}
-                  <EyeOff
-                    className={`absolute inset-0 w-5 h-5 transition-all duration-300 ease-in-out origin-center ${privacyMode ? 'scale-y-100 opacity-100 delay-75' : 'scale-y-0 opacity-0'
-                      }`}
-                  />
+              <div className="relative group">
+                <button
+                  id="tour-privacy-toggle"
+                  onClick={togglePrivacyMode}
+                  onContextMenu={(e) => { e.preventDefault(); togglePrivacyPlusMode?.(); }}
+                  className={`p-2 sm:p-2.5 rounded-full transition-colors relative w-10 h-10 flex items-center justify-center overflow-hidden
+                    ${privacyPlusMode
+                      ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
+                      : privacyMode
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  title={privacyPlusMode ? 'Privacy+ (apenas %): clique direito para sair' : privacyMode ? 'Blur ativo – clique para normalizar; clique direito para Privacy+' : 'Modo privacidade – oculta valores'}
+                >
+                  <div className="relative w-5 h-5">
+                    <Eye className={`absolute inset-0 w-5 h-5 transition-all duration-300 ease-in-out origin-center ${!privacyMode && !privacyPlusMode ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'}`} />
+                    <EyeOff className={`absolute inset-0 w-5 h-5 transition-all duration-300 ease-in-out origin-center ${privacyMode && !privacyPlusMode ? 'scale-y-100 opacity-100 delay-75' : 'scale-y-0 opacity-0'}`} />
+                    {privacyPlusMode && <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black">%</span>}
+                  </div>
+                </button>
+                {/* Tooltip */}
+                <div className="absolute top-full right-0 mt-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+                  <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-xl">
+                    {privacyPlusMode ? 'Privacy+ (%)' : privacyMode ? 'Blur ativo' : 'Ocultar valores'}
+                    <br />
+                    <span className="opacity-60 font-normal">Clique direito → Privacy+</span>
+                  </div>
                 </div>
-              </button>
+              </div>
             )}
 
             <button
