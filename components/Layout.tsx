@@ -18,7 +18,8 @@ import {
   CreditCard,
   TrendingUp,
   Newspaper,
-  Target
+  Target,
+  Repeat
 } from 'lucide-react';
 // ... other imports
 import { NavItem, UserProfile } from '../types';
@@ -41,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Lembretes', path: '/reminders', icon: BellRing },
   { label: 'Calendário', path: '/calendar', icon: CalendarDays },
   { label: 'Metas', path: '/goals', icon: Target },
+  { label: 'Assinaturas', path: '/subscriptions', icon: Repeat },
   { label: 'Cartões', path: '/cards', icon: CreditCard },
   { label: 'Investimentos', path: '/investments', icon: TrendingUp },
   { label: 'Insights', path: '/insights', icon: Newspaper },
