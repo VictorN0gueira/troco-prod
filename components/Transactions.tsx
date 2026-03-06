@@ -52,6 +52,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   const [filterDate, setFilterDate] = useState(''); // Formato YYYY-MM
   const [quickFilter, setQuickFilter] = useState<'all' | 'pending' | 'income' | 'expense' | 'credit'>('all');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [limitModalMessage, setLimitModalMessage] = useState<{ title: string; description: string }>({ title: '', description: '' });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -192,6 +193,10 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     // Limit check for free tier: max 30 transactions in TOTAL
     if (user && user.status_assinatura !== 'active') {
       if (transactions.length >= 30) {
+        setLimitModalMessage({
+          title: 'Limite de Transações Atingido',
+          description: 'No plano gratuito você pode ter até 30 lançamentos. Assine o Super Trocô para lançamentos ilimitados e controle total.'
+        });
         setIsLimitModalOpen(true);
         return; // Block opening the modal
       }
@@ -291,6 +296,35 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
           isRecurring: formData.isRecurring,
           cardId: formData.cardId ? Number(formData.cardId) : undefined
         };
+
+        // Free plan limit checks before saving
+        if (user && user.status_assinatura !== 'active') {
+          if (newTransaction.isRecurring && newTransaction.type === 'expense') {
+            const currentRecurring = transactions.filter(t => t.type === 'expense' && t.isRecurring === true).length;
+            // Group into unique subscriptions
+            const uniqueGroups = new Set(transactions.filter(t => t.type === 'expense' && t.isRecurring).map(t => t.description.trim().toLowerCase())).size;
+            if (uniqueGroups >= 5) {
+              setLimitModalMessage({
+                title: 'Limite de Assinaturas Atingido',
+                description: 'No plano gratuito você pode ter até 5 assinaturas recorrentes. Assine o Super Trocô para assinaturas ilimitadas.'
+              });
+              setIsLimitModalOpen(true);
+              return;
+            }
+          }
+          if (newTransaction.status === 'pending') {
+            const currentPending = transactions.filter(t => t.status === 'pending').length;
+            if (currentPending >= 10) {
+              setLimitModalMessage({
+                title: 'Limite de Lembretes Atingido',
+                description: 'No plano gratuito você pode ter até 10 lembretes (transações pendentes) ativos. Assine o Super Trocô para lembretes ilimitados.'
+              });
+              setIsLimitModalOpen(true);
+              return;
+            }
+          }
+        }
+
         onAdd(newTransaction);
       }
     }
@@ -983,8 +1017,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
       <LimitPaywallModal
         isOpen={isLimitModalOpen}
         onClose={() => setIsLimitModalOpen(false)}
-        title="Limite Atingido"
-        description="No plano gratuito você pode ter até 30 lançamentos por mês. Assine o Super Trocô para ter lançamentos ilimitados e controle total."
+        title={limitModalMessage.title || 'Limite Atingido'}
+        description={limitModalMessage.description || 'No plano gratuito você pode ter até 30 lançamentos. Assine o Super Trocô para lançamentos ilimitados e controle total.'}
         userEmail={user?.email}
       />
 
