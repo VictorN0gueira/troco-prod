@@ -306,13 +306,18 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         if (recurring.length === 0) return `Você ainda não tem nenhuma **Assinatura Recorrente** cadastrada. Acesse a aba Assinaturas e adicione seus gastos fixos mensais (Netflix, academia, internet...) para ter controle total!`;
 
         // Group by description
-        const grouped = new Map<string, number[]>();
+        const grouped = new Map<string, { amounts: number[]; description: string }>();
         recurring.forEach(t => {
             const key = t.description.trim().toLowerCase();
-            grouped.set(key, [...(grouped.get(key) ?? []), Number(t.amount)]);
+            const existing = grouped.get(key);
+            if (existing) {
+                existing.amounts.push(Number(t.amount));
+            } else {
+                grouped.set(key, { amounts: [Number(t.amount)], description: t.description.trim() });
+            }
         });
 
-        const subs = Array.from(grouped.entries()).map(([, amounts]) => ({
+        const subs = Array.from(grouped.values()).map(({ amounts }) => ({
             avg: amounts.reduce((a, b) => a + b, 0) / amounts.length,
         }));
 
@@ -323,8 +328,8 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         text += `Você tem **${subs.length} assinatura${subs.length !== 1 ? 's' : ''}** ativas, custando **${formatCurrency(totalMonthly)}/mês**.\n`;
         text += `Em 12 meses, isso representa **${formatCurrency(totalYearly)}** saindo do seu bolso por contratos recorrentes.\n\n`;
 
-        const topSubs = Array.from(grouped.entries())
-            .map(([key, amounts]) => ({ key, avg: amounts.reduce((a, b) => a + b, 0) / amounts.length }))
+        const topSubs = Array.from(grouped.values())
+            .map(({ amounts, description }) => ({ description, avg: amounts.reduce((a, b) => a + b, 0) / amounts.length }))
             .sort((a, b) => b.avg - a.avg)
             .slice(0, 3);
 
@@ -332,7 +337,7 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
             text += `💸 **Top 3 maiores compromissos mensais:**\n`;
             const medals = ['🥇', '🥈', '🥉'];
             topSubs.forEach((s, i) => {
-                text += `${medals[i]} ${formatCurrency(s.avg)}/mês\n`;
+                text += `${medals[i]} **${s.description}**: ${formatCurrency(s.avg)}/mês\n`;
             });
         }
 
