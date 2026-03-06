@@ -57,6 +57,8 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [addMoneyError, setAddMoneyError] = useState<string | null>(null);
     const itemsPerPage = 6;
     const totalPages = Math.ceil(goals.length / itemsPerPage);
 
@@ -128,13 +130,14 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError(null);
         setIsLoading(true);
 
         const parsedTarget = parseCurrency(targetAmount);
         const parsedCurrent = editingGoal ? parseCurrency(currentAmount) : 0;
 
         if (isNaN(parsedTarget) || parsedTarget <= 0) {
-            alert("Valor alvo inválido");
+            setFormError('Informe um valor alvo válido maior que zero.');
             setIsLoading(false);
             return;
         }
@@ -159,7 +162,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
             setIsModalOpen(false);
         } catch (error) {
             console.error("Erro ao salvar meta:", error);
-            alert("Erro ao salvar a meta.");
+            setFormError('Erro ao salvar a meta. Tente novamente.');
         } finally {
             setIsLoading(false);
         }
@@ -168,12 +171,13 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
     const handleAddMoney = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedGoalId) return;
+        setAddMoneyError(null);
 
         setIsLoading(true);
         try {
             const parsedAdd = parseCurrency(addAmount);
             if (isNaN(parsedAdd) || parsedAdd <= 0) {
-                alert("Valor inválido");
+                setAddMoneyError('Informe um valor válido maior que zero.');
                 setIsLoading(false);
                 return;
             }
@@ -181,7 +185,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
             setIsAddMoneyModalOpen(false);
         } catch (error) {
             console.error("Erro ao adicionar dinheiro:", error);
-            alert("Erro ao guardar dinheiro.");
+            setAddMoneyError('Erro ao guardar dinheiro. Tente novamente.');
         } finally {
             setIsLoading(false);
         }
@@ -528,6 +532,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                                         <input
                                             type="date"
                                             required
+                                            min={getTodayLocalDate()}
                                             value={deadline}
                                             onChange={e => setDeadline(e.target.value)}
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
@@ -578,8 +583,8 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                                                         type="button"
                                                         onClick={() => { setIcon(i); setShowIconPicker(false); }}
                                                         className={`aspect-square rounded-xl flex items-center justify-center transition-all p-1.5 ${icon === i
-                                                                ? 'bg-primary-500 text-white shadow-md'
-                                                                : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                                                            ? 'bg-primary-500 text-white shadow-md'
+                                                            : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                                                             }`}
                                                     >
                                                         {renderIcon(i, 'w-5 h-5')}
@@ -590,6 +595,11 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                                     </div>
 
                                     <div className="pt-2">
+                                        {formError && (
+                                            <div className="mb-3 flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-600 dark:text-rose-400 text-sm font-medium">
+                                                <AlertTriangle className="w-4 h-4 flex-shrink-0" />{formError}
+                                            </div>
+                                        )}
                                         <button
                                             type="submit"
                                             disabled={isLoading}
@@ -633,6 +643,11 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                                         className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-900/10 text-slate-800 dark:text-white focus:ring-0 focus:border-emerald-500 outline-none text-2xl font-bold text-center"
                                     />
                                 </div>
+                                {addMoneyError && (
+                                    <div className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-600 dark:text-rose-400 text-sm font-medium">
+                                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />{addMoneyError}
+                                    </div>
+                                )}
 
                                 <div className="flex gap-3">
                                     <button

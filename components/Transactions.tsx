@@ -300,7 +300,6 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         // Free plan limit checks before saving
         if (user && user.status_assinatura !== 'active') {
           if (newTransaction.isRecurring && newTransaction.type === 'expense') {
-            const currentRecurring = transactions.filter(t => t.type === 'expense' && t.isRecurring === true).length;
             // Group into unique subscriptions
             const uniqueGroups = new Set(transactions.filter(t => t.type === 'expense' && t.isRecurring).map(t => t.description.trim().toLowerCase())).size;
             if (uniqueGroups >= 5) {

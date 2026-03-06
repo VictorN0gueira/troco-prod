@@ -189,10 +189,23 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
     }
   };
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const rawAmount = formData.amount.toString().replace(/\D/g, "");
     const numericAmount = rawAmount ? Number(rawAmount) / 100 : 0;
+
+    if (!formData.description.trim()) {
+      setFormError('Informe uma descrição para o lembrete.');
+      return;
+    }
+    if (numericAmount <= 0) {
+      setFormError('Informe um valor válido maior que zero.');
+      return;
+    }
+
+    setFormError(null);
 
     const payload: Transaction = {
       id: editingId || generateTransactionId(5),
@@ -589,7 +602,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => { setIsModalOpen(false); setFormError(null); }}
             />
             <div className="relative transform overflow-visible bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg rounded-3xl animate-scale-in w-full">
               <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center rounded-t-3xl">
@@ -598,7 +611,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                   {editingId ? 'Editar Lembrete' : 'Agendar Lembrete'}
                 </h3>
                 <button
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); setFormError(null); }}
                   className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -741,6 +754,11 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                     Repetir mensalmente
                   </label>
                 </div>
+                {formError && (
+                  <div className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-600 dark:text-rose-400 text-sm font-medium">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />{formError}
+                  </div>
+                )}
                 <div className="pt-2">
                   <button
                     type="submit"

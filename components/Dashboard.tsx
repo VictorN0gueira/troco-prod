@@ -537,7 +537,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
       {/* Bento Grid Layout with DnD */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {cardsOrder.map((key, index) => (
+        {(cardsOrder.length > 0 ? cardsOrder : ['balance', 'income', 'expense', 'chart', 'categories']).map((key, index) => (
           <div
             key={key}
             draggable
