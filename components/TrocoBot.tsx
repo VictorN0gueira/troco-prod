@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle, Trash2, History, Plus, Minus, Activity, CalendarDays } from 'lucide-react';
+import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle, Trash2, History, Plus, Minus, Activity, CalendarDays, Repeat, Flame } from 'lucide-react';
 import { Transaction, Goal, UserProfile, CreditCard, Investment } from '../types';
 
 interface TrocoBotProps {
@@ -301,6 +301,109 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         return text;
     };
 
+    const getSubscriptionsSummary = () => {
+        const recurring = transactions.filter(t => t.type === 'expense' && t.isRecurring === true);
+        if (recurring.length === 0) return `Você ainda não tem nenhuma **Assinatura Recorrente** cadastrada. Acesse a aba Assinaturas e adicione seus gastos fixos mensais (Netflix, academia, internet...) para ter controle total!`;
+
+        // Group by description
+        const grouped = new Map<string, number[]>();
+        recurring.forEach(t => {
+            const key = t.description.trim().toLowerCase();
+            grouped.set(key, [...(grouped.get(key) ?? []), Number(t.amount)]);
+        });
+
+        const subs = Array.from(grouped.entries()).map(([, amounts]) => ({
+            avg: amounts.reduce((a, b) => a + b, 0) / amounts.length,
+        }));
+
+        const totalMonthly = subs.reduce((acc, s) => acc + s.avg, 0);
+        const totalYearly = totalMonthly * 12;
+
+        let text = `🔁 **Análise das suas Assinaturas**\n\n`;
+        text += `Você tem **${subs.length} assinatura${subs.length !== 1 ? 's' : ''}** ativas, custando **${formatCurrency(totalMonthly)}/mês**.\n`;
+        text += `Em 12 meses, isso representa **${formatCurrency(totalYearly)}** saindo do seu bolso por contratos recorrentes.\n\n`;
+
+        const topSubs = Array.from(grouped.entries())
+            .map(([key, amounts]) => ({ key, avg: amounts.reduce((a, b) => a + b, 0) / amounts.length }))
+            .sort((a, b) => b.avg - a.avg)
+            .slice(0, 3);
+
+        if (topSubs.length > 0) {
+            text += `💸 **Top 3 maiores compromissos mensais:**\n`;
+            const medals = ['🥇', '🥈', '🥉'];
+            topSubs.forEach((s, i) => {
+                text += `${medals[i]} ${formatCurrency(s.avg)}/mês\n`;
+            });
+        }
+
+        const pctOfIncome = (() => {
+            let inc = 0;
+            currentMonthTransactions.forEach(t => { if (t.type === 'income') inc += Number(t.amount); });
+            return inc > 0 ? ((totalMonthly / inc) * 100).toFixed(1) : null;
+        })();
+
+        if (pctOfIncome) {
+            text += `\nAs assinaturas consomem **${pctOfIncome}%** da sua renda mensal. `;
+            if (Number(pctOfIncome) > 20) text += `Esse peso é alto! Revise na aba Assinaturas o que pode ser cortado. 🔪`;
+            else text += `Está dentro de um nível saudável. ✅`;
+        }
+
+        return text;
+    };
+
+    const getNoSpendStreak = () => {
+        const today = new Date();
+        const todayDay = today.getDate();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+
+        // Build spend map for current month
+        const spendByDay = new Map<number, number>();
+        transactions
+            .filter(t => t.type === 'expense' && (() => {
+                const d = new Date(t.date + 'T12:00:00');
+                return d.getMonth() === month && d.getFullYear() === year;
+            })())
+            .forEach(t => {
+                const day = new Date(t.date + 'T12:00:00').getDate();
+                spendByDay.set(day, (spendByDay.get(day) ?? 0) + Number(t.amount));
+            });
+
+        // Count current streak (backwards from today)
+        let streak = 0;
+        for (let d = todayDay; d >= 1; d--) {
+            if ((spendByDay.get(d) ?? 0) === 0) streak++;
+            else break;
+        }
+
+        // Count total no-spend days this month
+        const noSpendDays = Array.from({ length: todayDay }, (_, i) => i + 1)
+            .filter(d => (spendByDay.get(d) ?? 0) === 0).length;
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const totalSpent = Array.from(spendByDay.values()).reduce((a, b) => a + b, 0);
+        const avgPerDay = todayDay > 0 ? totalSpent / todayDay : 0;
+
+        let text = `📅 **Calendário de Gastos — Mês Atual**\n\n`;
+        text += `Nos **${todayDay}** dias já passados:\n`;
+        text += `🟢 **${noSpendDays} dia${noSpendDays !== 1 ? 's' : ''}** sem nenhum gasto registrado\n`;
+        text += `🔴 **${todayDay - noSpendDays} dia${(todayDay - noSpendDays) !== 1 ? 's' : ''}** com ao menos uma despesa\n\n`;
+
+        if (streak >= 2) {
+            text += `🔥 **Ofensiva atual: ${streak} dias seguidos sem gastar!** Impressionante! Mantenha o foco!\n\n`;
+        } else if (streak === 1) {
+            text += `✅ Hoje foi um dia controlado. Continue assim amanhã para iniciar uma ofensiva!\n\n`;
+        } else {
+            text += `💡 Sem ofensiva ativa no momento. Registre um dia sem gastos para começar sua sequência!\n\n`;
+        }
+
+        text += `💰 Total gasto no período: **${formatCurrency(totalSpent)}**\n`;
+        text += `📊 Média diária: **${formatCurrency(avgPerDay)}**\n`;
+        text += `📆 Restam **${daysInMonth - todayDay} dias** no mês para finalizar bem!`;
+
+        return text;
+    };
+
     // --- Handlers Interativos ---
 
     const handleClearChat = () => {
@@ -313,7 +416,7 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         ]);
     };
 
-    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv' | 'recent' | 'health' | 'yearexpense') => {
+    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv' | 'recent' | 'health' | 'yearexpense' | 'subscriptions' | 'nospend') => {
         // 1. Mensagem do usuário
         const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: actionText };
         setMessages(prev => [...prev, userMsg]);
@@ -331,6 +434,8 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
             else if (actionType === 'recent') botText = getRecentTransactions();
             else if (actionType === 'health') botText = getHealthScoreDetails();
             else if (actionType === 'yearexpense') botText = getYearTopExpense();
+            else if (actionType === 'subscriptions') botText = getSubscriptionsSummary();
+            else if (actionType === 'nospend') botText = getNoSpendStreak();
 
             const botMsg: Message = { id: (Date.now() + 1).toString(), sender: 'bot', text: botText };
             setIsTyping(false);
@@ -510,6 +615,13 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                             <CardIcon className="w-3.5 h-3.5 text-amber-500" />
                                             Faturas
                                         </button>
+                                        <button
+                                            onClick={() => handleActionClick("Minhas Assinaturas", 'subscriptions')}
+                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                                        >
+                                            <Repeat className="w-3.5 h-3.5 text-violet-500" />
+                                            Assinaturas
+                                        </button>
 
                                         {/* Core view vs Expanded view */}
                                         {(showAllPrompts) && (
@@ -541,6 +653,13 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                                 >
                                                     <CalendarDays className="w-3.5 h-3.5 text-orange-500" />
                                                     Maior Custo Anual
+                                                </button>
+                                                <button
+                                                    onClick={() => handleActionClick("No Spend Days", 'nospend')}
+                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
+                                                >
+                                                    <Flame className="w-3.5 h-3.5 text-orange-400" />
+                                                    No Spend Days
                                                 </button>
                                             </>
                                         )}

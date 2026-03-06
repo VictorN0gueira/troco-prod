@@ -530,10 +530,10 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                         {/* Filters row */}
                         <div className="flex items-center gap-2 overflow-x-auto pb-0.5 -mx-1 px-1">
                             {/* Sort */}
-                            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex-shrink-0 border border-slate-200 dark:border-slate-700">
                                 <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
                                 <select value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}
-                                    className="text-xs font-semibold bg-transparent text-slate-600 dark:text-slate-300 focus:outline-none pr-1 cursor-pointer">
+                                    className="text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none pr-1 cursor-pointer">
                                     <option value="cost-desc">Maior custo</option>
                                     <option value="cost-asc">Menor custo</option>
                                     <option value="alpha">A–Z</option>
