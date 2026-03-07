@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, CreditCard } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, formatDateDisplay, parseDateFromDB } from '../utils';
-import { UsageMeter } from './FreePlanBadge';
+import { UsageMeter, OverLimitBanner } from './FreePlanBadge';
 import {
   Search,
   Plus,
@@ -420,6 +420,11 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
             </div>
           </div>
         </div>
+      )}
+
+      {/* Over-limit banner — grandfathering: dados herdados do Pro são preservados */}
+      {user && user.status_assinatura !== 'active' && transactions.length > 30 && (
+        <OverLimitBanner label="transações" current={transactions.length} limit={30} />
       )}
 
       {/* Summary Miny Cards (Now Spotlight Cards) */}

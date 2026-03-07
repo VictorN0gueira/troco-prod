@@ -1,5 +1,6 @@
 import React from 'react';
-import { Sparkles, Zap } from 'lucide-react';
+import { Sparkles, Zap, ShieldCheck } from 'lucide-react';
+
 
 interface FreePlanBadgeProps {
     /** Clique redireciona para upgrade — ex: abrir modal pro ou link de pagamento */
@@ -151,6 +152,67 @@ export const UsageMeter: React.FC<UsageMeterProps> = ({
             {!isCompact && (
                 <span className="text-slate-400 text-xs hidden sm:inline">{label}</span>
             )}
+        </div>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface OverLimitBannerProps {
+    /** Item type for the copy, e.g. "transações", "assinaturas", "lembretes", "metas" */
+    label: string;
+    /** How many they currently have */
+    current: number;
+    /** Free plan maximum */
+    limit: number;
+}
+
+/**
+ * Banner exibido quando um ex-assinante Pro voltou ao plano Free
+ * e possui mais dados do que o limite gratuito.
+ *
+ * Estratégia A — Grandfathering:
+ *  • Dados herdados são preservados e visíveis.
+ *  • Somente a criação de novos itens é bloqueada.
+ *  • O banner informa isso de forma clara e amigável.
+ */
+export const OverLimitBanner: React.FC<OverLimitBannerProps> = ({ label, current, limit }) => {
+    const over = current - limit;
+    if (current <= limit) return null;
+
+    return (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-4 rounded-2xl
+            bg-amber-50 dark:bg-amber-900/20
+            border border-amber-200 dark:border-amber-700/50
+            shadow-sm">
+            {/* Ícone */}
+            <div className="flex-shrink-0 p-2 rounded-xl bg-amber-100 dark:bg-amber-800/40">
+                <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+
+            {/* Texto */}
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                    Seus dados estão seguros — mas você está acima do limite gratuito
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+                    Você tem <span className="font-bold">{current} {label}</span> cadastrado{current !== 1 ? 's' : ''},
+                    enquanto o plano gratuito permite <span className="font-bold">{limit}</span>.
+                    Os <span className="font-bold">{over}</span> {over === 1 ? 'registro adicional permanece visível' : 'registros adicionais permanecem visíveis'},
+                    mas você não poderá criar novos até fazer upgrade.
+                </p>
+            </div>
+
+            {/* CTA */}
+            <button
+                onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl
+                    bg-amber-500 hover:bg-amber-600 active:scale-95
+                    text-white text-xs font-bold transition-all whitespace-nowrap"
+            >
+                <Zap className="w-3.5 h-3.5 fill-white" />
+                Fazer Upgrade
+            </button>
         </div>
     );
 };

@@ -8,7 +8,7 @@ import { Goal, UserProfile } from '../types';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import LimitPaywallModal from './LimitPaywallModal';
 import ConfirmationModal from './ConfirmationModal';
-import { UsageMeter } from './FreePlanBadge';
+import { UsageMeter, OverLimitBanner } from './FreePlanBadge';
 
 interface GoalsProps {
     goals: Goal[];
@@ -257,6 +257,11 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
 
     return (
         <div className="space-y-6 animate-fade-in pb-20 lg:pb-0">
+            {/* Over-limit banner — grandfathering: dados herdados do Pro são preservados */}
+            {user && user.status_assinatura !== 'active' && goals.length > 5 && (
+                <OverLimitBanner label="metas financeiras" current={goals.length} limit={5} />
+            )}
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">

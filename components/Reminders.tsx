@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, UserProfile } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, formatDateDisplay, parseDateFromDB } from '../utils';
-import { UsageMeter } from './FreePlanBadge';
+import { UsageMeter, OverLimitBanner } from './FreePlanBadge';
 import {
   Search,
   Plus,
@@ -277,6 +277,12 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
 
   return (
     <div className="space-y-6">
+      {/* Over-limit banner — grandfathering */}
+      {user && user.status_assinatura !== 'active' && (() => {
+        const pending = transactions.filter(t => t.status === 'pending').length;
+        return pending > 10 ? <OverLimitBanner label="lembretes pendentes" current={pending} limit={10} /> : null;
+      })()}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-850 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>

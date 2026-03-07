@@ -13,6 +13,7 @@ import { Transaction, UserProfile } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, generateTransactionId } from '../utils';
 import LimitPaywallModal from './LimitPaywallModal';
+import { OverLimitBanner } from './FreePlanBadge';
 
 interface SubscriptionsProps {
     transactions: Transaction[];
@@ -403,6 +404,11 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
 
     const isFree = user?.status_assinatura !== 'active';
 
+    // ── Over-limit banner (Grandfathering) ───────────────────
+    const overLimitBanner = isFree && subscriptions.length > FREE_SUBSCRIPTION_LIMIT ? (
+        <OverLimitBanner label="assinaturas recorrentes" current={subscriptions.length} limit={FREE_SUBSCRIPTION_LIMIT} />
+    ) : null;
+
     // Guard for free plan
     const handleOpenAdd = () => {
         if (isFree && subscriptions.length >= FREE_SUBSCRIPTION_LIMIT) {
@@ -455,6 +461,7 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
 
     return (
         <div className="space-y-6">
+            {overLimitBanner}
 
             {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -480,10 +487,10 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                             <div className="w-28 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-500 ${subscriptions.length >= FREE_SUBSCRIPTION_LIMIT
-                                            ? 'bg-rose-500'
-                                            : subscriptions.length >= FREE_SUBSCRIPTION_LIMIT - 1
-                                                ? 'bg-amber-400'
-                                                : 'bg-primary-500'
+                                        ? 'bg-rose-500'
+                                        : subscriptions.length >= FREE_SUBSCRIPTION_LIMIT - 1
+                                            ? 'bg-amber-400'
+                                            : 'bg-primary-500'
                                         }`}
                                     style={{ width: `${Math.min((subscriptions.length / FREE_SUBSCRIPTION_LIMIT) * 100, 100)}%` }}
                                 />
