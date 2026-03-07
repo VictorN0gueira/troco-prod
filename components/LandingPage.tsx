@@ -431,7 +431,7 @@ const LandingPage: React.FC = () => {
                                     '5 assinaturas recorrentes',
                                     '10 lembretes pendentes',
                                     '5 metas financeiras',
-                                    'Cartões e Investimentos',
+                                    'Cartões (básico)',
                                     'Relatórios básicos',
                                 ].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
@@ -439,7 +439,7 @@ const LandingPage: React.FC = () => {
                                         {f}
                                     </div>
                                 ))}
-                                {['Agente WhatsApp IA', 'Suporte prioritário'].map((f, i) => (
+                                {['Investimentos', 'Agente WhatsApp IA', 'Suporte prioritário'].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-slate-400">
                                         <XCircle className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
                                         {f}
@@ -469,16 +469,13 @@ const LandingPage: React.FC = () => {
                                     'Cartões e Investimentos',
                                     'Relatórios avançados',
                                     'Agente WhatsApp IA',
+                                    'Suporte prioritário',
                                 ].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                                         {f}
                                     </div>
                                 ))}
-                                <div className="flex items-center gap-2.5 text-sm text-slate-400">
-                                    <XCircle className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
-                                    Suporte prioritário
-                                </div>
                             </div>
                         </div>
 
@@ -553,12 +550,12 @@ const LandingPage: React.FC = () => {
                                 { feature: 'Assinaturas recorrentes', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
                                 { feature: 'Lembretes pendentes', free: '10', monthly: 'Ilimitados', annual: 'Ilimitados' },
                                 { feature: 'Metas financeiras', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
-                                { feature: 'Gestão de Cartões', free: true, monthly: true, annual: true },
-                                { feature: 'Investimentos', free: true, monthly: true, annual: true },
+                                { feature: 'Gestão de Cartões', free: 'Básica', monthly: true, annual: true },
+                                { feature: 'Investimentos', free: false, monthly: true, annual: true },
                                 { feature: 'Relatórios avançados', free: true, monthly: true, annual: true },
                                 { feature: 'Agente WhatsApp IA', free: false, monthly: true, annual: true },
                                 { feature: 'Gestor de Assinaturas', free: true, monthly: true, annual: true },
-                                { feature: 'Suporte prioritário', free: false, monthly: false, annual: true },
+                                { feature: 'Suporte prioritário', free: false, monthly: true, annual: true },
                             ].map((row, i) => (
                                 <div key={i} className={`grid grid-cols-4 gap-4 items-center px-4 py-3 rounded-xl ${i % 2 === 0 ? 'bg-white dark:bg-slate-800/60' : ''}`}>
                                     <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{row.feature}</p>
