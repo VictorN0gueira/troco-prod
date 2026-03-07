@@ -126,39 +126,32 @@ export const HealthScore: React.FC<HealthScoreProps> = ({ transactions, goals, u
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center mt-2 relative">
-                {/* Arc Chart */}
-                <div className="relative w-40 h-24 flex justify-center items-end overflow-hidden mb-2">
+                <div className="relative w-40 h-24 flex justify-center mt-2 mb-2">
                     <svg
-                        height={radius * 2}
+                        height={radius}
                         width={radius * 2}
-                        className="absolute bottom-0"
-                        style={{ transform: 'rotate(180deg)' }}
+                        className="overflow-visible"
                     >
-                        <circle
+                        <path
+                            d={`M ${stroke} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius * 2 - stroke} ${radius}`}
                             stroke="#e2e8f0"
                             fill="transparent"
                             strokeWidth={stroke}
-                            strokeDasharray={`${circumference} ${circumference}`}
-                            r={normalizedRadius}
-                            cx={radius}
-                            cy={radius}
                             strokeLinecap="round"
                             className="dark:stroke-slate-700"
                         />
-                        <circle
+                        <path
+                            d={`M ${stroke} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius * 2 - stroke} ${radius}`}
                             stroke="currentColor"
                             fill="transparent"
                             strokeWidth={stroke}
-                            strokeDasharray={`${circumference} ${circumference}`}
-                            style={{ strokeDashoffset }}
-                            r={normalizedRadius}
-                            cx={radius}
-                            cy={radius}
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeDashoffset}
                             strokeLinecap="round"
                             className={`${colorClass.col} transition-all duration-1000 ease-out`}
                         />
                     </svg>
-                    <div className="absolute bottom-2 left-0 w-full text-center flex flex-col items-center">
+                    <div className="absolute inset-0 flex items-end justify-center pb-2">
                         <span className={`text-5xl font-black ${colorClass.col} tracking-tighter leading-none`}>{score}</span>
                     </div>
                 </div>
