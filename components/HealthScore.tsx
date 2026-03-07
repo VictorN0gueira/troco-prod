@@ -158,8 +158,8 @@ export const HealthScore: React.FC<HealthScoreProps> = ({ transactions, goals, u
                             className={`${colorClass.col} transition-all duration-1000 ease-out`}
                         />
                     </svg>
-                    <div className="absolute bottom-0 left-0 w-full text-center flex flex-col items-center">
-                        <span className={`text-4xl font-black ${colorClass.col} tracking-tighter`}>{score}</span>
+                    <div className="absolute bottom-2 left-0 w-full text-center flex flex-col items-center">
+                        <span className={`text-5xl font-black ${colorClass.col} tracking-tighter leading-none`}>{score}</span>
                     </div>
                 </div>
 

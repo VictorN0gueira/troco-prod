@@ -15,6 +15,7 @@ import Legal from './components/Legal';
 import NewsFeed from './components/NewsFeed';
 import Goals from './components/Goals';
 import Subscriptions from './components/Subscriptions';
+import Budgets from './components/Budgets';
 import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
@@ -248,6 +249,18 @@ const AppRoutes = ({
               onAddMultiple={addMultipleTransactions}
               user={user}
               budgets={budgets}
+            />
+          </motion.div>
+        } />
+
+        <Route path="/budgets" element={
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+            <Budgets
+              budgets={budgets}
+              transactions={transactions}
+              addBudget={addBudget}
+              updateBudget={updateBudget}
+              deleteBudget={deleteBudget}
             />
           </motion.div>
         } />

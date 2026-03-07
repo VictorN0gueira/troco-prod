@@ -1261,34 +1261,34 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
             initial={{ y: 150, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 150, opacity: 0 }}
-            className="fixed bottom-20 md:bottom-10 left-1/2 transform -translate-x-1/2 z-50 w-[95%] max-w-xl"
+            className="fixed bottom-20 md:bottom-10 left-0 w-full z-50 flex justify-center px-4"
           >
-            <div className="bg-slate-900 border border-slate-700/50 rounded-2xl p-3 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-              <span className="text-white font-medium px-2 whitespace-nowrap">
+            <div className="bg-slate-900 border border-slate-700/50 rounded-2xl p-3 shadow-2xl flex flex-col sm:flex-row items-center gap-3 text-sm w-full max-w-xl overflow-hidden">
+              <span className="text-white font-medium px-2 whitespace-nowrap text-center sm:text-left">
                 {selectedIds.size} selecionada(s)
               </span>
-              <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto scrollbar-hide py-1 sm:py-0 px-1">
+              <div className="flex items-center gap-2 overflow-x-auto w-full scrollbar-hide py-1 px-1 snap-x">
                 <button
                   onClick={() => setIsBulkCategoryModalOpen(true)}
-                  className="whitespace-nowrap flex-1 sm:flex-none px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                  className="whitespace-nowrap flex-1 snap-start px-3 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
                 >
                   Categoria
                 </button>
                 <button
                   onClick={() => handleBulkStatus('completed')}
-                  className="whitespace-nowrap flex-1 sm:flex-none px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                  className="whitespace-nowrap flex-1 snap-start px-3 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
                 >
                   Pagar
                 </button>
                 <button
                   onClick={() => handleBulkStatus('pending')}
-                  className="whitespace-nowrap flex-1 sm:flex-none px-3 py-2 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors"
+                  className="whitespace-nowrap flex-1 snap-start px-3 py-2.5 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors"
                 >
                   Pendente
                 </button>
                 <button
                   onClick={() => setIsBulkDeleteModalOpen(true)}
-                  className="whitespace-nowrap flex-none p-2 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors"
+                  className="whitespace-nowrap flex-none p-2.5 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
