@@ -184,15 +184,19 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 mb-1.5">Categoria</label>
-                        <div className="relative">
-                            <CustomSelect
-                                value={form.category}
-                                onChange={val => setForm(f => ({ ...f, category: val }))}
-                                options={CATEGORIES}
-                                className="w-full pl-6"
-                            />
-                            {CatIcon && <CatIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />}
-                        </div>
+                        <CustomSelect
+                            value={form.category}
+                            onChange={(val: string) => setForm(f => ({ ...f, category: val }))}
+                            options={CATEGORIES.map(cat => {
+                                const IconComp = CATEGORY_ICONS[cat];
+                                return {
+                                    value: cat,
+                                    label: cat,
+                                    icon: IconComp ? <IconComp className="w-4 h-4 mt-0.5" /> : undefined
+                                };
+                            })}
+                            className="w-full"
+                        />
                     </div>
                     <div className="flex items-start gap-2 bg-primary-50 dark:bg-primary-500/10 rounded-xl p-3">
                         <Repeat className="w-4 h-4 text-primary-500 flex-shrink-0 mt-0.5" />
@@ -265,15 +269,19 @@ const EditModal: React.FC<EditModalProps> = ({ transaction, onSave, onClose }) =
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 mb-1.5">Categoria</label>
-                        <div className="relative">
-                            <CustomSelect
-                                value={form.category}
-                                onChange={val => setForm(f => ({ ...f, category: val }))}
-                                options={CATEGORIES}
-                                className="w-full pl-6"
-                            />
-                            {CatIcon && <CatIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />}
-                        </div>
+                        <CustomSelect
+                            value={form.category}
+                            onChange={(val: string) => setForm(f => ({ ...f, category: val }))}
+                            options={CATEGORIES.map(cat => {
+                                const IconComp = CATEGORY_ICONS[cat];
+                                return {
+                                    value: cat,
+                                    label: cat,
+                                    icon: IconComp ? <IconComp className="w-4 h-4 mt-0.5" /> : undefined
+                                };
+                            })}
+                            className="w-full"
+                        />
                     </div>
                     {error && <p className="text-xs text-rose-500 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />{error}</p>}
                 </div>

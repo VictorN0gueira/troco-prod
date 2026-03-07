@@ -385,19 +385,17 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         </div>
 
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-none z-10 w-full md:w-56">
+          <div className="flex-1 md:flex-none z-10 w-full md:w-56">
             <CustomSelect
               value={dateRange}
               onChange={(val: string) => setDateRange(val as DateRangeType)}
               options={[
-                { value: '6_months', label: 'Últimos 6 Meses' },
-                { value: 'ytd', label: 'Este Ano (YTD)' },
-                { value: '1_year', label: 'Últimos 12 Meses' },
-                { value: 'all', label: 'Todo o Período' }
+                { value: '6_months', label: 'Últimos 6 Meses', icon: <Calendar className="w-4 h-4" /> },
+                { value: 'ytd', label: 'Este Ano (YTD)', icon: <Calendar className="w-4 h-4" /> },
+                { value: '1_year', label: 'Últimos 12 Meses', icon: <Calendar className="w-4 h-4" /> },
+                { value: 'all', label: 'Todo o Período', icon: <Calendar className="w-4 h-4" /> }
               ]}
-              className="pl-6"
             />
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none z-20" />
           </div>
 
           <div className="relative" ref={exportMenuRef}>
