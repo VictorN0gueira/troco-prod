@@ -583,13 +583,18 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                             {/* Sort */}
                             <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex-shrink-0 border border-slate-200 dark:border-slate-700">
                                 <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
-                                <select value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}
-                                    className="text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none pr-1 cursor-pointer">
-                                    <option value="cost-desc">Maior custo</option>
-                                    <option value="cost-asc">Menor custo</option>
-                                    <option value="alpha">A–Z</option>
-                                    <option value="date-desc">Mais recente</option>
-                                </select>
+                                <CustomSelect
+                                    value={sortKey}
+                                    onChange={(val: string) => setSortKey(val as SortKey)}
+                                    size="sm"
+                                    className="w-32"
+                                    options={[
+                                        { value: 'cost-desc', label: 'Maior custo' },
+                                        { value: 'cost-asc', label: 'Menor custo' },
+                                        { value: 'alpha', label: 'A–Z' },
+                                        { value: 'date-desc', label: 'Mais recente' }
+                                    ]}
+                                />
                             </div>
 
                             {/* Category pills */}

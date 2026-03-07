@@ -15,9 +15,10 @@ interface CustomSelectProps {
     disabled?: boolean;
     className?: string;
     placeholder?: string;
+    size?: 'sm' | 'md';
 }
 
-export function CustomSelect({ value, onChange, options, disabled, className, placeholder = 'Selecione...' }: CustomSelectProps) {
+export function CustomSelect({ value, onChange, options, disabled, className, placeholder = 'Selecione...', size = 'md' }: CustomSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const listboxRef = useRef<HTMLDivElement>(null);
@@ -64,9 +65,8 @@ export function CustomSelect({ value, onChange, options, disabled, className, pl
         <div className={`relative ${className || ''}`} ref={containerRef}>
             <button
                 type="button"
-                className={`w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer'}`}
-                onClick={() => !disabled && setIsOpen(!isOpen)}
-                disabled={disabled}
+                className={`w-full flex items-center justify-between border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer'} ${size === 'sm' ? 'px-2 py-1 rounded-lg text-xs font-semibold' : 'p-3.5 rounded-xl'}`}
+                onClick={() => !disabled && setIsOpen(!isOpen)} disabled={disabled}
             >
                 <div className="flex items-center gap-2 truncate">
                     {selectedOption?.icon && <span className="text-slate-500">{selectedOption.icon}</span>}
