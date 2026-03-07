@@ -4,6 +4,7 @@ import { Budget, Transaction } from '../types';
 import { CATEGORY_ICONS, CATEGORIES } from '../constants';
 import { Edit2, Plus, Trash2, X, TrendingDown, AlertCircle, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CustomSelect } from './CustomSelect';
 
 interface BudgetManagerProps {
     budgets: Budget[];
@@ -250,16 +251,12 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
                                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                                             Categoria
                                         </label>
-                                        <select
+                                        <CustomSelect
                                             disabled={editId !== null}
                                             value={formData.categoria}
-                                            onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                                            className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50"
-                                        >
-                                            {CATEGORIES.map(c => (
-                                                <option key={c} value={c}>{c}</option>
-                                            ))}
-                                        </select>
+                                            onChange={(val) => setFormData({ ...formData, categoria: val })}
+                                            options={CATEGORIES.map(c => ({ value: c, label: c }))}
+                                        />
                                         {editId && <p className="text-xs text-slate-500 mt-1">A categoria não pode ser alterada.</p>}
                                     </div>
 

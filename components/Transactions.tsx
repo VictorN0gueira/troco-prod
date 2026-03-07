@@ -3,6 +3,7 @@ import { Transaction, CreditCard, Budget } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, formatDateDisplay, parseDateFromDB } from '../utils';
 import { UsageMeter, OverLimitBanner } from './FreePlanBadge';
+import { CustomSelect } from './CustomSelect';
 import {
   Search,
   Plus,
@@ -1104,23 +1105,17 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                           Pagar com Cartão de Crédito (Opcional)
                         </label>
-                        <div className="relative">
-                          <select
-                            value={formData.cardId}
-                            onChange={(e) => setFormData({ ...formData, cardId: e.target.value, status: e.target.value ? 'pending' : formData.status })}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all appearance-none"
-                          >
-                            <option value="">Nenhum (Débito/Dinheiro)</option>
-                            {cards.map(card => (
-                              <option key={card.id} value={card.id}>
-                                {card.name} (Final {card.closing_day})
-                              </option>
-                            ))}
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-500">
-                            <ChevronDown className="w-4 h-4" />
-                          </div>
-                        </div>
+                        <CustomSelect
+                          value={formData.cardId ? String(formData.cardId) : ''}
+                          onChange={(val: string) => setFormData({ ...formData, cardId: val, status: val ? 'pending' : formData.status })}
+                          options={[
+                            { value: '', label: 'Nenhum (Débito/Dinheiro)' },
+                            ...cards.map(card => ({
+                              value: String(card.id),
+                              label: `${card.name} (Final ${card.closing_day})`
+                            }))
+                          ]}
+                        />
                         {formData.cardId && (
                           <p className="text-xs text-slate-500 mt-1">
                             * Transações no crédito ficam como "Pendente" até o pagamento da fatura.
@@ -1134,26 +1129,18 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                             Número de Parcelas
                           </label>
-                          <div className="relative">
-                            <select
-                              value={formData.installments}
-                              onChange={(e) => setFormData({ ...formData, installments: Number(e.target.value) })}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all appearance-none"
-                            >
-                              {Array.from({ length: 24 }, (_, i) => i + 1).map(num => {
-                                const rawVal = formData.amount.toString().replace(/\D/g, "");
-                                const numAmt = rawVal ? Number(rawVal) / 100 : 0;
-                                return (
-                                  <option key={num} value={num}>
-                                    {num}x {num > 1 ? `(de ${formatCurrency(numAmt / num)})` : 'à vista'}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-500">
-                              <ChevronDown className="w-4 h-4" />
-                            </div>
-                          </div>
+                          <CustomSelect
+                            value={formData.installments.toString()}
+                            onChange={(val) => setFormData({ ...formData, installments: Number(val) })}
+                            options={Array.from({ length: 24 }, (_, i) => i + 1).map(num => {
+                              const rawVal = formData.amount.toString().replace(/\D/g, "");
+                              const numAmt = rawVal ? Number(rawVal) / 100 : 0;
+                              return {
+                                value: num.toString(),
+                                label: `${num}x ${num > 1 ? `(de ${formatCurrency(numAmt / num)})` : 'à vista'}`
+                              };
+                            })}
+                          />
                         </div>
                       )}
                     </div>
@@ -1333,16 +1320,11 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
               </p>
 
               <div className="space-y-4">
-                <div className="relative">
-                  <select
-                    value={bulkCategoryChoice}
-                    onChange={(e) => setBulkCategoryChoice(e.target.value)}
-                    className="w-full appearance-none pl-4 pr-10 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-primary-500 text-slate-700 dark:text-slate-300 font-medium cursor-pointer"
-                  >
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none" />
-                </div>
+                <CustomSelect
+                  value={bulkCategoryChoice}
+                  onChange={(val) => setBulkCategoryChoice(val)}
+                  options={CATEGORIES}
+                />
 
                 <div className="flex gap-3 mt-6">
                   <button onClick={() => setIsBulkCategoryModalOpen(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition">Cancelar</button>

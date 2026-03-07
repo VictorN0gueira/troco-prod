@@ -12,6 +12,7 @@ import {
 import { Transaction, UserProfile } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import { getTodayLocalDate, generateTransactionId } from '../utils';
+import { CustomSelect } from './CustomSelect';
 import LimitPaywallModal from './LimitPaywallModal';
 import { OverLimitBanner } from './FreePlanBadge';
 
@@ -184,11 +185,13 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 mb-1.5">Categoria</label>
                         <div className="relative">
-                            {CatIcon && <CatIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />}
-                            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all appearance-none">
-                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <CustomSelect
+                                value={form.category}
+                                onChange={val => setForm(f => ({ ...f, category: val }))}
+                                options={CATEGORIES}
+                                className="w-full pl-6"
+                            />
+                            {CatIcon && <CatIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />}
                         </div>
                     </div>
                     <div className="flex items-start gap-2 bg-primary-50 dark:bg-primary-500/10 rounded-xl p-3">
@@ -263,11 +266,13 @@ const EditModal: React.FC<EditModalProps> = ({ transaction, onSave, onClose }) =
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 mb-1.5">Categoria</label>
                         <div className="relative">
-                            {CatIcon && <CatIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />}
-                            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all appearance-none">
-                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <CustomSelect
+                                value={form.category}
+                                onChange={val => setForm(f => ({ ...f, category: val }))}
+                                options={CATEGORIES}
+                                className="w-full pl-6"
+                            />
+                            {CatIcon && <CatIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />}
                         </div>
                     </div>
                     {error && <p className="text-xs text-rose-500 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />{error}</p>}

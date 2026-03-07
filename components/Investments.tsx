@@ -16,6 +16,7 @@ import {
     BarChart, Bar, LabelList, ReferenceLine
 } from 'recharts';
 import ConfirmationModal from './ConfirmationModal';
+import { CustomSelect } from './CustomSelect';
 import {
     fetchInvestmentPrices, fetchMarketOverview,
     PriceResult, MarketOverview, UPDATABLE_TYPES
@@ -361,14 +362,11 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
                             <div>
                                 <label className={labelClass}>Tipo de Ativo *</label>
                                 <div className="relative">
-                                    <select
-                                        className={`${inputClass} appearance-none pr-10`}
+                                    <CustomSelect
                                         value={form.type}
-                                        onChange={e => set('type', e.target.value)}
-                                    >
-                                        {INVESTMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        onChange={val => set('type', val)}
+                                        options={INVESTMENT_TYPES}
+                                    />
                                 </div>
                             </div>
                             <div>
