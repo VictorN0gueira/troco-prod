@@ -221,18 +221,29 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
                                 <ChevronLeft className="w-5 h-5" />
                             </button>
 
-                            <div className="flex items-center gap-2">
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={`w-10 h-10 rounded-xl font-bold transition-all ${currentPage === page
-                                            ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 scale-105'
-                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                            }`}
-                                    >
-                                        {page}
-                                    </button>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).filter(page => {
+                                    if (totalPages <= 5) return true;
+                                    return (
+                                        page === 1 ||
+                                        page === totalPages ||
+                                        Math.abs(page - currentPage) <= 1
+                                    );
+                                }).map((page, idx, array) => (
+                                    <React.Fragment key={page}>
+                                        {idx > 0 && array[idx - 1] !== page - 1 && (
+                                            <span className="text-slate-400 px-1 hidden sm:inline">...</span>
+                                        )}
+                                        <button
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-bold transition-all text-sm sm:text-base ${currentPage === page
+                                                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 scale-105'
+                                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    </React.Fragment>
                                 ))}
                             </div>
 
