@@ -216,129 +216,135 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
             )}
 
             {/* Form Modal */}
-            <AnimatePresence>
-                {isModalOpen && createPortal(
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white dark:bg-slate-850 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative"
-                        >
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="absolute top-6 right-6 p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+            {createPortal(
+                <AnimatePresence>
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="bg-white dark:bg-slate-850 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative"
                             >
-                                <X className="w-5 h-5" />
-                            </button>
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="absolute top-6 right-6 p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
 
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/20 text-primary-500 flex items-center justify-center">
-                                    <Wallet className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-black text-slate-800 dark:text-white">
-                                        {editId ? 'Editar Limite' : 'Novo Orçamento'}
-                                    </h2>
-                                    <p className="text-sm text-slate-500">Defina um teto para seus gastos</p>
-                                </div>
-                            </div>
-
-                            <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                                        Categoria
-                                    </label>
-                                    <select
-                                        disabled={editId !== null}
-                                        value={formData.categoria}
-                                        onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                                        className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50"
-                                    >
-                                        {CATEGORIES.map(c => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))}
-                                    </select>
-                                    {editId && <p className="text-xs text-slate-500 mt-1">A categoria não pode ser alterada.</p>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                                        Limite Mensal (R$)
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={formData.valor_limite}
-                                            onChange={(e) => setFormData({ ...formData, valor_limite: e.target.value })}
-                                            className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-semibold"
-                                            placeholder="0.00"
-                                            required
-                                        />
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/20 text-primary-500 flex items-center justify-center">
+                                        <Wallet className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-800 dark:text-white">
+                                            {editId ? 'Editar Limite' : 'Novo Orçamento'}
+                                        </h2>
+                                        <p className="text-sm text-slate-500">Defina um teto para seus gastos</p>
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 pt-4">
+                                <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                            Categoria
+                                        </label>
+                                        <select
+                                            disabled={editId !== null}
+                                            value={formData.categoria}
+                                            onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                                            className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50"
+                                        >
+                                            {CATEGORIES.map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                        {editId && <p className="text-xs text-slate-500 mt-1">A categoria não pode ser alterada.</p>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                            Limite Mensal (R$)
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={formData.valor_limite}
+                                                onChange={(e) => setFormData({ ...formData, valor_limite: e.target.value })}
+                                                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-semibold"
+                                                placeholder="0.00"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3 pt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsModalOpen(false)}
+                                            className="flex-1 py-3.5 px-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={!formData.valor_limite}
+                                            className="flex-1 py-3.5 px-4 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 transition-colors disabled:opacity-50 shadow-lg shadow-primary-500/30 flex justify-center items-center"
+                                        >
+                                            {editId ? 'Salvar Edição' : 'Criar Limite'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {createPortal(
+                <AnimatePresence>
+                    {isDeleteModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="bg-white dark:bg-slate-850 rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center"
+                            >
+                                <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-4">
+                                    <Trash2 className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">Excluir Orçamento</h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
+                                    Tem certeza de que deseja excluir este orçamento? Seu histórico de transações não será afetado.
+                                </p>
+
+                                <div className="flex gap-3">
                                     <button
-                                        type="button"
-                                        onClick={() => setIsModalOpen(false)}
+                                        onClick={() => { setIsDeleteModalOpen(false); setDeleteId(null); }}
                                         className="flex-1 py-3.5 px-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     >
                                         Cancelar
                                     </button>
                                     <button
-                                        type="submit"
-                                        disabled={!formData.valor_limite}
-                                        className="flex-1 py-3.5 px-4 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 transition-colors disabled:opacity-50 shadow-lg shadow-primary-500/30 flex justify-center items-center"
+                                        onClick={confirmDelete}
+                                        className="flex-1 py-3.5 px-4 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/30"
                                     >
-                                        {editId ? 'Salvar Edição' : 'Criar Limite'}
+                                        Excluir
                                     </button>
                                 </div>
-                            </form>
-                        </motion.div>
-                    </div>, document.body
-                )}
-            </AnimatePresence>
-
-            {/* Delete Confirmation Modal */}
-            <AnimatePresence>
-                {isDeleteModalOpen && createPortal(
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white dark:bg-slate-850 rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative text-center"
-                        >
-                            <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-4">
-                                <Trash2 className="w-8 h-8" />
-                            </div>
-                            <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">Excluir Orçamento</h3>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
-                                Tem certeza de que deseja excluir este orçamento? Seu histórico de transações não será afetado.
-                            </p>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => { setIsDeleteModalOpen(false); setDeleteId(null); }}
-                                    className="flex-1 py-3.5 px-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={confirmDelete}
-                                    className="flex-1 py-3.5 px-4 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/30"
-                                >
-                                    Excluir
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>, document.body
-                )}
-            </AnimatePresence>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </div>
     );
 }
