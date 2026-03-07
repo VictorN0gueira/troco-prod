@@ -149,7 +149,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     };
   }, [filteredTransactions]);
 
-  const handleExportCSV = () => {
+  const handleExportExcel = () => {
     if (filteredTransactions.length === 0) {
       showNotification({
         title: 'Sem Dados',
@@ -411,7 +411,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
             {isExportMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50 animate-fade-in-up">
                 <button
-                  onClick={handleExportCSV}
+                  onClick={handleExportExcel}
                   className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200 transition-colors border-b border-slate-50 dark:border-slate-700/50"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />

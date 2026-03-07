@@ -18,18 +18,32 @@ import {
   Scale,
   FileText
 } from 'lucide-react';
-import { UserProfile } from '../types';
+import { UserProfile, Budget, Transaction } from '../types';
 import { supabase } from '../supabaseClient';
 import { PushManager } from './PushManager';
+import { BudgetManager } from './BudgetManager';
 import { useNotification } from '../contexts/NotificationContext';
 import LegalModal from './LegalModal';
 
 interface SettingsProps {
   user: UserProfile;
   onUpdateUser: (user: UserProfile) => Promise<void>;
+  budgets: Budget[];
+  transactions: Transaction[];
+  addBudget: (b: Budget) => Promise<void>;
+  updateBudget: (b: Budget) => Promise<void>;
+  deleteBudget: (id: number) => Promise<void>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
+const Settings: React.FC<SettingsProps> = ({
+  user,
+  onUpdateUser,
+  budgets,
+  transactions,
+  addBudget,
+  updateBudget,
+  deleteBudget
+}) => {
   // --- States ---
   const [isLoading, setIsLoading] = useState(false);
   const { showNotification } = useNotification();
@@ -441,6 +455,17 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                 Alterar Senha
               </button>
             </div>
+          </div>
+
+          {/* Budget Management */}
+          <div className="bg-white dark:bg-slate-850 p-6 md:p-8 rounded-3xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
+            <BudgetManager
+              budgets={budgets}
+              transactions={transactions}
+              onAddBudget={addBudget}
+              onUpdateBudget={updateBudget}
+              onDeleteBudget={deleteBudget}
+            />
           </div>
         </div>
 

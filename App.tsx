@@ -15,13 +15,13 @@ import Legal from './components/Legal';
 import NewsFeed from './components/NewsFeed';
 import Goals from './components/Goals';
 import Subscriptions from './components/Subscriptions';
-import { Transaction, UserProfile, CreditCard, Investment, Goal } from './types';
+import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
 import { getTodayLocalDate, formatTransaction, generateTransactionId } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
-import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB } from './localdb';
+import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB, budgetsDB } from './localdb';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -77,6 +77,7 @@ const ProtectedLayout = ({
   togglePrivacyMode: () => void;
   transactions: Transaction[];
   goals: Goal[];
+  budgets: Budget[];
 }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
@@ -128,6 +129,10 @@ interface AppRoutesProps {
   updateGoal: (g: Goal) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   addMoneyToGoal: (id: string, amount: number) => Promise<void>;
+  budgets: Budget[];
+  addBudget: (b: Budget) => Promise<void>;
+  updateBudget: (b: Budget) => Promise<void>;
+  deleteBudget: (id: number) => Promise<void>;
 }
 
 // Componente interno para gerenciar navegação baseada em eventos
@@ -160,7 +165,11 @@ const AppRoutes = ({
   addGoal,
   updateGoal,
   deleteGoal,
-  addMoneyToGoal
+  addMoneyToGoal,
+  budgets,
+  addBudget,
+  updateBudget,
+  deleteBudget
 }: AppRoutesProps) => {
   return (
     <Routes>
@@ -212,6 +221,7 @@ const AppRoutes = ({
           togglePrivacyMode={togglePrivacyMode}
           transactions={transactions}
           goals={goals}
+          budgets={budgets}
         />
       }>
         <Route path="/dashboard" element={
@@ -220,7 +230,9 @@ const AppRoutes = ({
               transactions={transactions}
               user={user}
               privacyMode={privacyMode}
-              cards={cards} // Pass cards to Dashboard
+              cards={cards}
+              budgets={budgets}
+              goals={goals} // Pass goals for HealthScore
             />
           </motion.div>
         } />
@@ -235,6 +247,7 @@ const AppRoutes = ({
               cards={cards}
               onAddMultiple={addMultipleTransactions}
               user={user}
+              budgets={budgets}
             />
           </motion.div>
         } />
@@ -330,6 +343,11 @@ const AppRoutes = ({
             <Settings
               user={user}
               onUpdateUser={updateUser}
+              budgets={budgets}
+              transactions={transactions}
+              addBudget={addBudget}
+              updateBudget={updateBudget}
+              deleteBudget={deleteBudget}
             />
           </motion.div>
         } />
@@ -582,6 +600,45 @@ const AppContent: React.FC = () => {
     processQueue();
   }, [isOnline, queue, user.id, removeFromQueue]);
 
+  // --- FEATURE 2: SMART PUSH NOTIFICATIONS ON LOAD ---
+  const hasCheckedReminders = useRef(false);
+  useEffect(() => {
+    if (loading || hasCheckedReminders.current || transactions.length === 0 || user.id === 0) return;
+
+    const checkAndNotify = () => {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const locallyEnabled = localStorage.getItem(`troco_notifications_enabled_${user.id}`);
+      if (locallyEnabled !== 'true') return;
+
+      const today = getTodayLocalDate();
+      const tomorrowDate = new Date();
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const tomorrow = tomorrowDate.toLocaleString('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).split(',')[0];
+
+      const due = transactions.filter(t =>
+        t.status === 'pending' && t.type === 'expense' && (t.date === today || t.date === tomorrow || t.date < today)
+      );
+
+      if (due.length > 0) {
+        // Limited to 3 max to prevent spamming the user
+        due.slice(0, 3).forEach(t => {
+          let timeMsg = '';
+          if (t.date < today) timeMsg = 'está ATRASADA';
+          else if (t.date === today) timeMsg = 'vence HOJE';
+          else timeMsg = 'vence AMANHÃ';
+
+          new Notification('Trocô — Lembrete 🔔', {
+            body: `A despesa "${t.description}" ${timeMsg} — R$ ${t.amount.toFixed(2)}`,
+            icon: '/icon.svg'
+          });
+        });
+      }
+    };
+
+    checkAndNotify();
+    hasCheckedReminders.current = true;
+  }, [loading, transactions, user]);
+
   const { showNotification } = useNotification();
 
   // Aplicar tema e persistir no localStorage
@@ -825,6 +882,30 @@ const AppContent: React.FC = () => {
   // State for Goals
   const [goals, setGoals] = useState<Goal[]>([]);
 
+  // State for Budgets
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+
+  // Fetch Budgets Function
+  const fetchBudgets = async (userId: number) => {
+    try {
+      if (!navigator.onLine) {
+        const cached = await budgetsDB.getItem(`budgets_${userId}`) as Budget[] | null;
+        if (cached) setBudgets(cached);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .eq('user_id', userId);
+      if (error) throw error;
+      const mapped = data || [];
+      setBudgets(mapped);
+      await budgetsDB.setItem(`budgets_${userId}`, mapped);
+    } catch (error) {
+      console.error('Error fetching budgets:', error);
+    }
+  };
+
   // Fetch Goals Function
   const fetchGoals = async (userId: number) => {
     try {
@@ -965,6 +1046,7 @@ const AppContent: React.FC = () => {
         fetchCards(data.id); // Fetch Cards too!
         fetchInvestments(data.id); // Fetch Investments too!
         fetchGoals(data.id); // Fetch Goals too!
+        fetchBudgets(data.id); // Fetch Budgets too!
 
       } else {
         // Retry Logic para suportar delay do N8N
@@ -1458,6 +1540,56 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // ── Budgets CRUD ──────────────────────────────────────────────────────────
+
+  const addBudget = async (b: Budget) => {
+    // Temp ID for optimistic update
+    const tempId = Date.now();
+    const newBudget = { ...b, id: tempId };
+    setBudgets(prev => [...prev.filter(x => !(x.categoria === b.categoria && x.mes === b.mes && x.ano === b.ano)), newBudget]);
+
+    if (user.id !== 0) {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .upsert({
+          user_id: user.id,
+          categoria: b.categoria,
+          valor_limite: b.valor_limite,
+          mes: b.mes,
+          ano: b.ano
+        }, { onConflict: 'user_id, categoria, mes, ano' })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding budget:', error);
+        setBudgets(prev => prev.filter(x => x.id !== tempId));
+        throw error;
+      }
+      if (data) {
+        setBudgets(prev => prev.map(x => x.id === tempId ? { ...x, id: data.id } : x));
+      }
+    }
+  };
+
+  const updateBudget = async (b: Budget) => {
+    setBudgets(prev => prev.map(x => x.id === b.id ? b : x));
+    if (user.id !== 0) {
+      const { error } = await supabase.from('orcamentos').update({
+        valor_limite: b.valor_limite
+      }).eq('id', b.id).eq('user_id', user.id);
+      if (error) throw error;
+    }
+  };
+
+  const deleteBudget = async (id: number) => {
+    setBudgets(prev => prev.filter(x => x.id !== id));
+    if (user.id !== 0) {
+      const { error } = await supabase.from('orcamentos').delete().eq('id', id).eq('user_id', user.id);
+      if (error) throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -1506,6 +1638,10 @@ const AppContent: React.FC = () => {
         updateGoal={updateGoal}
         deleteGoal={deleteGoal}
         addMoneyToGoal={addMoneyToGoal}
+        budgets={budgets}
+        addBudget={addBudget}
+        updateBudget={updateBudget}
+        deleteBudget={deleteBudget}
       />
 
       {/* TrocoBot Global V2 - Outside of Layout transform wrappers */}

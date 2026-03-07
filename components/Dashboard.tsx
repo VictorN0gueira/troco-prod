@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Transaction, UserProfile, CreditCard } from '../types';
+import { Transaction, UserProfile, CreditCard, Budget, Goal } from '../types';
 import { parseDateFromDB, getProjectedTransactions, getInvoiceReferenceDate } from '../utils'; // Added getInvoiceReferenceDate
 import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, Calendar, ChevronLeft, ChevronRight, AlertCircle, GripVertical } from 'lucide-react';
 import {
@@ -9,15 +9,18 @@ import {
 import { SpotlightCard } from './ui/spotlight-card';
 import NumberTicker from './ui/number-ticker';
 import NoSpendCalendar from './ui/no-spend-calendar';
+import { HealthScore } from './HealthScore';
 
 interface DashboardProps {
   transactions: Transaction[];
   user: UserProfile;
   privacyMode: boolean;
-  cards: CreditCard[]; // Added cards prop
+  cards: CreditCard[];
+  budgets?: Budget[];
+  goals?: Goal[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode, cards = [] }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode, cards = [], budgets = [], goals = [] }) => {
   // State for Month Selection
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -25,7 +28,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
   const [viewMode, setViewMode] = useState<'cash' | 'accrual'>('cash');
 
   // State for Drag & Drop Order
-  // Default Order: ['balance', 'income', 'expense', 'chart', 'categories']
+  // Default Order: ['balance', 'income', 'expense', 'chart', 'categories', 'budgets']
   const [cardsOrder, setCardsOrder] = useState<string[]>([]);
 
   // Initialize Order from LocalStorage (Simple Persistence)
@@ -33,12 +36,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
     const savedOrder = localStorage.getItem(`dashboard_order_${user.id}`);
     if (savedOrder) {
       try {
-        setCardsOrder(JSON.parse(savedOrder));
+        const parsed = JSON.parse(savedOrder);
+        // Migrating old users to see the new budgets card automatically if they didn't have it
+        if (!parsed.includes('budgets')) parsed.push('budgets');
+        if (!parsed.includes('healthScore')) parsed.push('healthScore');
+        setCardsOrder(parsed);
       } catch (e) {
-        setCardsOrder(['balance', 'income', 'expense', 'chart', 'categories']);
+        setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'chart', 'categories', 'budgets']);
       }
     } else {
-      setCardsOrder(['balance', 'income', 'expense', 'chart', 'categories']);
+      setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'chart', 'categories', 'budgets']);
     }
   }, [user.id]);
 
@@ -467,6 +474,50 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
             </div>
           </div>
         );
+      case 'budgets':
+        // Calculate relevant budgets for the selected month
+        const viewYear = currentDate.getFullYear();
+        const viewMonth = currentDate.getMonth() + 1; // 1-12
+        const currentBudgets = budgets.filter(b => b.mes === viewMonth && b.ano === viewYear);
+
+        return (
+          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col h-full col-span-1 md:col-span-2">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Orçamentos do Mês</h3>
+            <p className="text-xs text-slate-500 mb-4">{displayMonth}</p>
+            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              {currentBudgets.length > 0 ? currentBudgets.map(b => {
+                const spent = monthlyTransactions.filter(t => t.category === b.categoria && t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
+                const progress = Math.min((spent / b.valor_limite) * 100, 100);
+                const isOver = spent > b.valor_limite;
+                return (
+                  <div key={b.id} className="space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">{b.categoria}</span>
+                      <span className={`text-xs font-medium ${isOver ? 'text-rose-500' : 'text-slate-500'}`}>
+                        <BlurText>{formatCurrency(spent)} / {formatCurrency(b.valor_limite)}</BlurText>
+                      </span>
+                    </div>
+                    <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-rose-500' : progress >= 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 py-6 gap-2 opacity-50">
+                  <TrendingUp className="w-8 h-8" />
+                  <span className="text-sm">Nenhum orçamento configurado</span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case 'healthScore':
+        return (
+          <HealthScore transactions={transactions} goals={goals} user={user} />
+        );
       default:
         return null;
     }
@@ -475,8 +526,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
   const getCardClasses = (key: string) => {
     // Definir spans baseados no card
     let spanClasses = "col-span-1";
-    if (key === 'balance') spanClasses = "col-span-1 md:col-span-2";
+    if (key === 'balance' || key === 'budgets') spanClasses = "col-span-1 md:col-span-2";
     if (key === 'chart') spanClasses = "col-span-1 md:col-span-2 lg:col-span-3";
+    if (key === 'healthScore') spanClasses = "col-span-1";
 
     // Animação de drag
     return `${spanClasses} relative group transition-all duration-300`;
@@ -537,7 +589,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
       {/* Bento Grid Layout with DnD */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {(cardsOrder.length > 0 ? cardsOrder : ['balance', 'income', 'expense', 'chart', 'categories']).map((key, index) => (
+        {(cardsOrder.length > 0 ? cardsOrder : ['healthScore', 'balance', 'income', 'expense', 'chart', 'categories', 'budgets']).map((key, index) => (
           <div
             key={key}
             draggable

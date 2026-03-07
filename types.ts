@@ -126,3 +126,12 @@ export interface Goal {
   icon: string;
   created_at?: string;
 }
+
+export interface Budget {
+  id: number;
+  user_id: number;
+  categoria: string;
+  valor_limite: number;
+  mes: number;
+  ano: number;
+}

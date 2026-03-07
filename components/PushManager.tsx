@@ -1,25 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
 import { Bell, BellOff, Loader2 } from 'lucide-react';
 import { useNotification } from '../contexts/NotificationContext';
-
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-
-// Base64 to ArrayBuffer utility needed for subscription
-function urlBase64ToUint8Array(base64String: string) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
 
 export function PushManager({ userId }: { userId: number }) {
     const [isSubscribed, setIsSubscribed] = useState(false);
@@ -28,57 +9,60 @@ export function PushManager({ userId }: { userId: number }) {
     const { showNotification } = useNotification();
 
     useEffect(() => {
-        // Check initial state
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            checkSubscription();
+        if ('Notification' in window) {
             setPermission(Notification.permission);
+            const locallyEnabled = localStorage.getItem(`troco_notifications_enabled_${userId}`);
+            if (Notification.permission === 'granted' && locallyEnabled === 'true') {
+                setIsSubscribed(true);
+            }
         }
-    }, []);
-
-    const checkSubscription = async () => {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
-        setIsSubscribed(!!subscription);
-    };
+    }, [userId]);
 
     const subscribeUser = async () => {
-        if (!VAPID_PUBLIC_KEY) {
-            console.error("VAPID Key not found");
+        if (!('Notification' in window)) {
+            showNotification({
+                title: 'Erro',
+                message: 'Seu navegador não suporta notificações.',
+                type: 'error'
+            });
             return;
         }
 
         setLoading(true);
         try {
-            const registration = await navigator.serviceWorker.ready;
+            const perm = await Notification.requestPermission();
+            setPermission(perm);
 
-            const subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-            });
+            if (perm === 'granted') {
+                localStorage.setItem(`troco_notifications_enabled_${userId}`, 'true');
+                setIsSubscribed(true);
+                showNotification({
+                    title: 'Sucesso',
+                    message: 'Notificações ativadas com sucesso! 🔔',
+                    type: 'success'
+                });
 
-            // Send to Supabase
-            const { error } = await supabase.from('push_subscriptions').insert({
-                user_id: userId, // Ensure userId is valid
-                endpoint: subscription.endpoint,
-                p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')!) as any)),
-                auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')!) as any))
-            });
+                // Example Notification just to prove it works
+                new Notification('Trocô — Lembrete 🔔', {
+                    body: 'Exemplo de notificação! Você será avisado sobre contas a vencer.',
+                    icon: '/icon.svg'
+                });
 
-            if (error) throw error;
-
-            setIsSubscribed(true);
-            setPermission('granted');
-            showNotification({
-                title: 'Sucesso',
-                message: 'Notificações ativadas com sucesso! 🔔',
-                type: 'success'
-            });
+            } else {
+                localStorage.setItem(`troco_notifications_enabled_${userId}`, 'false');
+                setIsSubscribed(false);
+                showNotification({
+                    title: 'Atenção',
+                    message: 'Permissão para notificações foi negada.',
+                    type: 'warning'
+                });
+            }
 
         } catch (err: any) {
             console.error('Failed to subscribe:', err);
             showNotification({
                 title: 'Erro',
-                message: 'Erro ao ativar notificações: ' + err.message,
+                message: 'Erro ao ativar notificações.',
                 type: 'error'
             });
         } finally {
@@ -86,17 +70,9 @@ export function PushManager({ userId }: { userId: number }) {
         }
     };
 
-    if (!('serviceWorker' in navigator)) {
+    if (!('Notification' in window)) {
         return null; // Not supported
     }
-
-    // Check for Super Trocô Plan
-    // A propriedade de usuario para PushManager seria recebida por contexto se nao for por prop.
-    // Mas PushManager só tem userId. Vamos importar algo ou tratar no componente pai?
-    // Vamos buscar o usuario completo via context Auth se não tivermos. 
-    // Wait, Trocô's app structure often passes `user` around. Let's add a check based on Supabase or Context.
-    // However, realistically the App restricts rendering PushManager or its tab in Settings.
-    // We can also let the Settings page handle `user.status_assinatura` since PushManager only has `userId`.
 
     return (
         <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
