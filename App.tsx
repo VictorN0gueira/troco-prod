@@ -20,7 +20,16 @@ import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget } from '
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
 import { LOGO_URL } from './constants';
-import { getTodayLocalDate, formatTransaction, generateTransactionId } from './utils';
+import {
+  getTodayLocalDate,
+  formatDateDisplay,
+  generateTransactionId,
+  formatTransaction,
+  getProjectedTransactions,
+  getInvoiceReferenceDate,
+  isInvoiceClosed,
+  parseDateFromDB
+} from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
 import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB, budgetsDB } from './localdb';
 import { RefreshCw, WifiOff } from 'lucide-react';
@@ -136,7 +145,7 @@ interface AppRoutesProps {
   deleteBudget: (id: number) => Promise<void>;
 }
 
-// Componente interno para gerenciar navegação baseada em eventos
+// Componente interno para gerenciar navegação baseado em eventos
 const AppRoutes = ({
   isAuthenticated,
   loading,
@@ -1375,6 +1384,71 @@ const AppContent: React.FC = () => {
       }
     }
   };
+
+  // ── Credit Cards Automation ──────────────────────────────────────────
+  useEffect(() => {
+    const checkAndGenerateProjectedInvoices = async () => {
+      if (user.id === 0 || cards.length === 0 || !isAuthenticated) return;
+
+      console.log("[Invoice Intel] Checking for closed invoices...");
+      const now = new Date();
+      let hasAddedAny = false;
+
+      for (const card of cards) {
+        // Obter mês de referência para a fatura atual (que fecharia agora ou recentemente)
+        // Se hoje é dia 15 e fecha dia 10, a fatura de referência é do mês atual.
+        const currentRefDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        if (isInvoiceClosed(card.closing_day, currentRefDate)) {
+          // Fatura fechou! Verificar se já existe transação de "Pagamento de Fatura" para este cartão neste mês
+          const description = `Pagamento de Fatura - ${card.name}`;
+          const alreadyExists = transactions.some(t =>
+            t.cardId === card.id &&
+            t.description.includes(description) &&
+            parseDateFromDB(t.date).getMonth() === currentRefDate.getMonth() &&
+            parseDateFromDB(t.date).getFullYear() === currentRefDate.getFullYear()
+          );
+
+          if (!alreadyExists && card.current_usage > 0) {
+            console.log(`[Invoice Intel] Generating projected payment for ${card.name}`);
+
+            // Calcular data de vencimento
+            const dueYear = currentRefDate.getFullYear();
+            const dueMonth = currentRefDate.getMonth();
+            const daysInMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+            const dueDay = Math.min(card.due_day, daysInMonth);
+            const dueStr = `${dueYear}-${String(dueMonth + 1).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
+
+            const projectedTx: Transaction = {
+              id: `PROJ-INV-${card.id}-${Date.now()}`,
+              description: description,
+              amount: card.current_usage,
+              type: 'expense',
+              category: 'Financeiro',
+              date: dueStr,
+              status: 'pending',
+              isRecurring: false,
+              cardId: card.id
+            };
+
+            // Adiciona localmente para a UI refletir imediatamente
+            setTransactions(prev => [projectedTx, ...prev]);
+            hasAddedAny = true;
+          }
+        }
+      }
+
+      if (hasAddedAny) {
+        showNotification({
+          title: 'Inteligência de Faturas',
+          message: 'Novas faturas fechadas foram detectadas e projeções de pagamento adicionadas.',
+          type: 'success'
+        });
+      }
+    };
+
+    checkAndGenerateProjectedInvoices();
+  }, [user.id, cards.length, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Investment CRUD ──────────────────────────────────────────────────────────
 

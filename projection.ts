@@ -10,10 +10,11 @@ export interface DailyProjection {
 }
 
 export function generateCashflowProjection(
-    monthTransactions: Transaction[],
+    monthTransactions: Transaction[], // Shifted (Cash Flow) for balance
     budgets: Budget[],
     viewMonth: number,
-    viewYear: number
+    viewYear: number,
+    accrualTransactions?: Transaction[] // Original (Accrual) for budgets
 ): DailyProjection[] {
     // 1. Setup the array of days for the given month
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -58,7 +59,10 @@ export function generateCashflowProjection(
         if (daysRemaining > 0) {
             budgets.forEach(b => {
                 // Calculate how much was already spent in this budget category this month
-                const spent = monthTransactions
+                // Use accrualTransactions if provided, else fallback to monthTransactions
+                const budgetTransactions = accrualTransactions || monthTransactions;
+
+                const spent = budgetTransactions
                     .filter(t => t.type === 'expense' && t.category === b.categoria)
                     .reduce((sum, t) => sum + Number(t.amount), 0);
 

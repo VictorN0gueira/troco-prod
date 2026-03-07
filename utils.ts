@@ -61,13 +61,35 @@ export const getInvoiceReferenceDate = (transactionDate: string, closingDay: num
   const date = parseDateFromDB(transactionDate);
   const day = date.getDate();
 
+  // Get safe closing day for this specific month
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const safeClosingDay = Math.min(closingDay, daysInMonth);
+
   // Se passou do fechamento, joga para o mês seguinte (primeiro dia do mês)
-  if (day >= closingDay) {
+  if (day >= safeClosingDay) {
     return new Date(date.getFullYear(), date.getMonth() + 1, 1);
   }
 
   // Senão, é do próprio mês da compra
   return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
+/**
+ * Verifica se a fatura de um determinado mês de referência já "fechou" baseada na data atual.
+ * @param closingDay Dia de fechamento do cartão
+ * @param referenceDate Mês/Ano da fatura (Objeto Date com dia 1)
+ */
+export const isInvoiceClosed = (closingDay: number, referenceDate: Date): boolean => {
+  const now = new Date();
+
+  const daysInRefMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0).getDate();
+  const safeClosingDay = Math.min(closingDay, daysInRefMonth);
+
+  // Criar data de fechamento real para o mês de referência
+  const closingDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), safeClosingDay);
+
+  // Se 'now' passou da data de fechamento, a fatura está fechada
+  return now.getTime() >= closingDate.getTime();
 };
 
 // ... existing code ...

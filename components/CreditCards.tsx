@@ -2,11 +2,11 @@ import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
 import { CreditCard, UserProfile, Transaction } from '../types';
-import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle, Wallet, Star, ShieldCheck, ShieldAlert, ShieldX, Percent, ChevronLeft, ChevronRight, BarChart2, History } from 'lucide-react';
+import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle, Wallet, Star, ShieldCheck, ShieldAlert, ShieldX, Percent, ChevronLeft, ChevronRight, BarChart2, History, Lock } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import ConfirmationModal from './ConfirmationModal';
 import { useNotification } from '../contexts/NotificationContext';
-import { getInvoiceReferenceDate } from '../utils';
+import { getInvoiceReferenceDate, isInvoiceClosed } from '../utils';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -496,8 +496,13 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                                                     const today = new Date().getDate();
                                                     const bestDay = today >= card.closing_day && today <= card.closing_day + 3;
                                                     let daysToDue = card.due_day - today;
-                                                    if (daysToDue < 0) daysToDue += 30;
+                                                    if (daysToDue < 0) daysToDue += 31;
                                                     const dueSoon = daysToDue <= 5 && daysToDue >= 0;
+
+                                                    const refDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                                                    const isClosed = isInvoiceClosed(card.closing_day, refDate);
+
+                                                    if (isClosed) return <span className="bg-rose-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1 animate-pulse"><Lock className="w-3 h-3" /> Fatura Fechada</span>;
                                                     if (bestDay) return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
                                                     if (dueSoon) return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
                                                     return null;

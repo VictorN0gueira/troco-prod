@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, CreditCard, Budget } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
-import { getTodayLocalDate, formatDateDisplay, parseDateFromDB } from '../utils';
+import {
+  getTodayLocalDate,
+  formatDateDisplay,
+  parseDateFromDB,
+  getInvoiceReferenceDate,
+  isInvoiceClosed
+} from '../utils';
 import { UsageMeter, OverLimitBanner } from './FreePlanBadge';
 import { CustomSelect } from './CustomSelect';
 import {
@@ -26,7 +32,8 @@ import {
   Activity,
   UploadCloud,
   CheckSquare,
-  Square
+  Square,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useNotification } from '../contexts/NotificationContext';
@@ -133,7 +140,13 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
 
   const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null);
 
-  // Description history for autocomplete (unique sorted descriptions from prior transactions)
+  const handleImportTransactions = (newTxs: Transaction[]) => {
+    if (onAddMultiple) {
+      onAddMultiple(newTxs);
+    } else {
+      newTxs.forEach(t => onAdd(t));
+    }
+  };
   const descriptionHistory = React.useMemo(() => {
     const seen = new Set<string>();
     return transactions
@@ -416,8 +429,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         if (user && user.status_assinatura !== 'active') {
           if (newTransaction.isRecurring && newTransaction.type === 'expense') {
             // Group into unique subscriptions
-            const uniqueGroups = new Set(transactions.filter(t => t.type === 'expense' && t.isRecurring).map(t => t.description.trim().toLowerCase())).size;
-            if (uniqueGroups >= 5) {
+            const uniqueSubscriptions = new Set(transactions.filter(t => t.type === 'expense' && t.isRecurring).map(t => t.description.trim().toLowerCase()));
+            if (uniqueSubscriptions.size >= 5) {
               setLimitModalMessage({
                 title: 'Limite de Assinaturas Atingido',
                 description: 'No plano gratuito você pode ter até 5 assinaturas recorrentes. Assine o Super Trocô para assinaturas ilimitadas.'
@@ -734,10 +747,26 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getCategoryColor(t.category)}`}>
-                        <CategoryIcon category={t.category} className="w-3.5 h-3.5 mr-1.5" />
-                        {t.category}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getCategoryColor(t.category)}`}>
+                          <CategoryIcon category={t.category} className="w-3.5 h-3.5 mr-1.5" />
+                          {t.category}
+                        </span>
+                        {t.cardId && (() => {
+                          const card = cards.find(c => c.id === t.cardId);
+                          if (card) {
+                            const refDate = getInvoiceReferenceDate(t.date, card.closing_day);
+                            if (isInvoiceClosed(card.closing_day, refDate)) {
+                              return (
+                                <span className="flex items-center gap-1 text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                                  <Lock className="w-2.5 h-2.5" /> Fatura Fechada
+                                </span>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
                       <div className="flex items-center">
@@ -768,22 +797,41 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex justify-center items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleOpenEdit(t)}
-                          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-primary-500 transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setTransactionToDelete(t.id);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="flex justify-center items-center space-x-2">
+                        {(() => {
+                          const card = t.cardId ? cards.find(c => c.id === t.cardId) : null;
+                          const isLocked = card && isInvoiceClosed(card.closing_day, getInvoiceReferenceDate(t.date, card.closing_day));
+
+                          if (isLocked) {
+                            return (
+                              <div title="Transação bloqueada (Fatura Fechada)">
+                                <Lock className="w-4 h-4 text-slate-300" />
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <>
+                              <button
+                                onClick={() => handleOpenEdit(t)}
+                                className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                                title="Editar"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTransactionToDelete(t.id);
+                                  setIsDeleteModalOpen(true);
+                                }}
+                                className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
                   </motion.tr>
@@ -1233,12 +1281,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
       <ImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        onImport={(txs) => {
-          if (onAddMultiple) {
-            onAddMultiple(txs);
-            showNotification({ message: `${txs.length} transações importadas com sucesso!`, type: 'success' });
-          }
-        }}
+        onImport={handleImportTransactions}
+        existingTransactions={transactions}
       />
 
       {/* Bulk Action Bar */}

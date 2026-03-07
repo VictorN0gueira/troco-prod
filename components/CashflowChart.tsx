@@ -11,6 +11,7 @@ interface CashflowChartProps {
     viewMonth: number;
     viewYear: number;
     privacyMode: boolean;
+    accrualTransactions?: Transaction[];
 }
 
 export const CashflowChart: React.FC<CashflowChartProps> = ({
@@ -19,11 +20,12 @@ export const CashflowChart: React.FC<CashflowChartProps> = ({
     cards,
     viewMonth,
     viewYear,
-    privacyMode
+    privacyMode,
+    accrualTransactions
 }) => {
     const projectionData = useMemo(() => {
-        return generateCashflowProjection(monthlyTransactions, budgets, viewMonth, viewYear);
-    }, [monthlyTransactions, budgets, viewMonth, viewYear]);
+        return generateCashflowProjection(monthlyTransactions, budgets, viewMonth, viewYear, accrualTransactions);
+    }, [monthlyTransactions, budgets, viewMonth, viewYear, accrualTransactions]);
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);

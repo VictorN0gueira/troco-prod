@@ -1,11 +1,18 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Transaction, UserProfile, CreditCard, Budget, Goal } from '../types';
-import { parseDateFromDB, getProjectedTransactions, getInvoiceReferenceDate } from '../utils'; // Added getInvoiceReferenceDate
-import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, Calendar, ChevronLeft, ChevronRight, AlertCircle, GripVertical } from 'lucide-react';
+import {
+  parseDateFromDB,
+  generateTransactionId,
+  getInvoiceReferenceDate,
+  isInvoiceClosed,
+  getProjectedTransactions
+} from '../utils';
+import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, Calendar, ChevronLeft, ChevronRight, AlertCircle, GripVertical, Check } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip as PieTooltip, Legend
 } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 import { SpotlightCard } from './ui/spotlight-card';
 import NumberTicker from './ui/number-ticker';
 import NoSpendCalendar from './ui/no-spend-calendar';
@@ -28,13 +35,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
   // State for View Mode: 'cash' (Vencimento/Caixa) vs 'accrual' (Compra/Competência)
   const [viewMode, setViewMode] = useState<'cash' | 'accrual'>('cash');
 
+  // State for Navigation Tabs: 'overview', 'analysis', 'planning'
+  const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'planning'>('overview');
+
   // State for Drag & Drop Order
   // Default Order: ['balance', 'income', 'expense', 'chart', 'categories', 'budgets']
   const [cardsOrder, setCardsOrder] = useState<string[]>([]);
 
   // Initialize Order from LocalStorage (Simple Persistence)
   useEffect(() => {
-    const savedOrder = localStorage.getItem(`dashboard_order_${user.id}`);
+    const savedOrder = localStorage.getItem(`dashboard_order_${user.id} `);
     if (savedOrder) {
       try {
         const parsed = JSON.parse(savedOrder);
@@ -74,7 +84,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
     setCardsOrder(newOrder);
     setDraggedItemIndex(null);
-    localStorage.setItem(`dashboard_order_${user.id}`, JSON.stringify(newOrder));
+    localStorage.setItem(`dashboard_order_${user.id} `, JSON.stringify(newOrder));
   };
 
 
@@ -85,13 +95,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
   const BlurText = ({ children }: { children: React.ReactNode }) => (
     <span
       className={`
-            transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] 
-            inline-block align-middle
+transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]
+inline-block align-middle
             ${privacyMode
           ? 'filter blur-[8px] opacity-60 select-none cursor-default'
           : 'filter blur-0 opacity-100'
         }
-        `}
+`}
     >
       {children}
     </span>
@@ -129,9 +139,33 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
     if (!cards || cards.length === 0) return transactions;
 
-    return transactions.map(t => {
-      // If not expense or not associated with card, return as is
-      // Note: We only shift expenses. ID checking handles both number and string types from legacy
+    // Filter and map
+    return transactions.filter((t: Transaction) => {
+      // Logic for CC double-counting prevention:
+      // If we are in Flow mode (Caixa), we only want TO SEE the consolidated invoice payment 
+      // IF the invoice is already closed. 
+      // If the invoice is OPEN, we keep individual transactions shifted to the due date.
+
+      if (t.type !== 'expense' || !t.cardId) return true;
+
+      const card = cards.find(c => c.id === t.cardId);
+      if (!card) return true;
+
+      // Is this a consolidated invoice payment?
+      const isInvoicePayment = t.description.toLowerCase().includes('pagamento de fatura');
+      if (isInvoicePayment) return true;
+
+      // It's an individual purchase. Check if its invoice is closed.
+      const invoiceRefDate = getInvoiceReferenceDate(t.date, card.closing_day);
+      if (isInvoiceClosed(card.closing_day, invoiceRefDate)) {
+        // If invoice is closed, individual transactions should NOT appear in Cash Flow
+        // because the consolidated payment transaction (real or projected) is now the one used.
+        return false;
+      }
+
+      return true;
+    }).map((t: Transaction) => {
+      // If not expense associated with card, return as is
       if (t.type !== 'expense' || !t.cardId) return t;
 
       const card = cards.find(c => c.id === t.cardId);
@@ -164,12 +198,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
   // 1. Filter Transactions for Selected Month (Includes Projected)
   const monthlyTransactions = useMemo(() => {
-    const viewYear = currentDate.getFullYear();
-    const viewMonth = currentDate.getMonth();
-
-    // Usa a função centralizada para mesclar Reais + Recorrentes
-    return getProjectedTransactions(effectiveTransactions, viewMonth, viewYear);
+    const viewYear = currentDate.getMonth() === currentDate.getMonth() ? currentDate.getFullYear() : currentDate.getFullYear(); // Dummy to keep ref
+    return getProjectedTransactions(effectiveTransactions, currentDate.getMonth(), currentDate.getFullYear());
   }, [effectiveTransactions, currentDate]);
+
+  const monthlyAccrualTransactions = useMemo(() => {
+    return getProjectedTransactions(transactions, currentDate.getMonth(), currentDate.getFullYear());
+  }, [transactions, currentDate]);
 
   // 2. Calculate Totals (Consolidated vs Expected)
   const stats = useMemo(() => {
@@ -263,8 +298,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
 
   // --- Card Renderers (for DnD) ---
 
-  const renderCard = (type: string) => {
-    switch (type) {
+  const renderCard = (key: string, isCompact = false) => {
+    switch (key) {
       case 'balance':
         return (
           <SpotlightCard id="tour-dashboard-balance" className="bg-slate-900 border-none dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl group h-full">
@@ -284,7 +319,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                   <span className="text-[10px] bg-slate-700/50 px-2 py-0.5 rounded text-slate-300 border border-slate-600">Mês Atual</span>
                 </div>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 md:mt-2 truncate">
-                  <BlurText><NumberTicker value={stats.balance.realized} isCurrency decimalPlaces={2} prefix={stats.balance.realized >= 0 ? "+R$ " : "-R$ "} /></BlurText>
+                  <BlurText><NumberTicker value={Math.abs(stats.balance.realized)} isCurrency decimalPlaces={2} prefix={stats.balance.realized >= 0 ? "R$ " : "-R$ "} /></BlurText>
                 </h2>
               </div>
 
@@ -293,7 +328,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                   <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-md">
                     <AlertCircle className="w-4 h-4 text-amber-400" />
                     <span>
-                      Previsto: <strong className="text-white"><BlurText><NumberTicker value={stats.balance.projected} isCurrency decimalPlaces={2} prefix={stats.balance.projected >= 0 ? "R$ " : "-R$ "} /></BlurText></strong>
+                      Previsto: <strong className="text-white"><BlurText><NumberTicker value={Math.abs(stats.balance.projected)} isCurrency decimalPlaces={2} prefix={stats.balance.projected >= 0 ? "R$ " : "-R$ "} /></BlurText></strong>
                     </span>
                   </div>
                 )}
@@ -302,54 +337,49 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
           </SpotlightCard>
         );
       case 'income':
-        return (
-          <SpotlightCard className="bg-white border-transparent shadow shadow-emerald-500/10 dark:bg-slate-850 rounded-3xl p-5 md:p-6 transition-transform hover:-translate-y-1 duration-300 h-full">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(16,185,129,0.05),transparent_50%)] pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl">
-                  <ArrowUpRight className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
-                </div>
-                {stats.income.pending > 0 && (
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                    +<BlurText><NumberTicker value={stats.income.pending} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> pendente
-                  </span>
-                )}
-              </div>
-              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Receitas Totais</p>
-              <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
-                <BlurText><NumberTicker value={stats.income.total} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText>
-              </h3>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-                <BlurText><NumberTicker value={stats.income.paid} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> recebidos
-              </p>
-            </div>
-          </SpotlightCard>
-        );
       case 'expense':
+        const isIncome = key === 'income';
+        const data = isIncome ? stats.income : stats.expense;
+        const Icon = isIncome ? ArrowUpRight : ArrowDownRight;
+        const colorClass = isIncome ? 'text-emerald-500' : 'text-rose-500';
+        const bgClass = isIncome ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-rose-50 dark:bg-rose-500/10';
+
         return (
-          <SpotlightCard className="bg-white border-transparent shadow shadow-rose-500/10 dark:bg-slate-850 rounded-3xl p-5 md:p-6 transition-transform hover:-translate-y-1 duration-300 h-full">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(244,63,94,0.05),transparent_50%)] pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-rose-50 dark:bg-rose-500/10 rounded-2xl">
-                  <ArrowDownRight className="w-5 h-5 md:w-6 md:h-6 text-rose-500" />
-                </div>
-                {stats.expense.pending > 0 && (
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                    +<BlurText><NumberTicker value={stats.expense.pending} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> pendente
-                  </span>
-                )}
+          <div className={`bg-white dark:bg-slate-850 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm h-full ${isCompact ? 'p-4' : 'p-5 md:p-6'}`}>
+            <div className={`flex items-center justify-between ${isCompact ? 'mb-2' : 'mb-4'}`}>
+              <div className={`p-2 rounded-xl ${bgClass}`}>
+                <Icon className={`${isCompact ? 'w-4 h-4' : 'w-5 h-5'} ${colorClass}`} />
               </div>
-              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Despesas Totais</p>
-              <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mt-1 truncate">
-                <BlurText><NumberTicker value={stats.expense.total} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText>
-              </h3>
-              <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-medium">
-                <BlurText><NumberTicker value={stats.expense.paid} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText> pagos
-              </p>
+              <div className="text-right">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${bgClass} ${colorClass}`}>
+                  {isIncome ? 'RECEITAS' : 'DESPESAS'}
+                </span>
+              </div>
             </div>
-          </SpotlightCard>
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                {isIncome ? 'Receitas Totais' : 'Despesas Totais'}
+              </p>
+              <h3 className={`${isCompact ? 'text-xl' : 'text-2xl'} font-bold text-slate-800 dark:text-white mt-0.5`}>
+                <BlurText><NumberTicker value={data.total} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText>
+              </h3>
+              {!isCompact && (
+                <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1.5 font-medium">
+                  {isIncome ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span>{formatCurrency(data.paid)} recebidas</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span>{formatCurrency(data.paid)} pagas</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         );
       case 'chart':
         return (
@@ -391,7 +421,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
                     tickLine={false}
                     tick={{ fill: '#64748b', fontSize: 12 }}
                     tickFormatter={(value) => {
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)} k`;
                       return value;
                     }}
                   />
@@ -489,16 +519,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
       case 'cashflow':
         const vYear = currentDate.getFullYear();
         const vMonth = currentDate.getMonth();
-        return (
-          <CashflowChart
-            monthlyTransactions={monthlyTransactions}
-            budgets={budgets}
-            cards={cards}
-            viewMonth={vMonth}
-            viewYear={vYear}
-            privacyMode={privacyMode}
-          />
-        );
+        return <CashflowChart
+          monthlyTransactions={monthlyTransactions}
+          budgets={budgets}
+          cards={cards}
+          viewMonth={currentDate.getMonth()}
+          viewYear={currentDate.getFullYear()}
+          privacyMode={privacyMode}
+          accrualTransactions={monthlyAccrualTransactions}
+        />
       case 'budgets':
         // Calculate relevant budgets for the selected month
         const viewYear = currentDate.getFullYear();
@@ -551,7 +580,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
   const getCardClasses = (key: string) => {
     // Definir spans baseados no card
     let spanClasses = "col-span-1";
-    if (key === 'balance' || key === 'budgets') spanClasses = "col-span-1 md:col-span-2";
+    if (key === 'balance' || key === 'budgets' || key === 'cashflow') spanClasses = "col-span-1 md:col-span-2";
     if (key === 'chart') spanClasses = "col-span-1 md:col-span-2 lg:col-span-3";
     if (key === 'healthScore') spanClasses = "col-span-1";
 
@@ -612,28 +641,153 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
         </div>
       </div>
 
-      {/* Bento Grid Layout with DnD */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {(cardsOrder.length > 0 ? cardsOrder : ['healthScore', 'balance', 'income', 'expense', 'chart', 'categories', 'budgets']).map((key, index) => (
-          <div
-            key={key}
-            draggable
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={(e) => handleDrop(e, index)}
-            className={`${getCardClasses(key)} ${draggedItemIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
-          >
-            {/* Drag Handle (Visible on Hover) */}
-            <div className="absolute top-2 right-2 p-1.5 bg-slate-900/10 dark:bg-white/10 rounded cursor-move opacity-0 group-hover:opacity-100 transition-opacity z-20">
-              <GripVertical className="w-4 h-4 text-slate-500 dark:text-slate-300" />
-            </div>
-            {renderCard(key)}
-          </div>
-        ))}
+      {/* Tabs Navigation */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar pt-2">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeTab === 'overview'
+            ? 'border-primary-500 text-primary-500 bg-primary-50/10'
+            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+        >
+          Resumo Geral
+        </button>
+        <button
+          onClick={() => setActiveTab('planning')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeTab === 'planning'
+            ? 'border-indigo-500 text-indigo-500 bg-indigo-50/10'
+            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+        >
+          Previsão e Planejamento
+        </button>
+        <button
+          onClick={() => setActiveTab('analysis')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeTab === 'analysis'
+            ? 'border-teal-500 text-teal-500 bg-teal-50/10'
+            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+        >
+          Análises de Histórico
+        </button>
       </div>
 
-      {/* No Spend Days Calendar */}
-      <NoSpendCalendar transactions={transactions} />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-8"
+        >
+          {/* Top Section: Logic depends on active tab */}
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {/* Main Balance Card (Spans 2 columns) */}
+              <div className="col-span-1 md:col-span-2">
+                {renderCard('balance')}
+              </div>
+
+              {/* Income/Expense Compact Cards */}
+              <div className="flex flex-col gap-4">
+                {renderCard('income', true)}
+                {renderCard('expense', true)}
+              </div>
+
+              {/* Health Score */}
+              <div className="col-span-1">
+                {renderCard('healthScore')}
+              </div>
+
+              {/* Categories Card (Now prominent in overview) */}
+              <div className="col-span-1 md:col-span-2">
+                {renderCard('categories')}
+              </div>
+
+              {/* Calendar Snippet or NoSpend (Optional small version) */}
+              <div className="col-span-1 md:col-span-2">
+                <NoSpendCalendar transactions={transactions} compact />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'planning' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Cashflow Prediction (High focus here) */}
+              <div className="col-span-1 md:col-span-2">
+                {renderCard('cashflow')}
+              </div>
+
+              {/* Budgets Section */}
+              <div className="col-span-1">
+                {renderCard('budgets')}
+              </div>
+
+              {/* Summary of what's next: Projected vs Current */}
+              <div className="col-span-1 md:col-span-3 bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                    <TrendingUp className="w-5 h-5 text-indigo-500" />
+                  </div>
+                  <h3 className="font-bold text-slate-800 dark:text-white">Destaques do Mês Próximo</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase font-bold">Sobrará no fim do mês</p>
+                    <p className={`text-xl font-bold ${stats.balance.projected >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {formatCurrency(stats.balance.projected)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase font-bold">Total a Pagar</p>
+                    <p className="text-xl font-bold text-slate-800 dark:text-white">
+                      {formatCurrency(stats.expense.total)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase font-bold">Pendências Receitas</p>
+                    <p className="text-xl font-bold text-amber-500">
+                      {formatCurrency(stats.income.pending)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase font-bold">Pendências Despesas</p>
+                    <p className="text-xl font-bold text-amber-500">
+                      {formatCurrency(stats.expense.pending)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'analysis' && (
+            <div className="space-y-6">
+              {/* Main History Chart */}
+              <div className="w-full">
+                {renderCard('chart')}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Full Calendar */}
+                <NoSpendCalendar transactions={transactions} />
+
+                {/* More analysis metrics could go here */}
+                <div className="bg-white dark:bg-slate-850 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-center items-center text-center">
+                  <div className="p-4 bg-teal-50 dark:bg-teal-900/20 rounded-full mb-4">
+                    <TrendingUp className="w-8 h-8 text-teal-500" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2">Padrões de Consumo</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs">
+                    Em breve: Inteligência Trocô analisando suas oscilações de gastos mês a mês.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };

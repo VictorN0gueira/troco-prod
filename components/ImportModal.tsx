@@ -11,9 +11,10 @@ interface ImportModalProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (transactions: Transaction[]) => void;
+    existingTransactions: Transaction[];
 }
 
-export default function ImportModal({ isOpen, onClose, onImport }: ImportModalProps) {
+export default function ImportModal({ isOpen, onClose, onImport, existingTransactions }: ImportModalProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -105,10 +106,10 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-sm px-4 py-6 sm:px-0">
+            <div className="flex min-h-full items-start justify-center text-center sm:items-center">
                 <div
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+                    className="fixed inset-0 transition-opacity"
                     onClick={onClose}
                 />
 
@@ -206,27 +207,42 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-3 w-full md:w-auto">
-                                                    <div className="w-full md:w-40 bg-white dark:bg-slate-900 rounded-lg">
-                                                        <CustomSelect
-                                                            value={t.category || 'Outros'}
-                                                            onChange={(val) => updateCategory(idx, val)}
-                                                            options={CATEGORIES.map(cat => {
-                                                                const IconComp = CATEGORY_ICONS[cat];
-                                                                return {
-                                                                    value: cat,
-                                                                    label: cat,
-                                                                    icon: IconComp ? <IconComp className="w-4 h-4 mt-0.5" /> : undefined
-                                                                };
-                                                            })}
-                                                            size="sm"
-                                                            className="w-full"
-                                                        />
-                                                    </div>
-                                                    <div className={`shrink-0 w-24 text-right text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                        {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                    </div>
-                                                </div>
+                                                {(() => {
+                                                    const isDuplicate = existingTransactions.some(et =>
+                                                        et.amount === t.amount &&
+                                                        et.description.toLowerCase().trim() === t.description.toLowerCase().trim() &&
+                                                        et.date === t.date
+                                                    );
+
+                                                    return (
+                                                        <div className="flex items-center gap-3 w-full md:w-auto">
+                                                            {isDuplicate && (
+                                                                <div className="flex items-center gap-1 text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md shrink-0">
+                                                                    <AlertCircle className="w-3 h-3" /> JÁ EXISTE
+                                                                </div>
+                                                            )}
+                                                            <div className="w-full md:w-40 bg-white dark:bg-slate-900 rounded-lg">
+                                                                <CustomSelect
+                                                                    value={t.category || 'Outros'}
+                                                                    onChange={(val) => updateCategory(idx, val)}
+                                                                    options={CATEGORIES.map(cat => {
+                                                                        const IconComp = CATEGORY_ICONS[cat];
+                                                                        return {
+                                                                            value: cat,
+                                                                            label: cat,
+                                                                            icon: IconComp ? <IconComp className="w-4 h-4 mt-0.5" /> : undefined
+                                                                        };
+                                                                    })}
+                                                                    size="sm"
+                                                                    className="w-full"
+                                                                />
+                                                            </div>
+                                                            <div className={`shrink-0 w-24 text-right text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                                {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         ))}
                                     </div>
