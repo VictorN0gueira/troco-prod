@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Budget, Transaction } from '../types';
 import { CATEGORY_ICONS, CATEGORIES } from '../constants';
 import { Edit2, Plus, Trash2, X, TrendingDown, AlertCircle, Wallet } from 'lucide-react';
@@ -216,8 +217,8 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
 
             {/* Form Modal */}
             <AnimatePresence>
-                {isModalOpen && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
+                {isModalOpen && createPortal(
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -298,14 +299,14 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
                                 </div>
                             </form>
                         </motion.div>
-                    </div>
+                    </div>, document.body
                 )}
             </AnimatePresence>
 
             {/* Delete Confirmation Modal */}
             <AnimatePresence>
-                {isDeleteModalOpen && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
+                {isDeleteModalOpen && createPortal(
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -335,7 +336,7 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
                                 </button>
                             </div>
                         </motion.div>
-                    </div>
+                    </div>, document.body
                 )}
             </AnimatePresence>
         </div>
