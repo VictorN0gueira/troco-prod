@@ -204,3 +204,33 @@ export const formatTransaction = (t: any): Transaction => {
     installment_group: t.installment_group
   };
 };
+
+/**
+ * Máscara para input de moeda (Ex: 10000 -> 10.000,00)
+ */
+export const maskCurrency = (value: string): string => {
+  // Remove tudo que não é dígito
+  let v = value.replace(/\D/g, '');
+
+  // Se vazio, retorna vazio
+  if (!v) return '';
+
+  // Converte para número e divide por 100 para ter as casas decimais
+  const amount = (parseInt(v) / 100).toFixed(2);
+
+  // Formata usando o padrão brasileiro
+  const parts = amount.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  return parts.join(',');
+};
+
+/**
+ * Converte string mascarada de volta para número (Ex: "1.234,56" -> 1234.56)
+ */
+export const parseCurrency = (value: string): number => {
+  if (!value) return 0;
+  // Remove pontos e troca vírgula por ponto
+  const cleanValue = value.replace(/\./g, '').replace(',', '.');
+  return parseFloat(cleanValue) || 0;
+};

@@ -5,6 +5,7 @@ import { CATEGORY_ICONS, CATEGORIES } from '../constants';
 import { Edit2, Plus, Trash2, X, TrendingDown, AlertCircle, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CustomSelect } from './CustomSelect';
+import { maskCurrency, parseCurrency } from '../utils';
 
 interface BudgetManagerProps {
     budgets: Budget[];
@@ -41,20 +42,21 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
     }, [transactions, currentMonth, currentYear]);
 
     const handleSave = async () => {
-        if (!formData.valor_limite || isNaN(Number(formData.valor_limite))) return;
+        const numericValue = parseCurrency(formData.valor_limite);
+        if (!numericValue) return;
 
         try {
             if (editId) {
                 const existing = budgets.find(b => b.id === editId);
                 if (existing) {
-                    await onUpdateBudget({ ...existing, valor_limite: Number(formData.valor_limite) });
+                    await onUpdateBudget({ ...existing, valor_limite: numericValue });
                 }
             } else {
                 await onAddBudget({
                     id: 0,
                     user_id: 0,
                     categoria: formData.categoria,
-                    valor_limite: Number(formData.valor_limite),
+                    valor_limite: numericValue,
                     mes: currentMonth,
                     ano: currentYear
                 });
@@ -69,7 +71,7 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
 
     const handleEdit = (b: Budget) => {
         setEditId(b.id);
-        setFormData({ categoria: b.categoria, valor_limite: String(b.valor_limite) });
+        setFormData({ categoria: b.categoria, valor_limite: maskCurrency((b.valor_limite * 100).toFixed(0)) });
         setIsModalOpen(true);
     };
 
@@ -272,13 +274,12 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
                                         <div className="relative">
                                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
                                             <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
+                                                type="text"
+                                                inputMode="numeric"
                                                 value={formData.valor_limite}
-                                                onChange={(e) => setFormData({ ...formData, valor_limite: e.target.value })}
+                                                onChange={(e) => setFormData({ ...formData, valor_limite: maskCurrency(e.target.value) })}
                                                 className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all font-semibold"
-                                                placeholder="0.00"
+                                                placeholder="0,00"
                                                 required
                                             />
                                         </div>

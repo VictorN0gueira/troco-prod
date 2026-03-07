@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { Transaction, UserProfile } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
-import { getTodayLocalDate, generateTransactionId } from '../utils';
+import { getTodayLocalDate, generateTransactionId, maskCurrency, parseCurrency } from '../utils';
 import { CustomSelect } from './CustomSelect';
 import LimitPaywallModal from './LimitPaywallModal';
 import { OverLimitBanner } from './FreePlanBadge';
@@ -133,18 +133,11 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
     const [error, setError] = useState<string | null>(null);
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value.replace(/\D/g, "");
-        if (!rawValue) {
-            setForm(f => ({ ...f, amount: '' }));
-            return;
-        }
-        const numberValue = Number(rawValue) / 100;
-        setForm(f => ({ ...f, amount: formatCurrency(numberValue) }));
+        setForm(f => ({ ...f, amount: maskCurrency(e.target.value) }));
     };
 
     const handleSave = async () => {
-        const rawAmount = form.amount.replace(/\D/g, "");
-        const amount = rawAmount ? Number(rawAmount) / 100 : 0;
+        const amount = parseCurrency(form.amount);
 
         if (!form.description.trim()) { setError('Descrição obrigatória'); return; }
         if (amount <= 0) { setError('Informe um valor válido'); return; }
@@ -191,10 +184,10 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Valor mensal (R$)</label>
-                            <input type="text" value={form.amount}
+                            <input type="text" value={form.amount} inputMode="numeric"
                                 onChange={handleAmountChange}
-                                placeholder="R$ 0,00"
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all" />
+                                placeholder="0,00"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all font-semibold" />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Primeira cobrança</label>
@@ -248,7 +241,7 @@ interface EditModalProps { transaction: Transaction; onSave: (t: Transaction) =>
 const EditModal: React.FC<EditModalProps> = ({ transaction, onSave, onClose }) => {
     const [form, setForm] = useState({
         description: transaction.description,
-        amount: formatCurrency(transaction.amount),
+        amount: maskCurrency((transaction.amount * 100).toFixed(0)),
         category: transaction.category,
         date: transaction.date
     });
@@ -256,18 +249,11 @@ const EditModal: React.FC<EditModalProps> = ({ transaction, onSave, onClose }) =
     const [error, setError] = useState<string | null>(null);
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value.replace(/\D/g, "");
-        if (!rawValue) {
-            setForm(f => ({ ...f, amount: '' }));
-            return;
-        }
-        const numberValue = Number(rawValue) / 100;
-        setForm(f => ({ ...f, amount: formatCurrency(numberValue) }));
+        setForm(f => ({ ...f, amount: maskCurrency(e.target.value) }));
     };
 
     const handleSave = async () => {
-        const rawAmount = form.amount.replace(/\D/g, "");
-        const amount = rawAmount ? Number(rawAmount) / 100 : 0;
+        const amount = parseCurrency(form.amount);
 
         if (!form.description.trim()) { setError('Descrição obrigatória'); return; }
         if (amount <= 0) { setError('Valor inválido'); return; }

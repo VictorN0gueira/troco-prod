@@ -6,7 +6,9 @@ import {
   formatDateDisplay,
   parseDateFromDB,
   getInvoiceReferenceDate,
-  isInvoiceClosed
+  isInvoiceClosed,
+  maskCurrency,
+  parseCurrency
 } from '../utils';
 import { UsageMeter, OverLimitBanner } from './FreePlanBadge';
 import { CustomSelect } from './CustomSelect';
@@ -308,13 +310,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/\D/g, "");
-    if (!rawValue) {
-      setFormData({ ...formData, amount: '' });
-      return;
-    }
-    const numberValue = Number(rawValue) / 100;
-    setFormData({ ...formData, amount: formatCurrency(numberValue) });
+    setFormData({ ...formData, amount: maskCurrency(e.target.value) });
   };
 
   const handleOpenCreate = () => {
@@ -338,7 +334,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   const handleOpenEdit = (t: Transaction) => {
     setFormData({
       description: t.description,
-      amount: formatCurrency(t.amount),
+      amount: maskCurrency((t.amount * 100).toFixed(0)),
       category: t.category,
       date: t.date,
       type: t.type,
@@ -361,8 +357,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     e.preventDefault();
 
     // Parse the masked amount string back to a number
-    const rawAmount = formData.amount.toString().replace(/\D/g, "");
-    const numericAmount = rawAmount ? Number(rawAmount) / 100 : 0;
+    const numericAmount = parseCurrency(formData.amount.toString());
 
     if (editingId) {
       // Edit logic
@@ -1179,10 +1174,9 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                           </label>
                           <CustomSelect
                             value={formData.installments.toString()}
-                            onChange={(val) => setFormData({ ...formData, installments: Number(val) })}
+                            onChange={(val: string) => setFormData({ ...formData, installments: Number(val) })}
                             options={Array.from({ length: 24 }, (_, i) => i + 1).map(num => {
-                              const rawVal = formData.amount.toString().replace(/\D/g, "");
-                              const numAmt = rawVal ? Number(rawVal) / 100 : 0;
+                              const numAmt = parseCurrency(formData.amount.toString());
                               return {
                                 value: num.toString(),
                                 label: `${num}x ${num > 1 ? `(de ${formatCurrency(numAmt / num)})` : 'à vista'}`
