@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Budget, Transaction } from '../types';
 import { CATEGORY_ICONS, CATEGORIES } from '../constants';
-import { Edit2, Plus, Trash2, X, TrendingDown, AlertCircle, Wallet } from 'lucide-react';
+import { Edit2, Plus, Trash2, X, TrendingDown, AlertCircle, Wallet, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CustomSelect } from './CustomSelect';
 import { maskCurrency, parseCurrency } from '../utils';
@@ -21,6 +21,8 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [editId, setEditId] = useState<number | null>(null);
     const [formData, setFormData] = useState({ categoria: CATEGORIES[0], valor_limite: '' });
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 6;
 
     // Current month/year filter for budgets
     const currentMonth = new Date().getMonth() + 1;
@@ -29,6 +31,20 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
     const currentBudgets = useMemo(() => {
         return budgets.filter(b => b.mes === currentMonth && b.ano === currentYear);
     }, [budgets, currentMonth, currentYear]);
+
+    const totalPages = Math.ceil(currentBudgets.length / ITEMS_PER_PAGE);
+
+    const paginatedBudgets = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return currentBudgets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [currentBudgets, currentPage, ITEMS_PER_PAGE]);
+
+    // Reset to page 1 if current page becomes empty (e.g. after deletion)
+    useEffect(() => {
+        if (currentPage > 1 && currentPage > totalPages) {
+            setCurrentPage(Math.max(1, totalPages));
+        }
+    }, [totalPages, currentPage]);
 
     // Current month transactions to calculate progress
     const currentTransactions = useMemo(() => {
@@ -112,85 +128,123 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
             </div>
 
             {currentBudgets.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {currentBudgets.map(b => {
-                        const Icon = CATEGORY_ICONS[b.categoria] || TrendingDown;
-                        const spent = currentTransactions.filter(t => t.category === b.categoria).reduce((acc, t) => acc + t.amount, 0);
-                        const progress = Math.min((spent / b.valor_limite) * 100, 100);
-                        const isOver = spent > b.valor_limite;
-                        const isNear = progress >= 85 && !isOver;
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {paginatedBudgets.map(b => {
+                            const Icon = CATEGORY_ICONS[b.categoria] || TrendingDown;
+                            const spent = currentTransactions.filter(t => t.category === b.categoria).reduce((acc, t) => acc + t.amount, 0);
+                            const progress = Math.min((spent / b.valor_limite) * 100, 100);
+                            const isOver = spent > b.valor_limite;
+                            const isNear = progress >= 85 && !isOver;
 
-                        return (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                key={b.id}
-                                className="bg-white dark:bg-slate-850 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all duration-300 relative overflow-hidden group"
-                            >
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${isOver ? 'bg-rose-500 shadow-rose-500/30' : isNear ? 'bg-amber-500 shadow-amber-500/30' : 'bg-primary-500 shadow-primary-500/30'}`}>
-                                            <Icon className="w-6 h-6" />
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    key={b.id}
+                                    className="bg-white dark:bg-slate-850 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all duration-300 relative overflow-hidden group"
+                                >
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${isOver ? 'bg-rose-500 shadow-rose-500/30' : isNear ? 'bg-amber-500 shadow-amber-500/30' : 'bg-primary-500 shadow-primary-500/30'}`}>
+                                                <Icon className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">{b.categoria}</h4>
+                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
+                                                    {progress.toFixed(0)}% Usado
+                                                </p>
+                                            </div>
                                         </div>
+
+                                        <div className="flex gap-1 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleEdit(b)}
+                                                className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-xl transition-colors"
+                                                title="Editar"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => { setDeleteId(b.id); setIsDeleteModalOpen(true); }}
+                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-2 flex justify-between items-end">
                                         <div>
-                                            <h4 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">{b.categoria}</h4>
-                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
-                                                {progress.toFixed(0)}% Usado
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Gasto Atual</p>
+                                            <p className={`text-xl font-black tracking-tight ${isOver ? 'text-rose-500' : 'text-slate-800 dark:text-white'}`}>
+                                                {formatCurrency(spent)}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Limite</p>
+                                            <p className="text-sm font-bold text-slate-500">
+                                                {formatCurrency(b.valor_limite)}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-1 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => handleEdit(b)}
-                                            className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-xl transition-colors"
-                                            title="Editar"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => { setDeleteId(b.id); setIsDeleteModalOpen(true); }}
-                                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
-                                            title="Excluir"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                    <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-3 relative">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${progress}%` }}
+                                            transition={{ duration: 1, ease: "easeOut" }}
+                                            className={`absolute top-0 left-0 h-full rounded-full ${isOver ? 'bg-rose-500' : isNear ? 'bg-amber-500' : 'bg-primary-500'}`}
+                                        />
                                     </div>
-                                </div>
 
-                                <div className="mb-2 flex justify-between items-end">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Gasto Atual</p>
-                                        <p className={`text-xl font-black tracking-tight ${isOver ? 'text-rose-500' : 'text-slate-800 dark:text-white'}`}>
-                                            {formatCurrency(spent)}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Limite</p>
-                                        <p className="text-sm font-bold text-slate-500">
-                                            {formatCurrency(b.valor_limite)}
-                                        </p>
-                                    </div>
-                                </div>
+                                    {(isOver || isNear) && (
+                                        <div className={`mt-3 flex items-center gap-1.5 text-xs font-bold ${isOver ? 'text-rose-500' : 'text-amber-500'} bg-slate-50 dark:bg-slate-800 p-2 rounded-lg`}>
+                                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                            {isOver ? 'Você ultrapassou o limite deste mês!' : 'Atenção: você está próximo do limite mensal.'}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
 
-                                <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-3 relative">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${progress}%` }}
-                                        transition={{ duration: 1, ease: "easeOut" }}
-                                        className={`absolute top-0 left-0 h-full rounded-full ${isOver ? 'bg-rose-500' : isNear ? 'bg-amber-500' : 'bg-primary-500'}`}
-                                    />
-                                </div>
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-4 mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
 
-                                {(isOver || isNear) && (
-                                    <div className={`mt-3 flex items-center gap-1.5 text-xs font-bold ${isOver ? 'text-rose-500' : 'text-amber-500'} bg-slate-50 dark:bg-slate-800 p-2 rounded-lg`}>
-                                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                        {isOver ? 'Você ultrapassou o limite deste mês!' : 'Atenção: você está próximo do limite mensal.'}
-                                    </div>
-                                )}
-                            </motion.div>
-                        );
-                    })}
+                            <div className="flex items-center gap-2">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`w-10 h-10 rounded-xl font-bold transition-all ${currentPage === page
+                                            ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 scale-105'
+                                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                            }`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <motion.div
