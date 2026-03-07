@@ -25,6 +25,7 @@ interface SubscriptionsProps {
 }
 
 const FREE_SUBSCRIPTION_LIMIT = 5;
+const ITEMS_PER_PAGE = 10;
 
 
 interface SubscriptionGroup {
@@ -370,6 +371,7 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
     const [search, setSearch] = useState('');
     const [sortKey, setSortKey] = useState<SortKey>('cost-desc');
     const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const [showAdd, setShowAdd] = useState(false);
     const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -419,13 +421,26 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
             const q = search.toLowerCase();
             list = list.filter(s => s.description.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
         }
-        switch (sortKey) {
-            case 'cost-asc': return list.sort((a, b) => a.monthlyAvg - b.monthlyAvg);
-            case 'alpha': return list.sort((a, b) => a.description.localeCompare(b.description));
-            case 'date-desc': return list.sort((a, b) => b.latestDate.localeCompare(a.latestDate));
-            default: return list.sort((a, b) => b.monthlyAvg - a.monthlyAvg);
-        }
+
+        return list.sort((a, b) => {
+            if (sortKey === 'cost-desc') return b.monthlyAvg - a.monthlyAvg;
+            if (sortKey === 'cost-asc') return a.monthlyAvg - b.monthlyAvg;
+            if (sortKey === 'alpha') return a.description.localeCompare(b.description);
+            if (sortKey === 'date-desc') return b.latestDate.localeCompare(a.latestDate);
+            return b.monthlyAvg - a.monthlyAvg; // Default to cost-desc
+        });
     }, [subscriptions, categoryFilter, search, sortKey]);
+
+    // Reset to page 1 on filter/search change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [search, categoryFilter, sortKey]);
+
+    const totalPages = Math.ceil(displayList.length / ITEMS_PER_PAGE);
+    const paginatedList = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return displayList.slice(start, start + ITEMS_PER_PAGE);
+    }, [displayList, currentPage]);
 
     // ── Aggregates ───────────────────────────────────────────
     const totalMonthly = subscriptions.reduce((a, s) => a + s.monthlyAvg, 0);
@@ -579,13 +594,13 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                 {/* Category Chart */}
                 {chartData.length > 0 && (
                     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                        className="bg-white dark:bg-slate-850 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 flex flex-col">
+                        className="bg-white dark:bg-slate-850 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 flex flex-col h-fit sticky top-6">
                         <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-1">Por categoria</h3>
                         <p className="text-xs text-slate-400 mb-4">Distribuição mensal</p>
-                        <div className="flex-1 min-h-[200px]">
-                            <ResponsiveContainer width="100%" height={200}>
+                        <div className="flex-shrink-0 min-h-[180px]">
+                            <ResponsiveContainer width="100%" height={180}>
                                 <PieChart>
-                                    <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                                    <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70}
                                         paddingAngle={2} dataKey="value">
                                         {chartData.map((_, idx) => (
                                             <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
@@ -595,11 +610,11 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-                        <div className="space-y-2 mt-2">
+                        <div className="space-y-1 mt-4 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
                             {chartData.map((d, idx) => (
                                 <button key={d.name} onClick={() => setCategoryFilter(categoryFilter === d.name ? null : d.name)}
-                                    className={`w-full flex items-center gap-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors ${categoryFilter === d.name ? 'bg-slate-100 dark:bg-slate-700' : ''}`}>
-                                    <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                                    className={`w-full flex items-center gap-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded-xl transition-colors ${categoryFilter === d.name ? 'bg-slate-100 dark:bg-slate-700' : ''}`}>
+                                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
                                     <span className="text-slate-700 dark:text-slate-300 truncate flex-1 text-left">{d.name}</span>
                                     <span className="font-bold text-slate-500 dark:text-slate-400 text-right">{fmt(d.value)}</span>
                                 </button>
@@ -677,7 +692,7 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                         <div className="py-14 text-center text-slate-400 text-sm">Sem resultados para a busca/filtro atual.</div>
                     ) : (
                         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {displayList.map((sub, index) => {
+                            {paginatedList.map((sub, index) => {
                                 const isExpanded = expandedKey === sub.key;
                                 const isCanceling = cancelList.has(sub.key);
                                 const CatIcon = CATEGORY_ICONS[sub.category];
@@ -790,6 +805,29 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                                     </motion.div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                Anterior
+                            </button>
+                            <span className="text-xs font-bold text-slate-400">
+                                Página <span className="text-slate-700 dark:text-slate-200">{currentPage}</span> de {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                Próximo
+                            </button>
                         </div>
                     )}
 
