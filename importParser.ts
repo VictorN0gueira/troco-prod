@@ -8,8 +8,43 @@ export interface ParsedTransaction {
     amount: number;
     description: string;
     type: 'income' | 'expense';
+    category?: string; // Add guessed category
     originalRow?: any; // Just for debugging or hashing
 }
+
+// Auto-categorization engine
+const CATEGORY_RULES: Record<string, string[]> = {
+    'Alimentação': ['ifood', 'rappi', 'mcdonalds', 'burger king', 'mercado', 'supermercado', 'carrefour', 'pao de acucar', 'padaria', 'restaurante', 'lanchonete', 'z\u00e9 delivery', 'ze delivery'],
+    'Transporte': ['uber', '99', 'cabify', 'posto', 'gasolina', 'combustivel', 'ipiranga', 'shell', 'petrobras', 'sem parar', 'veloe', 'estacionamento'],
+    'Moradia': ['enel', 'light', 'cpfl', 'sabesp', 'copasa', 'sanepar', 'condominio', 'aluguel', 'iptu', 'comgas', 'naturgy'],
+    'Saúde': ['farmacia', 'drogasil', 'droga raia', 'pague menos', 'unimed', 'amil', 'sulam\u00e9rica', 'hospital', 'clinica', 'medico', 'dentista'],
+    'Lazer': ['cinema', 'cinemark', 'ingresso', 'netflix', 'spotify', 'amazon prime', 'disney', 'hbomax', 'playstation', 'xbox', 'steam', 'bar', 'pub', 'show'],
+    'Compras': ['amazon', 'mercado livre', 'shopee', 'aliexpress', 'shein', 'magalu', 'americanas', 'casas bahia', 'renner', 'riachuelo', 'zara'],
+    'Educação': ['faculdade', 'escola', 'curso', 'udemy', 'alura', 'estacio', 'mackenzie', 'livraria'],
+    'Impostos/Taxas': ['darf', 'iof', 'tarifa', 'anuidade', 'multa', 'juros', 'imposto'],
+    'Salário': ['salario', 'salary', 'adiantamento', 'pagamento', 'rh', 'folha'],
+    'Investimentos': ['xp', 'rico', 'clear', 'avenue', 'nu invest', 'clear', 'btg', 'binance', 'tesouro']
+};
+
+export const suggestCategory = (description: string, type: 'income' | 'expense'): string => {
+    const lowerDesc = description.toLowerCase();
+
+    if (type === 'income') {
+        const salaryKeywords = CATEGORY_RULES['Salário'];
+        if (salaryKeywords.some(kw => lowerDesc.includes(kw))) return 'Salário';
+        const invKeywords = CATEGORY_RULES['Investimentos'];
+        if (invKeywords.some(kw => lowerDesc.includes(kw))) return 'Investimentos';
+        return 'Outros'; // Default income
+    }
+
+    for (const [category, keywords] of Object.entries(CATEGORY_RULES)) {
+        if (keywords.some(kw => lowerDesc.includes(kw))) {
+            return category;
+        }
+    }
+
+    return 'Outros'; // Default expense
+};
 
 // 1. OFX Parser (XML-like standard from banks)
 export const parseOFX = async (fileContent: string): Promise<ParsedTransaction[]> => {
@@ -57,6 +92,7 @@ export const parseOFX = async (fileContent: string): Promise<ParsedTransaction[]
                 amount: absoluteAmount,
                 description,
                 type,
+                category: suggestCategory(description, type),
                 originalRow: block.trim()
             });
         }
@@ -138,6 +174,7 @@ export const parseCSV = async (file: File): Promise<ParsedTransaction[]> => {
                         amount: absoluteAmount,
                         description: rawDesc ? String(rawDesc).trim() : 'Fatura Cartão',
                         type,
+                        category: suggestCategory(rawDesc ? String(rawDesc).trim() : 'Fatura Cartão', type),
                         originalRow: row
                     });
                 }

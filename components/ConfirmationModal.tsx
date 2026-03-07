@@ -55,11 +55,17 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                    aria-labelledby="modal-title"
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div
                         className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
                         aria-hidden="true"
                         onClick={isLoading ? undefined : onClose}
@@ -103,7 +109,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                             </button>
                         </div>
                     </motion.div>
-                </div>
+                </motion.div>
             )}
         </AnimatePresence>,
         document.body

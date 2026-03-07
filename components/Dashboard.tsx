@@ -10,6 +10,7 @@ import { SpotlightCard } from './ui/spotlight-card';
 import NumberTicker from './ui/number-ticker';
 import NoSpendCalendar from './ui/no-spend-calendar';
 import { HealthScore } from './HealthScore';
+import { CashflowChart } from './CashflowChart';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -40,12 +41,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
         // Migrating old users to see the new budgets card automatically if they didn't have it
         if (!parsed.includes('budgets')) parsed.push('budgets');
         if (!parsed.includes('healthScore')) parsed.push('healthScore');
+        if (!parsed.includes('cashflow')) parsed.push('cashflow');
         setCardsOrder(parsed);
       } catch (e) {
-        setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'chart', 'categories', 'budgets']);
+        setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'cashflow', 'chart', 'categories', 'budgets']);
       }
     } else {
-      setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'chart', 'categories', 'budgets']);
+      setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'cashflow', 'chart', 'categories', 'budgets']);
     }
   }, [user.id]);
 
@@ -432,47 +434,70 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
           <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col h-full">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Gastos do Mês</h3>
             <p className="text-xs text-slate-500 mb-4">{displayMonth}</p>
-            <div className="flex-1 min-h-[250px] relative">
+            <div className="flex-1 flex flex-col relative w-full">
               {categoryData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
+                <>
+                  <div className="h-[180px] w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={75}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                          ))}
+                        </Pie>
+                        <PieTooltip
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          formatter={(value: number) => privacyMode ? ['***', 'Valor'] : [formatCurrency(value), 'Valor']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Center Text */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="text-xs font-semibold text-slate-400">Por Categoria</span>
+                    </div>
+                  </div>
+
+                  {/* Custom Scrollable Legend */}
+                  <div className="mt-4 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar w-full">
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-3">
                       {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                        <div key={index} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                          <span className="truncate" title={entry.name}>{entry.name}</span>
+                        </div>
                       ))}
-                    </Pie>
-                    <PieTooltip
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: number) => privacyMode ? ['***', 'Valor'] : [formatCurrency(value), 'Valor']}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      iconType="circle"
-                      formatter={(value) => <span className="text-xs text-slate-500 dark:text-slate-400">{value}</span>}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                    </div>
+                  </div>
+                </>
               ) : (
-                <div className="flex items-center justify-center h-full flex-col text-slate-400 gap-2">
+                <div className="flex items-center justify-center h-[180px] flex-col text-slate-400 gap-2">
                   <Wallet className="w-8 h-8 opacity-20" />
                   <span className="text-xs text-center">Sem despesas<br />neste mês</span>
                 </div>
               )}
-              {/* Center Text */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
-                <span className="text-xs font-semibold text-slate-400">Por Categoria</span>
-              </div>
             </div>
           </div>
+        );
+      case 'cashflow':
+        const vYear = currentDate.getFullYear();
+        const vMonth = currentDate.getMonth();
+        return (
+          <CashflowChart
+            monthlyTransactions={monthlyTransactions}
+            budgets={budgets}
+            cards={cards}
+            viewMonth={vMonth}
+            viewYear={vYear}
+            privacyMode={privacyMode}
+          />
         );
       case 'budgets':
         // Calculate relevant budgets for the selected month

@@ -40,12 +40,15 @@ const TermsModal: React.FC<TermsModalProps> = ({ user, onAccept }) => {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden"
+            >
                 {/* Backdrop glassmorphism effect */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                <div
                     className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
                 />
 
@@ -151,7 +154,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ user, onAccept }) => {
                         )}
                     </div>
                 </motion.div>
-            </div>
+            </motion.div>
         </AnimatePresence>
     );
 };

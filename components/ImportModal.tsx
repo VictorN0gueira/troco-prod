@@ -4,6 +4,8 @@ import { X, UploadCloud, FileType, CheckCircle2, AlertCircle, FileDigit, Trash2,
 import { parseStatementFile, ParsedTransaction } from '../importParser';
 import { Transaction } from '../types';
 import { generateTransactionId } from '../utils';
+import { CATEGORIES, CATEGORY_ICONS } from '../constants';
+import { CustomSelect } from './CustomSelect';
 
 interface ImportModalProps {
     isOpen: boolean;
@@ -72,6 +74,12 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
         setSelectedIndices(newSelection);
     };
 
+    const updateCategory = (index: number, newCategory: string) => {
+        const newTxs = [...parsedTxs];
+        newTxs[index].category = newCategory;
+        setParsedTxs(newTxs);
+    };
+
     const handleImportSelected = () => {
         const toImport: Transaction[] = parsedTxs
             .filter((_, idx) => selectedIndices.has(idx))
@@ -80,7 +88,7 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                 description: t.description,
                 amount: t.amount,
                 type: t.type,
-                category: 'Outros', // Default strategy, can be improved later
+                category: t.category || 'Outros', // Use the guessed/edited category
                 date: t.date,
                 status: 'completed'  // Assuming imported transactions are already completed at the bank
             }));
@@ -182,12 +190,11 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                                         {parsedTxs.map((t, idx) => (
                                             <div
                                                 key={idx}
-                                                onClick={() => toggleSelection(idx)}
-                                                className={`p-3 flex items-center justify-between cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800
+                                                className={`p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800
                             ${!selectedIndices.has(idx) ? 'opacity-50 grayscale' : ''}
                            `}
                                             >
-                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                <div className="flex items-center gap-3 overflow-hidden flex-1 cursor-pointer" onClick={() => toggleSelection(idx)}>
                                                     <div className={`shrink-0 w-5 h-5 rounded flex items-center justify-center border-2 transition-colors
                                 ${selectedIndices.has(idx) ? 'bg-primary-500 border-primary-500' : 'border-slate-300 dark:border-slate-600'}
                              `}>
@@ -198,8 +205,27 @@ export default function ImportModal({ isOpen, onClose, onImport }: ImportModalPr
                                                         <p className="text-xs text-slate-500">{t.date}</p>
                                                     </div>
                                                 </div>
-                                                <div className={`shrink-0 text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                    {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+
+                                                <div className="flex items-center gap-3 w-full md:w-auto">
+                                                    <div className="w-full md:w-40 bg-white dark:bg-slate-900 rounded-lg">
+                                                        <CustomSelect
+                                                            value={t.category || 'Outros'}
+                                                            onChange={(val) => updateCategory(idx, val)}
+                                                            options={CATEGORIES.map(cat => {
+                                                                const IconComp = CATEGORY_ICONS[cat];
+                                                                return {
+                                                                    value: cat,
+                                                                    label: cat,
+                                                                    icon: IconComp ? <IconComp className="w-4 h-4 mt-0.5" /> : undefined
+                                                                };
+                                                            })}
+                                                            size="sm"
+                                                            className="w-full"
+                                                        />
+                                                    </div>
+                                                    <div className={`shrink-0 w-24 text-right text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                        {t.type === 'income' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
