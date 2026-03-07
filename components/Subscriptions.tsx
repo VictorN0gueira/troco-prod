@@ -61,6 +61,13 @@ const getIcon = (d: string) => {
     return SUBSCRIPTION_ICONS.default;
 };
 
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+};
+
 // ── Helpers ─────────────────────────────────────────────────
 const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -124,10 +131,22 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value.replace(/\D/g, "");
+        if (!rawValue) {
+            setForm(f => ({ ...f, amount: '' }));
+            return;
+        }
+        const numberValue = Number(rawValue) / 100;
+        setForm(f => ({ ...f, amount: formatCurrency(numberValue) }));
+    };
+
     const handleSave = async () => {
-        const amount = parseFloat(form.amount.replace(',', '.'));
+        const rawAmount = form.amount.replace(/\D/g, "");
+        const amount = rawAmount ? Number(rawAmount) / 100 : 0;
+
         if (!form.description.trim()) { setError('Descrição obrigatória'); return; }
-        if (isNaN(amount) || amount <= 0) { setError('Informe um valor válido'); return; }
+        if (amount <= 0) { setError('Informe um valor válido'); return; }
         setSaving(true); setError(null);
         try {
             await onSave({
@@ -171,9 +190,9 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Valor mensal (R$)</label>
-                            <input type="number" min="0.01" step="0.01" value={form.amount}
-                                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                                placeholder="0,00"
+                            <input type="text" value={form.amount}
+                                onChange={handleAmountChange}
+                                placeholder="R$ 0,00"
                                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all" />
                         </div>
                         <div>
@@ -226,15 +245,31 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
 // ╚══════════════════════════════════════════════════════════╝
 interface EditModalProps { transaction: Transaction; onSave: (t: Transaction) => Promise<void>; onClose: () => void; }
 const EditModal: React.FC<EditModalProps> = ({ transaction, onSave, onClose }) => {
-    const [form, setForm] = useState({ description: transaction.description, amount: String(transaction.amount), category: transaction.category, date: transaction.date });
+    const [form, setForm] = useState({
+        description: transaction.description,
+        amount: formatCurrency(transaction.amount),
+        category: transaction.category,
+        date: transaction.date
+    });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const CatIcon = CATEGORY_ICONS[form.category];
+
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value.replace(/\D/g, "");
+        if (!rawValue) {
+            setForm(f => ({ ...f, amount: '' }));
+            return;
+        }
+        const numberValue = Number(rawValue) / 100;
+        setForm(f => ({ ...f, amount: formatCurrency(numberValue) }));
+    };
 
     const handleSave = async () => {
-        const amount = parseFloat(form.amount.replace(',', '.'));
+        const rawAmount = form.amount.replace(/\D/g, "");
+        const amount = rawAmount ? Number(rawAmount) / 100 : 0;
+
         if (!form.description.trim()) { setError('Descrição obrigatória'); return; }
-        if (isNaN(amount) || amount <= 0) { setError('Valor inválido'); return; }
+        if (amount <= 0) { setError('Valor inválido'); return; }
         setSaving(true); setError(null);
         try { await onSave({ ...transaction, description: form.description.trim(), amount, category: form.category, date: form.date }); onClose(); }
         catch { setError('Erro ao salvar.'); setSaving(false); }
@@ -258,7 +293,7 @@ const EditModal: React.FC<EditModalProps> = ({ transaction, onSave, onClose }) =
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Valor (R$)</label>
-                            <input type="number" min="0.01" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                            <input type="text" value={form.amount} onChange={handleAmountChange}
                                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all" />
                         </div>
                         <div>
