@@ -450,7 +450,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ transactions, onAddTransact
             <AnimatePresence>
                 {selectedDate && (
                     <div className="fixed inset-0 z-50 overflow-y-auto">
-                        <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+                        <div className="flex min-h-full items-center justify-center p-0 sm:p-4">
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}

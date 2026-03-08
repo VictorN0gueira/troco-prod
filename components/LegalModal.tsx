@@ -27,7 +27,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ isOpen, onClose, activeTab, set
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden"
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6 overflow-hidden"
                 >
                     <div
                         className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"

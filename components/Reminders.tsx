@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import LimitPaywallModal from './LimitPaywallModal';
 import ConfirmationModal from './ConfirmationModal';
+import { CustomCalendar } from './ui/CustomCalendar';
 
 interface RemindersProps {
   transactions: Transaction[];
@@ -605,7 +606,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+          <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
             <div
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
               onClick={() => { setIsModalOpen(false); setFormError(null); }}
@@ -704,12 +705,10 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
                   </div>
                   <div className="relative z-0">
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Data de Vencimento</label>
-                    <input
-                      type="date"
-                      required
+                    <CustomCalendar
+                      mode="date"
                       value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                      onChange={(val) => setFormData({ ...formData, date: val })}
                     />
                   </div>
                 </div>

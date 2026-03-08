@@ -633,7 +633,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
             {/* Create/Edit Modal with Portal */}
             {isModalOpen && createPortal(
                 <div className="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                    <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
                         <div
                             className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity"
                             aria-hidden="true"
@@ -809,7 +809,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
             {/* Invoice View Modal */}
             {viewingInvoice && createPortal(
                 <div className="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                    <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
                         <div
                             className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity"
                             aria-hidden="true"

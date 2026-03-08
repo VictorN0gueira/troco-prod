@@ -15,6 +15,7 @@ import { getTodayLocalDate, generateTransactionId, maskCurrency, parseCurrency }
 import { CustomSelect } from './CustomSelect';
 import LimitPaywallModal from './LimitPaywallModal';
 import { OverLimitBanner } from './FreePlanBadge';
+import { CustomCalendar } from './ui/CustomCalendar';
 
 interface SubscriptionsProps {
     transactions: Transaction[];
@@ -191,8 +192,11 @@ const AddModal: React.FC<AddModalProps> = ({ onSave, onClose }) => {
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Primeira cobrança</label>
-                            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all" />
+                            <CustomCalendar
+                                mode="date"
+                                value={form.date}
+                                onChange={(val) => setForm(f => ({ ...f, date: val }))}
+                            />
                         </div>
                     </div>
                     <div>
@@ -285,8 +289,11 @@ const EditModal: React.FC<EditModalProps> = ({ transaction, onSave, onClose }) =
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Data</label>
-                            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all" />
+                            <CustomCalendar
+                                mode="date"
+                                value={form.date}
+                                onChange={(val) => setForm(f => ({ ...f, date: val }))}
+                            />
                         </div>
                     </div>
                     <div>

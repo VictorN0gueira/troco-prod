@@ -9,6 +9,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import LimitPaywallModal from './LimitPaywallModal';
 import ConfirmationModal from './ConfirmationModal';
 import { UsageMeter, OverLimitBanner } from './FreePlanBadge';
+import { CustomCalendar } from './ui/CustomCalendar';
 
 interface GoalsProps {
     goals: Goal[];
@@ -534,13 +535,10 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
 
                                     <div>
                                         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Data Limite</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            min={getTodayLocalDate()}
+                                        <CustomCalendar
+                                            mode="date"
                                             value={deadline}
-                                            onChange={e => setDeadline(e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                            onChange={val => setDeadline(val)}
                                         />
                                     </div>
 

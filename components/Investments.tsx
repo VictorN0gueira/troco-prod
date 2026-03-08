@@ -21,6 +21,7 @@ import {
     fetchInvestmentPrices, fetchMarketOverview,
     PriceResult, MarketOverview, UPDATABLE_TYPES
 } from '../services/priceApi';
+import { CustomCalendar } from './ui/CustomCalendar';
 
 // ─── Types & Helpers ─────────────────────────────────────────────────────────
 
@@ -455,7 +456,11 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelClass}>Data de Compra *</label>
-                                <input type="date" className={inputClass} value={form.purchase_date} onChange={e => set('purchase_date', e.target.value)} required />
+                                <CustomCalendar
+                                    mode="date"
+                                    value={form.purchase_date}
+                                    onChange={(val) => set('purchase_date', val)}
+                                />
                             </div>
                             <div>
                                 <label className={labelClass}>Observações</label>
