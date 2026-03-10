@@ -345,26 +345,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         return;
       }
 
-      if (data.user?.email) {
-        const { error: dbError } = await supabase.from('usuarios').insert([
-          {
-            email: data.user.email,
-            nome: fullName,
-            tem_plano: false,
-            notificacoes_email: true,
-            notificacoes_push: true,
-            notificacoes_marketing: true,
-            notificacoes_whatsapp: true,
-            contrato_assinado: false
-          }
-        ]);
-        if (dbError && !dbError.message.includes('duplicate key value')) {
-          triggerError(`Conta criada, mas erro ao salvar perfil. Contate o suporte.`);
-          setLoading(false);
-          return;
-        }
-      }
-
       setSuccessMsg('Conta criada! Confirme seu email (verifique o spam) e faça login.');
       setViewMode('verify_email');
       setPassword('');
@@ -383,13 +363,26 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setSuccessMsg(null);
     setLoading(true);
     try {
+      // 1. Verificar se o usuário existe primeiro
+      const { data: exists, error: rpcError } = await supabase.rpc('check_email_exists', { lookup_email: email });
+      if (rpcError) throw rpcError;
+
+      if (!exists) {
+        throw new Error('Nenhuma conta encontrada com este e-mail. Verifique se digitou corretamente.');
+      }
+
+      // 2. Se existe, disparar o email
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin,
       });
       if (error) throw error;
       setShowForgotSuccess(true);
     } catch (err: any) {
-      triggerError(err.message);
+      if (err.status === 429) {
+        triggerError('Limite de envios excedido. Tente novamente em alguns minutos.');
+      } else {
+        triggerError(err.message);
+      }
     } finally {
       setLoading(false);
     }
