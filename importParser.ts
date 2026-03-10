@@ -80,8 +80,11 @@ export const parseOFX = async (fileContent: string): Promise<ParsedTransaction[]
             const rawDate = dtMatch[1];
             const date = `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`;
 
-            // Clean name
-            let description = nameMatch ? (nameMatch[1] || nameMatch[2] || nameMatch[0]).replace(/<\/.*?>/, '').trim() : 'Transação Desconhecida';
+            // Clean name and sanitize
+            let rawDescription = nameMatch ? (nameMatch[1] || nameMatch[2] || nameMatch[0]).replace(/<\/.*?>/g, '').trim() : 'Transação Desconhecida';
+
+            // Security: Truncate and sanitize description to prevent UI breaking or long-string attacks
+            const description = rawDescription.substring(0, 150).replace(/[<>]/g, '');
 
             // OFX Amounts: negative means expense, positive means income usually
             const type: 'income' | 'expense' = amount >= 0 ? 'income' : 'expense';
@@ -93,12 +96,13 @@ export const parseOFX = async (fileContent: string): Promise<ParsedTransaction[]
                 description,
                 type,
                 category: suggestCategory(description, type),
-                originalRow: block.trim()
+                originalRow: block.trim().substring(0, 1000) // Limit stored raw data
             });
         }
     }
 
-    return transactions;
+    // Security: Limit total imported transactions per file to prevent memory exhaustion
+    return transactions.slice(0, 500);
 };
 
 // 2. CSV Parser (NuBank, Inter, generic)
@@ -169,16 +173,19 @@ export const parseCSV = async (file: File): Promise<ParsedTransaction[]> => {
                     const type: 'income' | 'expense' = amountVal >= 0 ? 'income' : 'expense';
                     const absoluteAmount = Math.abs(amountVal);
 
+                    // Security: Sanitize and truncate description
+                    const description = (rawDesc ? String(rawDesc).trim() : 'Fatura Cartão').substring(0, 150).replace(/[<>]/g, '');
+
                     transactions.push({
                         date,
                         amount: absoluteAmount,
-                        description: rawDesc ? String(rawDesc).trim() : 'Fatura Cartão',
+                        description,
                         type,
-                        category: suggestCategory(rawDesc ? String(rawDesc).trim() : 'Fatura Cartão', type),
-                        originalRow: row
+                        category: suggestCategory(description, type),
+                        originalRow: JSON.stringify(row).substring(0, 500) // Limit stored raw data
                     });
                 }
-                resolve(transactions);
+                resolve(transactions.slice(0, 500)); // Security: Result limit
             },
             error: (error) => {
                 reject(error);
