@@ -35,12 +35,12 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
-    "@vitejs/plugin-react": "^4.2.0",
+    "@vitejs/plugin-react": "^5.1.4",
     "dotenv": "^17.3.1",
     "tsx": "^4.21.0",
     "typescript": "^5.2.2",
     "vite": "^7.3.1",
-    "vite-plugin-pwa": "^0.19.8",
+    "vite-plugin-pwa": "^1.2.0",
     "web-push": "^3.6.7"
   }
 }

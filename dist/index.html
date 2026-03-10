@@ -33,6 +33,10 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 
+  <!-- Security Headers (CSP) -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://esm.sh https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://minio.vnone.com.br; connect-src 'self' https://jxwlttibcigihiyllhmz.supabase.co wss://jxwlttibcigihiyllhmz.supabase.co https://esm.sh; worker-src 'self' blob:;">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -73,7 +77,8 @@
 
     /* Custom scrollbar for webkit */
     ::-webkit-scrollbar {
-      width: 8px;
+      width: 6px;
+      height: 6px;
     }
 
     ::-webkit-scrollbar-track {
@@ -82,15 +87,30 @@
 
     ::-webkit-scrollbar-thumb {
       background: #cbd5e1;
-      border-radius: 4px;
+      border-radius: 20px;
+      transition: background 0.3s;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+      background: #10B981;
     }
 
     .dark ::-webkit-scrollbar-thumb {
       background: #334155;
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: #10B981;
+    }
+
+    /* Hide scrollbar utility */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
 
     /* Animation for Floating Logo */
@@ -317,7 +337,7 @@
 }
 </script>
   <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.11/dist/dotlottie-wc.js" type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DWBgCJJy.js"></script>
+  <script type="module" crossorigin src="/assets/index-CpgBMun5.js"></script>
 <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
 
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
