@@ -62,11 +62,12 @@ const Settings: React.FC<SettingsProps> = ({
     whatsapp: user.notificacoes_whatsapp ?? false
   });
 
-  // Keep formData in sync if user changes externally, but allow local edits
+  // Keep formData in sync if user changes externally
   useEffect(() => {
-    // Only update these specific fields from prop to avoid overwriting typed input
-    // This is a simple sync strategy
-  }, [user]);
+    if (user.avatarUrl) {
+      setFormData(prev => ({ ...prev, avatarUrl: user.avatarUrl }));
+    }
+  }, [user.avatarUrl]);
 
   // Password Modal State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
