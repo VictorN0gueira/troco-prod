@@ -1896,7 +1896,8 @@ const AppContent: React.FC = () => {
         nome: newAcc.name,
         tipo: newAcc.type,
         cor: newAcc.color,
-        saldo_inicial: newAcc.saldo_inicial
+        saldo_inicial: newAcc.saldo_inicial,
+        saldo_atual: newAcc.saldo_inicial
       }).select().single();
 
       if (error) {
