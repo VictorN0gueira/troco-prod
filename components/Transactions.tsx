@@ -903,7 +903,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                       >
                         {t.status === 'completed' ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> {t.type === 'income' ? 'Recebido' : 'Pago'}
+                            <CheckCircle2 className="w-3 h-3 mr-1" /> {(t.type === 'transfer' || t.category === 'Transferência') ? 'Concluído' : t.type === 'income' ? 'Recebido' : 'Pago'}
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/20">
@@ -913,8 +913,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
+                      <span className={`text-sm font-bold ${(t.type === 'income' && t.category !== 'Transferência') ? 'text-emerald-500' : (t.type === 'transfer' || t.category === 'Transferência') ? 'text-blue-500' : 'text-rose-500'}`}>
+                        {(t.type === 'income' && t.category !== 'Transferência') ? '+' : (t.type === 'transfer' || t.category === 'Transferência') ? '⇄' : '-'} {formatCurrency(t.amount)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1049,7 +1049,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                     <button onClick={(e) => handleToggleStatus(t, e)} className="flex items-center gap-2 active:scale-95 transition-transform focus:outline-none">
                       {t.status === 'completed' ? (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-200">
-                          {t.type === 'income' ? 'Recebido' : 'Pago'}
+                          {(t.type === 'transfer' || t.category === 'Transferência') ? 'Concluído' : t.type === 'income' ? 'Recebido' : 'Pago'}
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 hover:bg-amber-200">
@@ -1059,8 +1059,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                     </button>
 
                     <div className="flex items-center gap-3">
-                      <span className={`text-base font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
+                      <span className={`text-base font-bold ${(t.type === 'income' && t.category !== 'Transferência') ? 'text-emerald-500' : (t.type === 'transfer' || t.category === 'Transferência') ? 'text-blue-500' : 'text-rose-500'}`}>
+                        {(t.type === 'income' && t.category !== 'Transferência') ? '+' : (t.type === 'transfer' || t.category === 'Transferência') ? '⇄' : '-'} {formatCurrency(t.amount)}
                       </span>
                       <button
                         onClick={(e) => {

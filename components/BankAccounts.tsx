@@ -273,7 +273,7 @@ export default function BankAccounts({ accounts, transactions, onAdd, onEdit, on
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {paginatedAccounts.map(acc => {
-                            const balance = accountBalances[acc.id] || 0;
+                            const balance = acc.saldo_atual !== undefined ? acc.saldo_atual : (accountBalances[acc.id] || 0);
                             const AccIcon = ACCOUNT_TYPES.find(t => t.id === acc.type)?.icon || Wallet;
 
                             return (

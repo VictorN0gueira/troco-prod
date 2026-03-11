@@ -219,6 +219,7 @@ inline-block align-middle
     let expensePending = 0;
 
     monthlyTransactions.forEach(t => {
+      if (t.type === 'transfer' || t.category === 'Transferência') return;
       const val = Number(t.amount); // Force number
       if (t.type === 'income') {
         if (t.status === 'completed') incomePaid += val;
@@ -247,26 +248,40 @@ inline-block align-middle
     };
   }, [monthlyTransactions]);
 
-  // Calcula saldos baseados nas transações
+  // Calcula saldos baseados nas transações (ou usa o saldo_atual do banco)
   const accountBalances = useMemo(() => {
     const balances: Record<string, number> = {};
     if (!accounts) return balances;
-    accounts.forEach(a => { balances[a.id] = Number(a.saldo_inicial) || 0; });
-    transactions.forEach(t => {
-      if (t.status !== 'completed' && String(t.status).toLowerCase() !== 'pago') return;
-      if (t.type === 'income' && t.accountId && balances[t.accountId] !== undefined) {
-        balances[t.accountId] += t.amount;
-      } else if (t.type === 'expense' && t.accountId && balances[t.accountId] !== undefined) {
-        balances[t.accountId] -= t.amount;
-      } else if (t.type === 'transfer' && t.amount > 0) {
-        if (t.accountId && balances[t.accountId] !== undefined) {
-          balances[t.accountId] -= t.amount;
-        }
-        if (t.destinationAccountId && balances[t.destinationAccountId] !== undefined) {
-          balances[t.destinationAccountId] += t.amount;
-        }
+
+    accounts.forEach(a => {
+      // Se tivermos o saldo_atual do banco, usamos ele diretamente
+      // Se não (ex: conta nova ainda não sincronizada), usamos o inicial + cálculo manual
+      if (a.saldo_atual !== undefined) {
+        balances[a.id] = a.saldo_atual;
+      } else {
+        balances[a.id] = Number(a.saldo_inicial) || 0;
+        
+        // Apenas fazemos o cálculo manual se não tivermos o saldo_atual (fallback)
+        transactions.forEach(t => {
+          if (t.status !== 'completed' && String(t.status).toLowerCase() !== 'pago') return;
+          if (t.accountId !== a.id && t.destinationAccountId !== a.id) return;
+
+          if (t.type === 'income' && t.accountId === a.id) {
+            balances[a.id] += t.amount;
+          } else if (t.type === 'expense' && t.accountId === a.id) {
+            balances[a.id] -= t.amount;
+          } else if (t.type === 'transfer' && t.amount > 0) {
+            if (t.accountId === a.id) {
+              balances[a.id] -= t.amount;
+            }
+            if (t.destinationAccountId === a.id) {
+              balances[a.id] += t.amount;
+            }
+          }
+        });
       }
     });
+
     return balances;
   }, [accounts, transactions]);
 

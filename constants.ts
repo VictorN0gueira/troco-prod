@@ -20,7 +20,8 @@ import {
   Building2,
   Target,
   TrendingUp,
-  Box
+  Box,
+  ArrowRightLeft
 } from 'lucide-react';
 
 // --- CONSTANTS ---
@@ -47,6 +48,7 @@ export const CATEGORIES = [
   'Negócios / Empresa',
   'Marketing & Publicidade',
   'Investimentos',
+  'Transferência',
   'Outros'
 ];
 
@@ -72,6 +74,7 @@ export const CATEGORY_ICONS: Record<string, React.ElementType> = {
   'Negócios / Empresa': Building2,
   'Marketing & Publicidade': Target,
   'Investimentos': TrendingUp,
+  'Transferência': ArrowRightLeft,
   'Outros': Box
 };
 

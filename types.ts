@@ -10,6 +10,7 @@ export interface BankAccount {
   color?: string;
   balance?: number; // Current calculated balance
   saldo_inicial?: number;
+  saldo_atual?: number;
   created_at?: string;
 }
 

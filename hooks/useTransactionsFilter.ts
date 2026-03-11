@@ -73,8 +73,9 @@ export function useTransactionsFilter({ transactions }: UseTransactionsFilterPro
         let income = 0;
         let expense = 0;
         filteredTransactions.forEach(t => {
+            if (t.category === 'Transferência' || t.type === 'transfer') return;
             if (t.type === 'income') income += t.amount;
-            else expense += t.amount;
+            else if (t.type === 'expense') expense += t.amount;
         });
         return { income, expense, balance: income - expense };
     }, [filteredTransactions]);
