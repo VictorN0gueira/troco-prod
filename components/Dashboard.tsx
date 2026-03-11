@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Transaction, UserProfile, CreditCard, Budget, Goal } from '../types';
 import {
   parseDateFromDB,
@@ -13,6 +13,8 @@ import {
   PieChart, Pie, Cell, Tooltip as PieTooltip, Legend
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 import { SpotlightCard } from './ui/spotlight-card';
 import NumberTicker from './ui/number-ticker';
 import NoSpendCalendar from './ui/no-spend-calendar';
@@ -26,9 +28,10 @@ interface DashboardProps {
   cards: CreditCard[];
   budgets?: Budget[];
   goals?: Goal[];
+  isLoadingData?: boolean;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode, cards = [], budgets = [], goals = [] }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode, cards = [], budgets = [], goals = [], isLoadingData = false }) => {
   // State for Month Selection
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -92,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   // Helper para Privacy Mode com Blur Melhorado
-  const BlurText = ({ children }: { children: React.ReactNode }) => (
+  const BlurText = useCallback(({ children }: { children: React.ReactNode }) => (
     <span
       className={`
 transition-all duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]
@@ -105,26 +108,26 @@ inline-block align-middle
     >
       {children}
     </span>
-  );
+  ), [privacyMode]);
 
   const firstName = user.nome ? user.nome.split(' ')[0] : 'Usuário';
 
   // --- Date Navigation Handlers ---
-  const nextMonth = () => {
+  const nextMonth = useCallback(() => {
     setCurrentDate(prev => {
       const next = new Date(prev);
       next.setMonth(prev.getMonth() + 1);
       return next;
     });
-  };
+  }, []);
 
-  const prevMonth = () => {
+  const prevMonth = useCallback(() => {
     setCurrentDate(prev => {
       const prevDate = new Date(prev);
       prevDate.setMonth(prev.getMonth() - 1);
       return prevDate;
     });
-  };
+  }, []);
 
   const currentMonthName = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   // Capitalize month
@@ -318,13 +321,27 @@ inline-block align-middle
                   <p className="text-slate-300 font-medium text-sm md:text-base">Saldo Realizado</p>
                   <span className="text-[10px] bg-slate-700/50 px-2 py-0.5 rounded text-slate-300 border border-slate-600">Mês Atual</span>
                 </div>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 md:mt-2 truncate">
-                  <BlurText><NumberTicker value={Math.abs(stats.balance.realized)} isCurrency decimalPlaces={2} prefix={stats.balance.realized >= 0 ? "R$ " : "-R$ "} /></BlurText>
-                </h2>
+                {isLoadingData ? (
+                  <div className="mt-2 text-3xl sm:text-4xl md:text-5xl opacity-50">
+                    <SkeletonTheme baseColor="#0f172a" highlightColor="#1e293b">
+                      <Skeleton width={200} height={40} />
+                    </SkeletonTheme>
+                  </div>
+                ) : (
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mt-1 md:mt-2 truncate">
+                    <BlurText><NumberTicker value={Math.abs(stats.balance.realized)} isCurrency decimalPlaces={2} prefix={stats.balance.realized >= 0 ? "R$ " : "-R$ "} /></BlurText>
+                  </h2>
+                )}
               </div>
 
               <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-slate-300">
-                {stats.balance.projected !== stats.balance.realized && (
+                {isLoadingData ? (
+                  <SkeletonTheme baseColor="#0f172a" highlightColor="#1e293b">
+                    <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg backdrop-blur-md opacity-30 mt-2">
+                      <Skeleton width={130} height={20} />
+                    </div>
+                  </SkeletonTheme>
+                ) : stats.balance.projected !== stats.balance.realized && (
                   <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-md">
                     <AlertCircle className="w-4 h-4 text-amber-400" />
                     <span>
@@ -360,10 +377,18 @@ inline-block align-middle
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {isIncome ? 'Receitas Totais' : 'Despesas Totais'}
               </p>
-              <h3 className={`${isCompact ? 'text-xl' : 'text-2xl'} font-bold text-slate-800 dark:text-white mt-0.5`}>
-                <BlurText><NumberTicker value={data.total} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText>
-              </h3>
-              {!isCompact && (
+              {isLoadingData ? (
+                <div className="opacity-50 mt-1">
+                  <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                    <Skeleton width={120} height={28} />
+                  </SkeletonTheme>
+                </div>
+              ) : (
+                <h3 className={`${isCompact ? 'text-xl' : 'text-2xl'} font-bold text-slate-800 dark:text-white mt-0.5`}>
+                  <BlurText><NumberTicker value={data.total} isCurrency decimalPlaces={2} prefix="R$ " /></BlurText>
+                </h3>
+              )}
+              {!isCompact && !isLoadingData && (
                 <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1.5 font-medium">
                   {isIncome ? (
                     <>
@@ -394,68 +419,74 @@ inline-block align-middle
               </div>
             </div>
             <div className="h-60 md:h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#F43F5E" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
-                  <XAxis
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#64748b', fontSize: 12 }}
-                    dy={10}
-                  />
-                  {/* The provided @keyframes float rule is CSS and cannot be directly inserted here in JSX.
-                      If you intend to add CSS animations, please place them in a CSS file or use a CSS-in-JS solution. */}
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#64748b', fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)} k`;
-                      return value;
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                      borderRadius: '12px',
-                      border: 'none',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                      color: '#1e293b'
-                    }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 600 }}
-                    formatter={(value: number) => privacyMode ? ['***', 'Valor'] : [formatCurrency(value), 'Valor']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="income"
-                    stroke="#10B981"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorIncome)"
-                    name="Receitas"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="expense"
-                    stroke="#F43F5E"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorExpense)"
-                    name="Despesas"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {isLoadingData ? (
+                <div className="w-full h-full opacity-30">
+                  <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                    <Skeleton height="100%" borderRadius="16px" />
+                  </SkeletonTheme>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#F43F5E" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#64748b', fontSize: 12 }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#64748b', fontSize: 12 }}
+                      tickFormatter={(value) => {
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)} k`;
+                        return value;
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        color: '#1e293b'
+                      }}
+                      itemStyle={{ fontSize: '12px', fontWeight: 600 }}
+                      formatter={(value: number) => privacyMode ? ['***', 'Valor'] : [formatCurrency(value), 'Valor']}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="income"
+                      stroke="#10B981"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorIncome)"
+                      name="Receitas"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="expense"
+                      stroke="#F43F5E"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorExpense)"
+                      name="Despesas"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         );
@@ -465,7 +496,13 @@ inline-block align-middle
             <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Gastos do Mês</h3>
             <p className="text-xs text-slate-500 mb-4">{displayMonth}</p>
             <div className="flex-1 flex flex-col relative w-full">
-              {categoryData.length > 0 ? (
+              {isLoadingData ? (
+                <div className="flex-1 flex items-center justify-center opacity-30 mt-4 mb-4">
+                  <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                    <Skeleton circle width={150} height={150} />
+                  </SkeletonTheme>
+                </div>
+              ) : categoryData.length > 0 ? (
                 <>
                   <div className="h-[180px] w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
@@ -539,7 +576,15 @@ inline-block align-middle
             <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Orçamentos do Mês</h3>
             <p className="text-xs text-slate-500 mb-4">{displayMonth}</p>
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              {currentBudgets.length > 0 ? currentBudgets.map(b => {
+              {isLoadingData ? (
+                <div className="space-y-4 opacity-30">
+                  <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                    <Skeleton height={20} />
+                    <Skeleton height={20} />
+                    <Skeleton height={20} />
+                  </SkeletonTheme>
+                </div>
+              ) : currentBudgets.length > 0 ? currentBudgets.map(b => {
                 const spent = monthlyTransactions.filter(t => t.category === b.categoria && t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
                 const progress = Math.min((spent / b.valor_limite) * 100, 100);
                 const isOver = spent > b.valor_limite;
@@ -792,4 +837,4 @@ inline-block align-middle
   );
 };
 
-export default Dashboard;
+export default React.memo(Dashboard);

@@ -259,9 +259,9 @@ const Layout: React.FC<LayoutProps> = ({
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">{user.nome}</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-primary-500 to-emerald-300 p-0.5 shadow-lg shadow-emerald-500/20 cursor-pointer hover:scale-105 transition-transform">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-primary-500 to-emerald-300 p-0.5 shadow-lg shadow-emerald-500/20 cursor-pointer hover:scale-105 transition-transform overflow-hidden">
                 <img
-                  src={user.avatarUrl}
+                  src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nome || 'Visitante')}&background=10B981&color=fff&size=128&font-size=0.4`}
                   alt="Avatar"
                   className="w-full h-full rounded-full border-2 border-white dark:border-slate-900 object-cover"
                 />

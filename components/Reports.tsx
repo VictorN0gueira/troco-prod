@@ -15,7 +15,7 @@ interface ReportsProps {
   transactions: Transaction[];
 }
 
-type DateRangeType = '6_months' | 'ytd' | '1_year' | 'all';
+type DateRangeType = 'today' | '7_days' | '6_months' | 'ytd' | '1_year' | 'all';
 
 const Reports: React.FC<ReportsProps> = ({ transactions }) => {
   const [dateRange, setDateRange] = useState<DateRangeType>('6_months');
@@ -44,8 +44,20 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
   const { filteredTransactions, startDate } = useMemo(() => {
     const now = new Date();
     let start = new Date();
+    let end: Date | null = null;
 
     switch (dateRange) {
+      case 'today':
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
+        break;
+      case '7_days':
+        start.setDate(now.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
+        break;
       case '6_months':
         start.setMonth(now.getMonth() - 5);
         start.setDate(1);
@@ -62,10 +74,15 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         break;
     }
 
-    start.setHours(0, 0, 0, 0);
+    if (dateRange !== 'today' && dateRange !== '7_days') {
+      start.setHours(0, 0, 0, 0);
+    }
 
     const filtered = transactions.filter(t => {
       const tDate = parseDateFromDB(t.date);
+      if (end) {
+        return tDate >= start && tDate <= end;
+      }
       return tDate >= start;
     });
 
@@ -209,171 +226,203 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Core Colors
-    const primaryBlue = [30, 41, 59]; // slate-800
-    const primaryEmerald = [16, 185, 129]; // emerald-500
-    const textDark = [15, 23, 42]; // slate-900
-    const textGray = [100, 116, 139]; // slate-500
+    // Paleta de Cores Premium (Moderna e Clean)
+    const colors: Record<string, [number, number, number]> = {
+      primary: [15, 23, 42], // slate-900
+      accent: [16, 185, 129], // emerald-500
+      textMain: [30, 41, 59], // slate-800
+      textMuted: [100, 116, 139], // slate-500
+      bgLight: [248, 250, 252], // slate-50
+      border: [226, 232, 240], // slate-200
+      income: [5, 150, 105], // emerald-600
+      expense: [225, 29, 72], // rose-600
+      warning: [217, 119, 6] // amber-600
+    };
 
-    // --- Header Background ---
-    doc.setFillColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
-    doc.rect(0, 0, pageWidth, 45, 'F');
+    // --- CABEÇALHO (Header) ---
+    // Background do header
+    doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+    doc.rect(0, 0, pageWidth, 55, 'F');
 
-    // Emerald Accent Line
-    doc.setFillColor(primaryEmerald[0], primaryEmerald[1], primaryEmerald[2]);
-    doc.rect(0, 45, pageWidth, 2, 'F');
+    // Linha de sotaque (Accent Line)
+    doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+    doc.rect(0, 55, pageWidth, 3, 'F');
 
-    // --- Header Text ---
-    doc.setFontSize(24);
+    // Logo Text/Brand
+    doc.setFontSize(28);
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.text("Trocô", 14, 25);
+    doc.text("Trocô", 20, 30);
 
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
-    doc.text("Inteligência Financeira", 14, 33);
+    doc.setTextColor(200, 210, 220);
+    doc.text("Inteligência Financeira Pessoal", 20, 40);
 
-    // Header Right Info
-    doc.setFontSize(10);
-    doc.text(`Emissão: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth - 14, 25, { align: 'right' });
-
+    // Informações à direita do header
     let periodoLabel = '';
-    if (dateRange === '6_months') periodoLabel = "Últimos 6 Meses";
+    if (dateRange === 'today') periodoLabel = "Hoje";
+    else if (dateRange === '7_days') periodoLabel = "Últimos 7 Dias";
+    else if (dateRange === '6_months') periodoLabel = "Últimos 6 Meses";
     else if (dateRange === 'ytd') periodoLabel = "Este Ano (YTD)";
     else if (dateRange === '1_year') periodoLabel = "Últimos 12 Meses";
     else periodoLabel = "Todo o Período";
 
-    doc.text(`Período: ${periodoLabel}`, pageWidth - 14, 33, { align: 'right' });
-
-    // --- Title ---
-    doc.setFontSize(18);
-    doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`Relatório Gerado em:`, pageWidth - 20, 25, { align: 'right' });
     doc.setFont("helvetica", "bold");
-    doc.text("Relatório Analítico Consolidado", 14, 65);
+    doc.text(`${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth - 20, 32, { align: 'right' });
 
-    // --- Metric Cards ---
-    const startY = 75;
-    const cardWidth = (pageWidth - 38) / 3; // 3 cards with 10px padding 14px margins (14*2 + 10*2 = 48)
-    const cardHeight = 28;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(200, 210, 220);
+    doc.text(`Período de Análise:`, pageWidth - 20, 42, { align: 'right' });
+    doc.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text(periodoLabel, pageWidth - 20, 48, { align: 'right' });
+
+    // --- TÍTULO DA SEÇÃO ---
+    doc.setFontSize(18);
+    doc.setTextColor(colors.textMain[0], colors.textMain[1], colors.textMain[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("Resumo Financeiro Consolidado", 20, 75);
+
+    // --- CARDS DE MÉTRICAS (KPIs) ---
+    const startY = 85;
+    const cardWidth = (pageWidth - 40 - 10) / 3; // 20px margem dir/esq, 5px gap entre cards
+    const cardHeight = 32;
     const gap = 5;
 
-    // Helper for Cards
-    const drawCard = (x: number, y: number, label: string, value: string, iconColor: number[], bgColor: number[]) => {
-      // Border / Bg
-      doc.setDrawColor(226, 232, 240); // slate-200
-      doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
-      doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD');
+    const drawPremiumCard = (x: number, y: number, title: string, value: string, type: 'income' | 'expense' | 'net') => {
+      // Sombra simulada (borda suave)
+      doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
 
-      // Top color bar inside card
-      doc.setFillColor(iconColor[0], iconColor[1], iconColor[2]);
-      doc.roundedRect(x, y, cardWidth, 2, 2, 2, 'F');
-      doc.rect(x, y + 2, cardWidth, 1, 'F'); // square off the bottom rounding of the top bar
+      // Ícone indicativo (bolinha à esquerda do texto)
+      if (type === 'income') {
+        doc.setFillColor(colors.income[0], colors.income[1], colors.income[2]);
+        doc.circle(x + 10, y + 10.5, 2, 'F');
+        doc.setTextColor(colors.income[0], colors.income[1], colors.income[2]);
+      } else if (type === 'expense') {
+        doc.setFillColor(colors.expense[0], colors.expense[1], colors.expense[2]);
+        doc.circle(x + 10, y + 10.5, 2, 'F');
+        doc.setTextColor(colors.expense[0], colors.expense[1], colors.expense[2]);
+      } else {
+        const netColor = kpis.netResult >= 0 ? colors.income : colors.expense;
+        doc.setFillColor(netColor[0], netColor[1], netColor[2]);
+        doc.circle(x + 10, y + 10.5, 2, 'F');
+        doc.setTextColor(netColor[0], netColor[1], netColor[2]);
+      }
 
-      // Label
-      doc.setFontSize(9);
-      doc.setTextColor(textGray[0], textGray[1], textGray[2]);
-      doc.setFont("helvetica", "normal");
-      doc.text(label, x + 5, y + 12);
-
-      // Value
-      doc.setFontSize(14);
-      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      // Título posicionado à direita do ícone
+      doc.setFontSize(8);
+      doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
       doc.setFont("helvetica", "bold");
-      doc.text(value, x + 5, y + 22);
+      doc.text(title.toUpperCase(), x + 15, y + 12);
+
+      // Valor
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(value, x + 8, y + 24);
     };
 
-    // Card 1: Receitas
-    drawCard(14, startY, "Receitas Totais", formatCurrency(kpis.totalIncome), [16, 185, 129], [255, 255, 255]);
+    drawPremiumCard(20, startY, "Receitas Totais", formatCurrency(kpis.totalIncome), 'income');
+    drawPremiumCard(20 + cardWidth + gap, startY, "Despesas Totais", formatCurrency(kpis.totalExpense), 'expense');
+    drawPremiumCard(20 + (cardWidth * 2) + (gap * 2), startY, "Resultado Líquido", formatCurrency(kpis.netResult), 'net');
 
-    // Card 2: Despesas
-    drawCard(14 + cardWidth + gap, startY, "Despesas Totais", formatCurrency(kpis.totalExpense), [244, 63, 94], [255, 255, 255]);
+    // --- TABELA DE TRANSAÇÕES ---
+    doc.setFontSize(16);
+    doc.setTextColor(colors.textMain[0], colors.textMain[1], colors.textMain[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("Detalhamento de Lançamentos", 20, startY + cardHeight + 20);
 
-    // Card 3: Saldo
-    drawCard(14 + (cardWidth * 2) + (gap * 2), startY, "Resultado Líquido", formatCurrency(kpis.netResult), [59, 130, 246], [248, 250, 252]);
-
-    // --- Data Table ---
     const tableData = filteredTransactions.map(t => [
       formatDateDisplay(t.date),
       t.description,
       t.category,
       t.type === 'income' ? 'Receita' : 'Despesa',
       formatCurrency(t.amount),
-      t.status === 'completed' ? 'Pago' : 'Pen.'
+      t.status === 'completed' ? 'Pago' : 'Pendente'
     ]);
 
     autoTable(doc, {
-      startY: startY + cardHeight + 15,
-      head: [['Data', 'Descrição', 'Categoria', 'T.', 'Valor', 'St.']],
+      startY: startY + cardHeight + 25,
+      head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']],
       body: tableData,
-      theme: 'grid',
+      theme: 'plain', // Usando plain para customizar totalmente as bordas
       headStyles: {
-        fillColor: [241, 245, 249], // slate-100
-        textColor: [15, 23, 42], // slate-900
+        fillColor: colors.bgLight,
+        textColor: colors.textMain,
         fontStyle: 'bold',
-        lineColor: [226, 232, 240], // slate-200
-        lineWidth: 0.1,
+        fontSize: 10,
+        cellPadding: { top: 6, bottom: 6, left: 4, right: 4 }
       },
       bodyStyles: {
-        textColor: [51, 65, 85], // slate-700
-        lineColor: [226, 232, 240], // slate-200
-      },
-      alternateRowStyles: {
-        fillColor: [250, 250, 250],
+        textColor: colors.textMuted,
+        fontSize: 9,
+        cellPadding: { top: 5, bottom: 5, left: 4, right: 4 }
       },
       styles: {
         font: 'helvetica',
-        fontSize: 9,
-        cellPadding: { top: 4, right: 3, bottom: 4, left: 3 }
+        lineColor: colors.border,
+        lineWidth: { bottom: 0.1 } // Apenas linha inferior para visual clean
       },
       columnStyles: {
-        0: { cellWidth: 22, halign: 'center' }, // Data
-        1: { cellWidth: 'auto' },               // Descrição
-        2: { cellWidth: 32 },                   // Categoria
-        3: { cellWidth: 15, halign: 'center' }, // Tipo (T.)
-        4: { cellWidth: 28, halign: 'right', fontStyle: 'bold' }, // Valor
-        5: { cellWidth: 16, halign: 'center' }  // Status (St.)
+        0: { cellWidth: 25 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 22 }, // Aumentado para evitar quebra de palavra
+        4: { cellWidth: 33, halign: 'right', fontStyle: 'bold', textColor: colors.textMain },
+        5: { cellWidth: 25, halign: 'center' }
       },
       didParseCell: function (data) {
         if (data.section === 'body') {
-          // Color text based on Type
-          if (data.column.index === 4) {
-            const rowRaw = data.row.raw as any;
-            const type = rowRaw[3];
-            if (type === 'Receita') {
-              data.cell.styles.textColor = [5, 150, 105]; // emerald-600
-            } else {
-              data.cell.styles.textColor = [225, 29, 72]; // rose-600
-            }
+          // Cores condicionais baseadas no tipo/status
+          if (data.column.index === 3 || data.column.index === 4) { // Tipo ou Valor
+            const isIncome = (data.row.raw as string[])[3] === 'Receita';
+            data.cell.styles.textColor = isIncome ? colors.income : colors.expense;
           }
-          // Smaller font for pending status indicator
-          if (data.column.index === 5) {
-            const rowRaw = data.row.raw as any;
-            if (rowRaw[5] === 'Pen.') {
-              data.cell.styles.textColor = [217, 119, 6]; // amber-600
+          if (data.column.index === 5) { // Status
+            const isPending = (data.row.raw as string[])[5] === 'Pendente';
+            if (isPending) {
+              data.cell.styles.textColor = colors.warning;
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = colors.income;
             }
           }
         }
       },
       willDrawPage: function (data) {
-        // Footer injection on every new page of the table if it breaks
+        // Rodapé em todas as páginas
         const pageCount = (doc as any).internal.getNumberOfPages();
         doc.setFontSize(8);
-        doc.setTextColor(148, 163, 184); // slate-400
+        doc.setTextColor(colors.textMuted[0], colors.textMuted[1], colors.textMuted[2]);
         doc.setFont("helvetica", "normal");
 
-        // Horizontal line
-        doc.setDrawColor(226, 232, 240);
-        doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+        // Linha divisória do rodapé
+        doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+        doc.setLineWidth(0.5);
+        doc.line(20, pageHeight - 15, pageWidth - 20, pageHeight - 15);
 
-        // Text
-        doc.text("Gerado com Trocô App • troco.app.br", 14, pageHeight - 10);
-        doc.text(`Página ${data.pageNumber}`, pageWidth - 14, pageHeight - 10, { align: 'right' });
-      }
+        // Texto do rodapé
+        doc.text("Confidencial • Gerado por Trocô (troco.app.br)", 20, pageHeight - 10);
+        doc.text(`Página ${data.pageNumber}`, pageWidth - 20, pageHeight - 10, { align: 'right' });
+      },
+      margin: { left: 20, right: 20 }
     });
 
-    // Final Save
-    doc.save(`troco_relatorio_${getTodayLocalDate()}.pdf`);
+    // --- SALVAR PDF ---
+    const filename = `Troco_Relatorio_${getTodayLocalDate().replace(/-/g, '')}.pdf`;
+    doc.save(filename);
     setIsExportMenuOpen(false);
+
+    showNotification({
+      title: 'Relatório Gerado',
+      message: 'Seu relatório PDF foi baixado com sucesso.',
+      type: 'success'
+    });
   };
 
   return (
@@ -390,6 +439,8 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
               value={dateRange}
               onChange={(val: string) => setDateRange(val as DateRangeType)}
               options={[
+                { value: 'today', label: 'Hoje', icon: <Calendar className="w-4 h-4" /> },
+                { value: '7_days', label: 'Últimos 7 Dias (Semanal)', icon: <Calendar className="w-4 h-4" /> },
                 { value: '6_months', label: 'Últimos 6 Meses', icon: <Calendar className="w-4 h-4" /> },
                 { value: 'ytd', label: 'Este Ano (YTD)', icon: <Calendar className="w-4 h-4" /> },
                 { value: '1_year', label: 'Últimos 12 Meses', icon: <Calendar className="w-4 h-4" /> },

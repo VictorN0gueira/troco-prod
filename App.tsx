@@ -1,21 +1,29 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
-import Transactions from './components/Transactions';
-import Reminders from './components/Reminders';
-import CalendarView from './components/CalendarView'; // Import Calendar
-import CreditCards from './components/CreditCards';
-import Reports from './components/Reports';
-import Settings from './components/Settings';
 import Login from './components/Login';
 import LandingPage from './components/LandingPage';
-import Investments from './components/Investments';
 import Legal from './components/Legal';
-import NewsFeed from './components/NewsFeed';
-import Goals from './components/Goals';
-import Subscriptions from './components/Subscriptions';
-import Budgets from './components/Budgets';
+
+// Lazy loaded modules (Code Splitting)
+const Transactions = lazy(() => import('./components/Transactions'));
+const Reminders = lazy(() => import('./components/Reminders'));
+const CalendarView = lazy(() => import('./components/CalendarView'));
+const CreditCards = lazy(() => import('./components/CreditCards'));
+const Reports = lazy(() => import('./components/Reports'));
+const Settings = lazy(() => import('./components/Settings'));
+const Investments = lazy(() => import('./components/Investments'));
+const NewsFeed = lazy(() => import('./components/NewsFeed'));
+const Goals = lazy(() => import('./components/Goals'));
+const Subscriptions = lazy(() => import('./components/Subscriptions'));
+const Budgets = lazy(() => import('./components/Budgets'));
+
+const SuspenseLoader = () => (
+  <div className="flex h-full w-full min-h-[50vh] flex-col items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+  </div>
+);
 import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget } from './types';
 import { supabase } from './supabaseClient';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
@@ -143,6 +151,7 @@ interface AppRoutesProps {
   addBudget: (b: Budget) => Promise<void>;
   updateBudget: (b: Budget) => Promise<void>;
   deleteBudget: (id: number) => Promise<void>;
+  isFetchingData?: boolean;
 }
 
 // Componente interno para gerenciar navegação baseado em eventos
@@ -179,204 +188,233 @@ const AppRoutes = ({
   budgets,
   addBudget,
   updateBudget,
-  deleteBudget
+  deleteBudget,
+  isFetchingData
 }: AppRoutesProps) => {
+  const location = useLocation();
+
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="h-full w-full"
-            >
-              <LandingPage />
-            </motion.div>
-          )
-        }
-      />
-
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="h-full w-full"
-            >
-              <Login onLogin={handleLoginSuccess} />
-            </motion.div>
-          )
-        }
-      />
-
-      <Route path="/legal/:section?" element={<Legal />} />
-
-      <Route element={
-        <ProtectedLayout
-          isAuthenticated={isAuthenticated}
-          darkMode={darkMode}
-          toggleDarkMode={() => setDarkMode(!darkMode)}
-          onLogout={handleLogout}
-          user={user}
-          isExiting={isExiting}
-          privacyMode={privacyMode}
-          togglePrivacyMode={togglePrivacyMode}
-          transactions={transactions}
-          goals={goals}
-          budgets={budgets}
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="h-full w-full"
+              >
+                <LandingPage />
+              </motion.div>
+            )
+          }
         />
-      }>
-        <Route path="/dashboard" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Dashboard
-              transactions={transactions}
-              user={user}
-              privacyMode={privacyMode}
-              cards={cards}
-              budgets={budgets}
-              goals={goals} // Pass goals for HealthScore
-            />
-          </motion.div>
-        } />
 
-        <Route path="/transactions" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Transactions
-              transactions={transactions}
-              onAdd={addTransaction}
-              onEdit={updateTransaction}
-              onDelete={deleteTransaction}
-              cards={cards}
-              onAddMultiple={addMultipleTransactions}
-              user={user}
-              budgets={budgets}
-            />
-          </motion.div>
-        } />
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="h-full w-full"
+              >
+                <Login onLogin={handleLoginSuccess} />
+              </motion.div>
+            )
+          }
+        />
 
-        <Route path="/budgets" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Budgets
-              budgets={budgets}
-              transactions={transactions}
-              addBudget={addBudget}
-              updateBudget={updateBudget}
-              deleteBudget={deleteBudget}
-            />
-          </motion.div>
-        } />
+        <Route path="/legal/:section?" element={<Legal />} />
 
-        <Route path="/reminders" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Reminders
-              transactions={transactions}
-              onAdd={addTransaction}
-              onEdit={updateTransaction}
-              onDelete={deleteTransaction}
-              user={user}
-            />
-          </motion.div>
-        } />
+        <Route element={
+          <ProtectedLayout
+            isAuthenticated={isAuthenticated}
+            darkMode={darkMode}
+            toggleDarkMode={() => setDarkMode(!darkMode)}
+            onLogout={handleLogout}
+            user={user}
+            isExiting={isExiting}
+            privacyMode={privacyMode}
+            togglePrivacyMode={togglePrivacyMode}
+            transactions={transactions}
+            goals={goals}
+            budgets={budgets}
+          />
+        }>
+          <Route path="/dashboard" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Dashboard
+                transactions={transactions}
+                user={user}
+                privacyMode={privacyMode}
+                cards={cards}
+                budgets={budgets}
+                goals={goals} // Pass goals for HealthScore
+                isLoadingData={isFetchingData}
+              />
+            </motion.div>
+          } />
 
-        <Route path="/calendar" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <CalendarView
-              transactions={transactions}
-              onAddTransaction={addTransaction}
-              onUpdateTransaction={updateTransaction}
-            />
-          </motion.div>
-        } />
+          <Route path="/transactions" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Transactions
+                  transactions={transactions}
+                  onAdd={addTransaction}
+                  onEdit={updateTransaction}
+                  onDelete={deleteTransaction}
+                  cards={cards}
+                  onAddMultiple={addMultipleTransactions}
+                  user={user}
+                  budgets={budgets}
+                  isLoadingData={isFetchingData}
+                />
+              </Suspense>
+            </motion.div>
+          } />
 
-        <Route path="/cards" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <CreditCards
-              user={user}
-              cards={cards}
-              transactions={transactions}
-              fetchCards={fetchCards}
-              payCardInvoice={payCardInvoice}
-            />
-          </motion.div>
-        } />
+          <Route path="/budgets" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Budgets
+                  budgets={budgets}
+                  transactions={transactions}
+                  addBudget={addBudget}
+                  updateBudget={updateBudget}
+                  deleteBudget={deleteBudget}
+                />
+              </Suspense>
+            </motion.div>
+          } />
 
-        <Route path="/reports" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Reports transactions={transactions} />
-          </motion.div>
-        } />
+          <Route path="/reminders" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Reminders
+                  transactions={transactions}
+                  onAdd={addTransaction}
+                  onEdit={updateTransaction}
+                  onDelete={deleteTransaction}
+                  user={user}
+                />
+              </Suspense>
+            </motion.div>
+          } />
 
-        <Route path="/investments" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Investments
-              investments={investments}
-              onAdd={addInvestment}
-              onEdit={updateInvestment}
-              onDelete={deleteInvestment}
-              onUpdatePrices={updateInvestmentPrices}
-              user={user}
-              privacyMode={privacyMode}
-            />
-          </motion.div>
-        } />
+          <Route path="/calendar" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <CalendarView
+                  transactions={transactions}
+                  onAddTransaction={addTransaction}
+                  onUpdateTransaction={updateTransaction}
+                />
+              </Suspense>
+            </motion.div>
+          } />
 
-        <Route path="/insights" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <NewsFeed user={user} />
-          </motion.div>
-        } />
+          <Route path="/cards" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <CreditCards
+                  user={user}
+                  cards={cards}
+                  transactions={transactions}
+                  fetchCards={fetchCards}
+                  payCardInvoice={payCardInvoice}
+                />
+              </Suspense>
+            </motion.div>
+          } />
 
-        <Route path="/goals" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Goals
-              goals={goals}
-              onAdd={addGoal}
-              onEdit={updateGoal}
-              onDelete={deleteGoal}
-              onAddMoney={addMoneyToGoal}
-              user={user}
-              privacyMode={privacyMode}
-            />
-          </motion.div>
-        } />
+          <Route path="/reports" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Reports transactions={transactions} />
+              </Suspense>
+            </motion.div>
+          } />
 
-        <Route path="/subscriptions" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Subscriptions
-              transactions={transactions}
-              user={user}
-              onDeleteTransaction={deleteTransaction}
-              onUpdateTransaction={updateTransaction}
-              onAddTransaction={addTransaction}
-            />
-          </motion.div>
-        } />
+          <Route path="/investments" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Investments
+                  investments={investments}
+                  onAdd={addInvestment}
+                  onEdit={updateInvestment}
+                  onDelete={deleteInvestment}
+                  onUpdatePrices={updateInvestmentPrices}
+                  user={user}
+                  privacyMode={privacyMode}
+                />
+              </Suspense>
+            </motion.div>
+          } />
 
-        <Route path="/settings" element={
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-            <Settings
-              user={user}
-              onUpdateUser={updateUser}
-              budgets={budgets}
-              transactions={transactions}
-              addBudget={addBudget}
-              updateBudget={updateBudget}
-              deleteBudget={deleteBudget}
-            />
-          </motion.div>
-        } />
-      </Route>
+          <Route path="/insights" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <NewsFeed user={user} />
+              </Suspense>
+            </motion.div>
+          } />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          <Route path="/goals" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Goals
+                  goals={goals}
+                  onAdd={addGoal}
+                  onEdit={updateGoal}
+                  onDelete={deleteGoal}
+                  onAddMoney={addMoneyToGoal}
+                  user={user}
+                  privacyMode={privacyMode}
+                />
+              </Suspense>
+            </motion.div>
+          } />
+
+          <Route path="/subscriptions" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Subscriptions
+                  transactions={transactions}
+                  user={user}
+                  onDeleteTransaction={deleteTransaction}
+                  onUpdateTransaction={updateTransaction}
+                  onAddTransaction={addTransaction}
+                />
+              </Suspense>
+            </motion.div>
+          } />
+
+          <Route path="/settings" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <Settings
+                  user={user}
+                  onUpdateUser={updateUser}
+                  budgets={budgets}
+                  transactions={transactions}
+                  addBudget={addBudget}
+                  updateBudget={updateBudget}
+                  deleteBudget={deleteBudget}
+                />
+              </Suspense>
+            </motion.div>
+          } />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
   );
 };
 
@@ -524,7 +562,8 @@ const AppContent: React.FC = () => {
   // --- PRODUCTION MODE: Inicia deslogado e com array vazio ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  // Persistir preferências no localStorage entre sessões
+  const [isFetchingData, setIsFetchingData] = useState(false);
+  // Persistir preferências no localStorage entre sessões + sync com Supabase
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('troco_darkMode') === 'true');
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem('troco_privacyMode') === 'true');
 
@@ -663,7 +702,7 @@ const AppContent: React.FC = () => {
 
   const { showNotification } = useNotification();
 
-  // Aplicar tema e persistir no localStorage
+  // Aplicar tema e persistir no localStorage + Supabase
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -671,7 +710,18 @@ const AppContent: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
     localStorage.setItem('troco_darkMode', String(darkMode));
-  }, [darkMode]);
+
+    // Sync with Supabase se logado
+    if (user && user.id !== 0) {
+      supabase
+        .from('usuarios')
+        .update({ dark_mode: darkMode })
+        .eq('id', user.id)
+        .then(({ error }) => {
+          if (error) console.error("Erro ao salvar dark mode:", error);
+        });
+    }
+  }, [darkMode, user]);
 
   // Persistir privacy mode
   useEffect(() => {
@@ -1062,13 +1112,23 @@ const AppContent: React.FC = () => {
           created_at: data.created_at
         };
 
+        // Server-side Override pro DarkMode se existir no DB
+        if (data.dark_mode !== null && data.dark_mode !== undefined) {
+          setDarkMode(data.dark_mode);
+        }
+
         setUser(mappedUser);
         await userDB.setItem('last_user', mappedUser);
-        fetchTransactions(data.id);
-        fetchCards(data.id); // Fetch Cards too!
-        fetchInvestments(data.id); // Fetch Investments too!
-        fetchGoals(data.id); // Fetch Goals too!
-        fetchBudgets(data.id); // Fetch Budgets too!
+
+        setIsFetchingData(true);
+        await Promise.all([
+          fetchTransactions(data.id),
+          fetchCards(data.id), // Fetch Cards too!
+          fetchInvestments(data.id), // Fetch Investments too!
+          fetchGoals(data.id), // Fetch Goals too!
+          fetchBudgets(data.id) // Fetch Budgets too!
+        ]);
+        setIsFetchingData(false);
 
       } else {
         // Retry Logic para suportar delay do N8N
@@ -1729,6 +1789,7 @@ const AppContent: React.FC = () => {
         addBudget={addBudget}
         updateBudget={updateBudget}
         deleteBudget={deleteBudget}
+        isFetchingData={isFetchingData}
       />
 
       {/* TrocoBot Global V2 - Outside of Layout transform wrappers */}

@@ -344,7 +344,7 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
                 <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 p-1 border-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-primary-500 transition-colors overflow-hidden">
                   <img
-                    src={formData.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=random'}
+                    src={formData.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nome || 'Visitante')}&background=10B981&color=fff&size=200&font-size=0.4`}
                     alt="Avatar"
                     className="w-full h-full rounded-full object-cover"
                   />

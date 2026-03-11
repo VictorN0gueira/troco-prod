@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
+import Joyride, { CallBackProps, STATUS, Step, TooltipRenderProps } from 'react-joyride';
+import { X, ChevronRight } from 'lucide-react';
 
 interface OnboardingTourProps {
     userId: number;
@@ -130,23 +131,77 @@ const TOUR_STEPS: Step[] = [
     }
 ];
 
+const CustomTooltip = ({
+    index,
+    step,
+    backProps,
+    closeProps,
+    primaryProps,
+    tooltipProps,
+    isLastStep,
+}: TooltipRenderProps) => {
+    return (
+        <div
+            {...tooltipProps}
+            className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700/50 p-6 sm:p-8 max-w-[90vw] sm:max-w-sm w-full mx-auto"
+        >
+            <div className="flex justify-between items-start mb-4">
+                {step.title && (
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-white w-full pr-6">
+                        {step.title}
+                    </h3>
+                )}
+                {/* Always push X button to top right even without title */}
+                <button
+                    {...closeProps}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95"
+                    aria-label="Pular Tour"
+                    title="Pular Tour"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
+
+            <div className="text-slate-600 dark:text-slate-300 text-sm mb-8 leading-relaxed">
+                {step.content}
+            </div>
+
+            <div className="flex items-center justify-between mt-auto">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-full">
+                    {index + 1} / {TOUR_STEPS.length}
+                </div>
+                <div className="flex items-center gap-2">
+                    {index > 0 && (
+                        <button
+                            {...backProps}
+                            className="px-4 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all active:scale-95"
+                        >
+                            Voltar
+                        </button>
+                    )}
+                    <button
+                        {...primaryProps}
+                        className="px-5 py-2 text-sm font-bold text-white bg-primary-500 hover:bg-primary-600 active:scale-95 rounded-xl transition-all shadow-lg shadow-primary-500/30 flex items-center justify-center gap-1 min-w-[100px]"
+                    >
+                        {isLastStep ? 'Concluir' : 'Próximo'}
+                        {!isLastStep && <ChevronRight className="w-4 h-4" />}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user }) => {
     const [run, setRun] = useState(false);
 
     useEffect(() => {
-        // Apenas rodar quando o ID do usuário for válido (logado com sucesso)
-        // E apenas rodar na raiz/dashboard (para os elementos existirem)
         if (!userId || userId === 0 || !user) return;
-
-        // Evita rodar na tela de edição ou configurações se o login foi profundo
         if (window.location.hash !== '#/dashboard') return;
 
-        // Verificar se o tour já foi completado
         const tourStatus = localStorage.getItem(`troco_tour_completed_${userId}`);
 
         if (!tourStatus) {
-            // Check if user is old (created more than 3 days ago)
-            // If so, let's not bother them with the onboarding tour.
             if (user?.created_at) {
                 const createdAt = new Date(user.created_at);
                 const now = new Date();
@@ -159,7 +214,6 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user }) => {
                 }
             }
 
-            // Pequeno delay para garantir que o React renderizou a DOM e as animações de entrada acabaram
             const timer = setTimeout(() => {
                 setRun(true);
             }, 1000);
@@ -181,52 +235,19 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user }) => {
         <Joyride
             callback={handleJoyrideCallback}
             continuous
-            hideCloseButton
+            hideCloseButton // Hide default, we manage it customly
             run={run}
             scrollToFirstStep
-            showProgress
-            showSkipButton
+            showProgress={false} // Handled customly
+            showSkipButton={false} // The X icon serves as skip in custom component
             steps={TOUR_STEPS}
+            tooltipComponent={CustomTooltip}
             styles={{
                 options: {
                     zIndex: 10000,
-                    primaryColor: '#10B981', // Emerald-500
-                    textColor: '#1e293b', // Slate-800 for better contrast
-                    backgroundColor: '#ffffff',
-                    overlayColor: 'rgba(15, 23, 42, 0.7)', // Slate-900 at 70% opacity
-                },
-                buttonNext: {
-                    backgroundColor: '#10B981',
-                    color: '#ffffff', // Explicitly white for contrast
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                },
-                buttonBack: {
-                    marginRight: 10,
-                    color: '#475569', // Slate-600
-                    fontWeight: 500,
-                },
-                buttonSkip: {
-                    color: '#94a3b8',
-                    fontWeight: 500,
-                },
-                tooltipContainer: {
-                    textAlign: 'left' as const,
-                },
-                tooltip: {
-                    padding: 24,
-                    borderRadius: '16px',
-                    backgroundColor: '#ffffff', // Guarantee white bg
+                    arrowColor: 'transparent', // Custom tooltip shapes clash with arrows, keeping it clean float
+                    overlayColor: 'rgba(15, 23, 42, 0.7)',
                 }
-            }}
-            locale={{
-                back: 'Voltar',
-                close: 'Fechar',
-                last: 'Concluir Tour',
-                next: 'Próximo',
-                skip: 'Pular Tour',
             }}
         />
     );

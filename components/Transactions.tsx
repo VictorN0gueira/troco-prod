@@ -43,9 +43,12 @@ import ConfirmationModal from './ConfirmationModal';
 import { SpotlightCard } from './ui/spotlight-card';
 import NumberTicker from './ui/number-ticker';
 import { ShimmerButton } from './ui/shimmer-button';
+import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 import LimitPaywallModal from './LimitPaywallModal';
 import ImportModal from './ImportModal';
 import { CustomCalendar } from './ui/CustomCalendar';
+import { useTransactionsFilter } from '../hooks/useTransactionsFilter';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -56,15 +59,13 @@ interface TransactionsProps {
   cards?: CreditCard[];
   user?: any;
   budgets?: Budget[];
+  isLoadingData?: boolean;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddMultiple, onEdit, onDelete, cards = [], user, budgets = [] }) => {
+const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddMultiple, onEdit, onDelete, cards = [], user, budgets = [], isLoadingData = false }) => {
   const { showNotification } = useNotification();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterDate, setFilterDate] = useState(''); // Formato YYYY-MM
-  const [quickFilter, setQuickFilter] = useState<'all' | 'pending' | 'income' | 'expense' | 'credit'>('all');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [limitModalMessage, setLimitModalMessage] = useState<{ title: string; description: string }>({ title: '', description: '' });
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,22 +73,26 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: 'asc' | 'desc' } | null>(null);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
-  const [advancedFilters, setAdvancedFilters] = useState<{
-    minAmount: string;
-    maxAmount: string;
-    selectedCategories: string[];
-    selectedDate: string;
-  }>({
-    minAmount: '',
-    maxAmount: '',
-    selectedCategories: [],
-    selectedDate: ''
-  });
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Filters Hook
+  const {
+    searchTerm,
+    setSearchTerm,
+    filterDate,
+    setFilterDate,
+    quickFilter,
+    setQuickFilter,
+    sortConfig,
+    setSortConfig,
+    advancedFilters,
+    setAdvancedFilters,
+    filteredTransactions,
+    summary
+  } = useTransactionsFilter({ transactions });
 
   // Confirmation Modal State
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
@@ -193,62 +198,12 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     return result;
   };
 
-  // 1. Filter & Sort Logic
-  const filteredTransactions = transactions
-    .filter(t => {
-      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.category.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesDate = filterDate ? t.date.startsWith(filterDate) : true;
-
-      let matchesQuick = true;
-      if (quickFilter === 'pending') matchesQuick = t.status === 'pending';
-      else if (quickFilter === 'income') matchesQuick = t.type === 'income';
-      else if (quickFilter === 'expense') matchesQuick = t.type === 'expense';
-      else if (quickFilter === 'credit') matchesQuick = !!t.cardId;
-
-      const numericMin = advancedFilters.minAmount ? parseCurrency(advancedFilters.minAmount) : -Infinity;
-      const numericMax = advancedFilters.maxAmount ? parseCurrency(advancedFilters.maxAmount) : Infinity;
-      const matchesAmount = t.amount >= numericMin && t.amount <= numericMax;
-
-      const matchesCategories = advancedFilters.selectedCategories.length > 0
-        ? advancedFilters.selectedCategories.includes(t.category)
-        : true;
-
-      const matchesAdvancedDate = advancedFilters.selectedDate ? t.date === advancedFilters.selectedDate : true;
-
-      return matchesSearch && matchesDate && matchesQuick && matchesAmount && matchesCategories && matchesAdvancedDate;
-    })
-    .sort((a, b) => {
-      // ALTERAÇÃO APLICADA AQUI:
-      if (!sortConfig) return 0;
-
-      const { key, direction } = sortConfig;
-      const aVal = a[key] ?? '';
-      const bVal = b[key] ?? '';
-
-      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-  // 2. Pagination Logic
+  // 1. Pagination Logic
   const totalItems = filteredTransactions.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentTransactions = filteredTransactions.slice(startIndex, endIndex);
-
-  // 3. Summary Calculations
-  const summary = React.useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    filteredTransactions.forEach(t => {
-      if (t.type === 'income') income += t.amount;
-      else expense += t.amount;
-    });
-    return { income, expense, balance: income - expense };
-  }, [filteredTransactions]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -546,7 +501,13 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
           <div className="z-10 bg-transparent flex flex-col justify-center">
             <p className="text-xs font-semibold text-slate-500 uppercase">Entradas</p>
             <p className="text-lg font-bold text-slate-800 dark:text-white bg-transparent">
-              <NumberTicker value={summary.income} isCurrency decimalPlaces={2} prefix="R$ " />
+              {isLoadingData ? (
+                <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                  <Skeleton width={100} />
+                </SkeletonTheme>
+              ) : (
+                <NumberTicker value={summary.income} isCurrency decimalPlaces={2} prefix="R$ " />
+              )}
             </p>
           </div>
         </SpotlightCard>
@@ -558,7 +519,13 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
           <div className="z-10 bg-transparent flex flex-col justify-center">
             <p className="text-xs font-semibold text-slate-500 uppercase">Saídas</p>
             <p className="text-lg font-bold text-slate-800 dark:text-white bg-transparent">
-              <NumberTicker value={summary.expense} isCurrency decimalPlaces={2} prefix="R$ " />
+              {isLoadingData ? (
+                <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                  <Skeleton width={100} />
+                </SkeletonTheme>
+              ) : (
+                <NumberTicker value={summary.expense} isCurrency decimalPlaces={2} prefix="R$ " />
+              )}
             </p>
           </div>
         </SpotlightCard>
@@ -569,9 +536,15 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
           </div>
           <div className="z-10 bg-transparent flex flex-col justify-center">
             <p className="text-xs font-semibold text-slate-500 uppercase">Balanço Mensal</p>
-            <p className={`text-lg font-bold bg-transparent overflow-hidden ${summary.balance >= 0 ? 'text-primary-600 dark:text-primary-400' : 'text-rose-500'}`}>
-              <NumberTicker value={summary.balance} isCurrency decimalPlaces={2} prefix={summary.balance >= 0 ? "+R$ " : "-R$ "} />
-            </p>
+            <div className={`text-lg font-bold bg-transparent overflow-hidden ${summary.balance >= 0 ? 'text-primary-600 dark:text-primary-400' : 'text-rose-500'}`}>
+              {isLoadingData ? (
+                <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                  <Skeleton width={100} />
+                </SkeletonTheme>
+              ) : (
+                <NumberTicker value={summary.balance} isCurrency decimalPlaces={2} prefix={summary.balance >= 0 ? "+R$ " : "-R$ "} />
+              )}
+            </div>
           </div>
         </SpotlightCard>
       </div>
@@ -847,7 +820,19 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
               animate="show"
             >
               <AnimatePresence>
-                {currentTransactions.map((t) => (
+                {isLoadingData ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <motion.tr key={`skeleton-${i}`} variants={itemVariants} className="border-b border-slate-100 dark:border-slate-800 opacity-50">
+                      {isSelectionMode && <td className="px-4 py-4 w-12 text-center" />}
+                      <td className="px-6 py-4 whitespace-nowrap"><SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}><Skeleton width={200} /></SkeletonTheme></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}><Skeleton width={100} /></SkeletonTheme></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}><Skeleton width={80} /></SkeletonTheme></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}><Skeleton width={80} /></SkeletonTheme></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right"><SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}><Skeleton width={80} /></SkeletonTheme></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center"><SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}><Skeleton width={80} /></SkeletonTheme></td>
+                    </motion.tr>
+                  ))
+                ) : currentTransactions.map((t) => (
                   <motion.tr
                     key={t.id}
                     variants={itemVariants}
@@ -976,7 +961,22 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
             animate="show"
           >
             <AnimatePresence>
-              {currentTransactions.map((t) => (
+              {isLoadingData ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <motion.div key={`skeleton-mob-${i}`} variants={itemVariants} className="p-4 border-b border-slate-100 dark:border-slate-800 opacity-50">
+                    <SkeletonTheme baseColor={document.documentElement.classList.contains('dark') ? '#1e293b' : '#f1f5f9'} highlightColor={document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0'}>
+                      <div className="flex justify-between items-start mb-2">
+                        <Skeleton width={150} height={20} />
+                        <Skeleton width={80} height={20} />
+                      </div>
+                      <div className="flex justify-between items-center mt-3">
+                        <Skeleton width={100} height={24} borderRadius={12} />
+                        <Skeleton width={80} height={24} borderRadius={12} />
+                      </div>
+                    </SkeletonTheme>
+                  </motion.div>
+                ))
+              ) : currentTransactions.map((t) => (
                 <motion.div
                   key={t.id}
                   variants={itemVariants}
