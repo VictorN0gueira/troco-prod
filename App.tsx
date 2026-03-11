@@ -647,8 +647,8 @@ const AppContent: React.FC = () => {
         try {
           if (action.type === 'ADD') {
             const tx = action.payload as Transaction;
-            const dbType = tx.type === 'income' ? 'Receita' : 'Despesa';
-            const isPaid = tx.status === 'completed' || String(tx.status).toLowerCase() === 'pago';
+              const dbType = tx.type === 'income' ? 'Receita' : tx.type === 'transfer' ? 'Transferência' : 'Despesa';
+              const isPaid = tx.status === 'completed' || String(tx.status).toLowerCase() === 'pago';
 
             const { error } = await supabase.from('transacoes').insert({
               user_id: user.id,
@@ -668,7 +668,7 @@ const AppContent: React.FC = () => {
           }
           else if (action.type === 'UPDATE') {
             const tx = action.payload as Transaction;
-            const dbType = tx.type === 'income' ? 'Receita' : 'Despesa';
+            const dbType = tx.type === 'income' ? 'Receita' : tx.type === 'transfer' ? 'Transferência' : 'Despesa';
             const isPaid = tx.status === 'completed' || String(tx.status).toLowerCase() === 'pago';
 
             const { error } = await supabase.from('transacoes').update({
@@ -679,7 +679,9 @@ const AppContent: React.FC = () => {
               data: tx.date,
               esta_pago: isPaid,
               is_recurring: tx.isRecurring,
-              card_id: tx.cardId
+              card_id: tx.cardId,
+              conta_id: tx.accountId,
+              conta_destino_id: tx.destinationAccountId
             }).eq('user_id', user.id).eq('identificador', tx.id);
             if (error) throw error;
             removeFromQueue(action.id);
@@ -1322,13 +1324,15 @@ const AppContent: React.FC = () => {
         user_id: user.id,
         descricao: t.description,
         valor: t.amount,
-        tipo: t.type === 'income' ? 'Receita' : 'Despesa',
+        tipo: t.type === 'income' ? 'Receita' : t.type === 'transfer' ? 'Transferência' : 'Despesa',
         categoria: t.category,
         data: t.date,
         esta_pago: t.status === 'completed' || String(t.status).toLowerCase() === 'pago',
         identificador: t.id,
         is_recurring: t.isRecurring,
         card_id: t.cardId,
+        conta_id: t.accountId,
+        conta_destino_id: t.destinationAccountId,
         installment_group: t.installment_group
       }));
 
@@ -1466,8 +1470,8 @@ const AppContent: React.FC = () => {
 
       const isPaid = newTransaction.status === 'completed' || String(newTransaction.status).toLowerCase() === 'pago';
 
-      // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
-      const dbType = newTransaction.type === 'income' ? 'Receita' : 'Despesa';
+      // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa, transfer -> Transferência
+      const dbType = newTransaction.type === 'income' ? 'Receita' : newTransaction.type === 'transfer' ? 'Transferência' : 'Despesa';
 
       const { error } = await supabase.from('transacoes').insert({
         user_id: user.id,
@@ -1512,8 +1516,8 @@ const AppContent: React.FC = () => {
       const isNumericId = !isNaN(Number(updatedTransaction.id));
       const isPaid = updatedTransaction.status === 'completed' || String(updatedTransaction.status).toLowerCase() === 'pago';
 
-      // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa
-      const dbType = updatedTransaction.type === 'income' ? 'Receita' : 'Despesa';
+      // TRADUÇÃO PARA O BANCO DE DADOS: income -> Receita, expense -> Despesa, transfer -> Transferência
+      const dbType = updatedTransaction.type === 'income' ? 'Receita' : updatedTransaction.type === 'transfer' ? 'Transferência' : 'Despesa';
 
       // Constroi query segura usando chaining correto do Supabase
       let query = supabase.from('transacoes').update({

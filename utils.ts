@@ -172,13 +172,15 @@ export const getProjectedTransactions = (
  * Centralizado aqui para evitar duplicação entre o fetch inicial e o listener realtime.
  */
 export const formatTransaction = (t: any): Transaction => {
-  let finalType: 'income' | 'expense' = 'expense';
+  let finalType: 'income' | 'expense' | 'transfer' = 'expense';
   const typeLower = (t.tipo || '').toLowerCase();
 
   if (typeLower === 'receita' || typeLower === 'income') {
     finalType = 'income';
   } else if (typeLower === 'despesa' || typeLower === 'expense') {
     finalType = 'expense';
+  } else if (typeLower === 'transferência' || typeLower === 'transferencia' || typeLower === 'transfer') {
+    finalType = 'transfer';
   } else {
     // Heurística de fallback para tipos inválidos
     const descLower = (t.descricao || '').toLowerCase();
