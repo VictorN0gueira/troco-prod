@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Transaction, UserProfile, CreditCard, Budget, Goal } from '../types';
+import { Transaction, UserProfile, CreditCard, Budget, Goal, BankAccount } from '../types';
 import {
   parseDateFromDB,
   generateTransactionId,
@@ -28,10 +28,11 @@ interface DashboardProps {
   cards: CreditCard[];
   budgets?: Budget[];
   goals?: Goal[];
+  accounts?: BankAccount[];
   isLoadingData?: boolean;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode, cards = [], budgets = [], goals = [], isLoadingData = false }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyMode, cards = [], budgets = [], goals = [], accounts = [], isLoadingData = false }) => {
   // State for Month Selection
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -55,12 +56,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions = [], user, privacyM
         if (!parsed.includes('budgets')) parsed.push('budgets');
         if (!parsed.includes('healthScore')) parsed.push('healthScore');
         if (!parsed.includes('cashflow')) parsed.push('cashflow');
+        if (!parsed.includes('accounts')) parsed.push('accounts');
         setCardsOrder(parsed);
       } catch (e) {
-        setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'cashflow', 'chart', 'categories', 'budgets']);
+        setCardsOrder(['healthScore', 'accounts', 'balance', 'income', 'expense', 'cashflow', 'chart', 'categories', 'budgets']);
       }
     } else {
-      setCardsOrder(['healthScore', 'balance', 'income', 'expense', 'cashflow', 'chart', 'categories', 'budgets']);
+      setCardsOrder(['healthScore', 'accounts', 'balance', 'income', 'expense', 'cashflow', 'chart', 'categories', 'budgets']);
     }
   }, [user.id]);
 
@@ -245,6 +247,29 @@ inline-block align-middle
     };
   }, [monthlyTransactions]);
 
+  // Calcula saldos baseados nas transações
+  const accountBalances = useMemo(() => {
+    const balances: Record<string, number> = {};
+    if (!accounts) return balances;
+    accounts.forEach(a => { balances[a.id] = Number(a.saldo_inicial) || 0; });
+    transactions.forEach(t => {
+      if (t.status !== 'completed' && String(t.status).toLowerCase() !== 'pago') return;
+      if (t.type === 'income' && t.accountId && balances[t.accountId] !== undefined) {
+        balances[t.accountId] += t.amount;
+      } else if (t.type === 'expense' && t.accountId && balances[t.accountId] !== undefined) {
+        balances[t.accountId] -= t.amount;
+      } else if (t.type === 'transfer' && t.amount > 0) {
+        if (t.accountId && balances[t.accountId] !== undefined) {
+          balances[t.accountId] -= t.amount;
+        }
+        if (t.destinationAccountId && balances[t.destinationAccountId] !== undefined) {
+          balances[t.destinationAccountId] += t.amount;
+        }
+      }
+    });
+    return balances;
+  }, [accounts, transactions]);
+
   // 3. Process Chart Data (Last 6 Months History) - Independent of selection
   const chartData = useMemo(() => {
     const data = [];
@@ -303,6 +328,34 @@ inline-block align-middle
 
   const renderCard = (key: string, isCompact = false) => {
     switch (key) {
+      case 'accounts':
+        if (!accounts || accounts.length === 0) return null;
+        return (
+          <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 md:p-6 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col justify-start gap-4 overflow-hidden h-full">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary-50 dark:bg-primary-500/10 rounded-xl">
+                  <Wallet className="w-5 h-5 text-primary-500" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Suas Contas</h3>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wider">Líquido</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1 px-1 -mx-1 snap-x">
+              {accounts.map(acc => {
+                const balance = accountBalances[acc.id] || 0;
+                return (
+                  <div key={acc.id} className="min-w-[150px] flex-shrink-0 bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 snap-start transition-all hover:bg-slate-100 dark:hover:bg-slate-800/80">
+                    <p className="text-[10px] font-bold truncate mb-1 uppercase tracking-tight" style={{ color: acc.color || '#64748b' }}>{acc.name}</p>
+                    <p className={`text-base font-bold tracking-tight ${balance < 0 ? 'text-rose-500' : 'text-slate-800 dark:text-white'}`}>
+                      <BlurText><NumberTicker value={Math.abs(balance)} isCurrency decimalPlaces={2} prefix={balance >= 0 ? "R$ " : "-R$ "} /></BlurText>
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
       case 'balance':
         return (
           <SpotlightCard id="tour-dashboard-balance" className="bg-slate-900 border-none dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl group h-full">
@@ -745,14 +798,14 @@ inline-block align-middle
                 {renderCard('healthScore')}
               </div>
 
+              {/* Accounts Summary (Now in Overview) */}
+              <div className="col-span-1 md:col-span-2">
+                {renderCard('accounts')}
+              </div>
+
               {/* Categories Card (Now prominent in overview) */}
               <div className="col-span-1 md:col-span-2">
                 {renderCard('categories')}
-              </div>
-
-              {/* Calendar Snippet or NoSpend (Optional small version) */}
-              <div className="col-span-1 md:col-span-2">
-                <NoSpendCalendar transactions={transactions} compact />
               </div>
             </div>
           )}

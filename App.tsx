@@ -11,6 +11,7 @@ const Transactions = lazy(() => import('./components/Transactions'));
 const Reminders = lazy(() => import('./components/Reminders'));
 const CalendarView = lazy(() => import('./components/CalendarView'));
 const CreditCards = lazy(() => import('./components/CreditCards'));
+const BankAccounts = lazy(() => import('./components/BankAccounts'));
 const Reports = lazy(() => import('./components/Reports'));
 const Settings = lazy(() => import('./components/Settings'));
 const Investments = lazy(() => import('./components/Investments'));
@@ -21,12 +22,14 @@ const Budgets = lazy(() => import('./components/Budgets'));
 
 const SuspenseLoader = () => (
   <div className="flex h-full w-full min-h-[50vh] flex-col items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+    {/* @ts-ignore */}
+    <dotlottie-wc src="https://lottie.host/819d44c8-37c2-4886-905c-e7a9e1026038/pWSp1vR54T.lottie" style={{ width: '150px', height: '150px' }} autoplay loop></dotlottie-wc>
   </div>
 );
-import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget } from './types';
+
+import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget, BankAccount } from './types';
 import { supabase } from './supabaseClient';
-import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet, Sun, Moon } from 'lucide-react';
 import { LOGO_URL } from './constants';
 import {
   getTodayLocalDate,
@@ -39,13 +42,15 @@ import {
   parseDateFromDB
 } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
-import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB, budgetsDB } from './localdb';
+import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB, budgetsDB, accountsDB } from './localdb';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import OnboardingTour from './components/OnboardingTour';
 import TermsModal from './components/TermsModal';
 import TrocoBot from './components/TrocoBot';
+import LimitPaywallModal from './components/LimitPaywallModal';
+import { FreePlanBadge } from './components/FreePlanBadge';
 
 const OfflineIndicator = () => {
   const { isOnline, isSyncing, queueSize } = useOffline();
@@ -151,7 +156,13 @@ interface AppRoutesProps {
   addBudget: (b: Budget) => Promise<void>;
   updateBudget: (b: Budget) => Promise<void>;
   deleteBudget: (id: number) => Promise<void>;
+  accounts: BankAccount[];
+  addAccount: (a: BankAccount) => Promise<void>;
+  updateAccount: (a: BankAccount) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
   isFetchingData?: boolean;
+  isLimitModalOpen: boolean;
+  setIsLimitModalOpen: (open: boolean) => void;
 }
 
 // Componente interno para gerenciar navegação baseado em eventos
@@ -189,7 +200,13 @@ const AppRoutes = ({
   addBudget,
   updateBudget,
   deleteBudget,
-  isFetchingData
+  accounts,
+  addAccount,
+  updateAccount,
+  deleteAccount,
+  isFetchingData,
+  isLimitModalOpen,
+  setIsLimitModalOpen
 }: AppRoutesProps) => {
   const location = useLocation();
 
@@ -256,6 +273,7 @@ const AppRoutes = ({
                 cards={cards}
                 budgets={budgets}
                 goals={goals} // Pass goals for HealthScore
+                accounts={accounts}
                 isLoadingData={isFetchingData}
               />
             </motion.div>
@@ -273,6 +291,7 @@ const AppRoutes = ({
                   onAddMultiple={addMultipleTransactions}
                   user={user}
                   budgets={budgets}
+                  accounts={accounts}
                   isLoadingData={isFetchingData}
                 />
               </Suspense>
@@ -326,8 +345,26 @@ const AppRoutes = ({
                   user={user}
                   cards={cards}
                   transactions={transactions}
+                  accounts={accounts}
                   fetchCards={fetchCards}
                   payCardInvoice={payCardInvoice}
+                />
+              </Suspense>
+            </motion.div>
+          } />
+
+          <Route path="/accounts" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <BankAccounts
+                  accounts={accounts}
+                  transactions={transactions}
+                  onAdd={addAccount}
+                  onEdit={updateAccount}
+                  onDelete={deleteAccount}
+                  onAddTransaction={addTransaction}
+                  user={user}
+                  setIsLimitModalOpen={setIsLimitModalOpen}
                 />
               </Suspense>
             </motion.div>
@@ -336,7 +373,7 @@ const AppRoutes = ({
           <Route path="/reports" element={
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
               <Suspense fallback={<SuspenseLoader />}>
-                <Reports transactions={transactions} />
+                <Reports transactions={transactions} accounts={accounts} user={user} />
               </Suspense>
             </motion.div>
           } />
@@ -414,6 +451,14 @@ const AppRoutes = ({
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      <LimitPaywallModal
+        isOpen={isLimitModalOpen}
+        onClose={() => setIsLimitModalOpen(false)}
+        title="Limite Atingido"
+        description="Você atingiu o limite do plano gratuito. Faça upgrade para o Super Trocô para continuar."
+        userEmail={user.email}
+      />
     </AnimatePresence>
   );
 };
@@ -648,6 +693,35 @@ const AppContent: React.FC = () => {
               ? await deleteQuery.eq('id', Number(txId))
               : await deleteQuery.eq('identificador', txId);
 
+            if (error) throw error;
+            removeFromQueue(action.id);
+          }
+          else if (action.type === 'ADD_ACCOUNT') {
+            const acc = action.payload as BankAccount;
+            const { error } = await supabase.from('contas_bancarias').insert({
+              user_id: user.id,
+              nome: acc.name,
+              tipo: acc.type,
+              cor: acc.color,
+              saldo_inicial: acc.saldo_inicial
+            });
+            if (error) throw error;
+            removeFromQueue(action.id);
+          }
+          else if (action.type === 'UPDATE_ACCOUNT') {
+            const acc = action.payload as BankAccount;
+            const { error } = await supabase.from('contas_bancarias').update({
+              nome: acc.name,
+              tipo: acc.type,
+              cor: acc.color,
+              saldo_inicial: acc.saldo_inicial
+            }).eq('user_id', user.id).eq('id', acc.id);
+            if (error) throw error;
+            removeFromQueue(action.id);
+          }
+          else if (action.type === 'DELETE_ACCOUNT') {
+            const accId = action.payload as string;
+            const { error } = await supabase.from('contas_bancarias').delete().eq('user_id', user.id).eq('id', accId);
             if (error) throw error;
             removeFromQueue(action.id);
           }
@@ -957,6 +1031,9 @@ const AppContent: React.FC = () => {
   // State for Budgets
   const [budgets, setBudgets] = useState<Budget[]>([]);
 
+  // State for Accounts
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+
   // Fetch Budgets Function
   const fetchBudgets = async (userId: number) => {
     try {
@@ -975,6 +1052,37 @@ const AppContent: React.FC = () => {
       await budgetsDB.setItem(`budgets_${userId}`, mapped);
     } catch (error) {
       console.error('Error fetching budgets:', error);
+    }
+  };
+
+  // Fetch Accounts
+  const fetchAccounts = async (userId: number) => {
+    try {
+      if (!navigator.onLine) {
+        const cached = await accountsDB.getItem(`accounts_${userId}`) as BankAccount[] | null;
+        if (cached) setAccounts(cached);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('contas_bancarias')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const mapped = (data || []).map((a: any) => ({
+        id: a.id,
+        user_id: a.user_id,
+        name: a.nome,
+        type: a.tipo,
+        color: a.cor,
+        saldo_inicial: Number(a.saldo_inicial),
+        created_at: a.created_at,
+        balance: 0 // Will be calculated by UI
+      }));
+      setAccounts(mapped);
+      await accountsDB.setItem(`accounts_${userId}`, mapped);
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
     }
   };
 
@@ -1126,7 +1234,8 @@ const AppContent: React.FC = () => {
           fetchCards(data.id), // Fetch Cards too!
           fetchInvestments(data.id), // Fetch Investments too!
           fetchGoals(data.id), // Fetch Goals too!
-          fetchBudgets(data.id) // Fetch Budgets too!
+          fetchBudgets(data.id), // Fetch Budgets too!
+          fetchAccounts(data.id) // Fetch Accounts too!
         ]);
         setIsFetchingData(false);
 
@@ -1200,6 +1309,7 @@ const AppContent: React.FC = () => {
   };
 
   const addMultipleTransactions = async (newTransactions: Transaction[]) => {
+    if (!checkTransactionLimit(newTransactions.length)) return;
     setTransactions(prev => [...newTransactions, ...prev]);
 
     if (user.id !== 0) {
@@ -1236,7 +1346,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const payCardInvoice = async (cardId: number, totalAmount: number, invoiceTransactionsIds: string[]) => {
+  const payCardInvoice = async (cardId: number, totalAmount: number, invoiceTransactionsIds: string[], accountId?: string) => {
     // 1. Encontrar o cartão correspondente e atualizar limite no JS
     const cardToPay = cards.find(c => c.id === cardId);
     if (!cardToPay) return;
@@ -1299,6 +1409,7 @@ const AppContent: React.FC = () => {
         identificador: paymentTxId,
         is_recurring: false,
         card_id: cardId, // Ligando ao cartão para ter histórico
+        conta_id: accountId // Débito da conta selecionada
       };
 
       const { error: insertTxError } = await supabase
@@ -1317,7 +1428,32 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const checkTransactionLimit = (countToAdd: number = 1): boolean => {
+    const isSuper = user?.status_assinatura === 'active';
+    if (isSuper || user.id === 0) return true;
+
+    // Count transactions in the current month
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const transactionsInMonth = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }).length;
+
+    if (transactionsInMonth + countToAdd > 20) {
+      setIsLimitModalOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  // State shared via Context or props for Limit Paywall
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
   const addTransaction = async (newTransaction: Transaction) => {
+    if (!checkTransactionLimit()) return;
     setTransactions(prev => [newTransaction, ...prev]);
 
     if (user.id !== 0) {
@@ -1344,6 +1480,8 @@ const AppContent: React.FC = () => {
         identificador: newTransaction.id,
         is_recurring: newTransaction.isRecurring, // Salva flag no banco
         card_id: newTransaction.cardId, // Adiciona card_id
+        conta_id: newTransaction.accountId, // Adiciona conta_id (Wallet)
+        conta_destino_id: newTransaction.destinationAccountId, // Adiciona destino para transferências
         installment_group: newTransaction.installment_group
       });
 
@@ -1386,7 +1524,9 @@ const AppContent: React.FC = () => {
         data: updatedTransaction.date,
         esta_pago: isPaid,
         is_recurring: updatedTransaction.isRecurring,
-        card_id: updatedTransaction.cardId
+        card_id: updatedTransaction.cardId,
+        conta_id: updatedTransaction.accountId,
+        conta_destino_id: updatedTransaction.destinationAccountId
       }).eq('user_id', user.id);
 
       if (isNumericId) {
@@ -1737,6 +1877,100 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const addAccount = async (newAcc: BankAccount) => {
+    // Optimistic Update
+    setAccounts(prev => [...prev, newAcc]);
+
+    if (user.id !== 0) {
+      if (!isOnline) {
+        addToQueue('ADD_ACCOUNT', newAcc);
+        return;
+      }
+      
+      const { data, error } = await supabase.from('contas_bancarias').insert({
+        user_id: user.id,
+        nome: newAcc.name,
+        tipo: newAcc.type,
+        cor: newAcc.color,
+        saldo_inicial: newAcc.saldo_inicial
+      }).select().single();
+
+      if (error) {
+        console.error('Erro ao adicionar conta:', error);
+        setAccounts(prev => prev.filter(a => a.id !== newAcc.id));
+        showNotification({
+          title: 'Erro ao Salvar',
+          message: 'Não foi possível salvar a conta no banco de dados.',
+          type: 'error'
+        });
+      } else if (data) {
+        // Update with the real ID from database
+        setAccounts(prev => prev.map(a => a.id === newAcc.id ? { ...a, id: data.id.toString() } : a));
+      }
+    }
+  };
+
+  const updateAccount = async (updatedAcc: BankAccount) => {
+    // Optimistic Update
+    setAccounts(prev => prev.map(a => a.id === updatedAcc.id ? updatedAcc : a));
+
+    if (user.id !== 0) {
+      if (!isOnline) {
+        addToQueue('UPDATE_ACCOUNT', updatedAcc);
+        return;
+      }
+
+      const { error } = await supabase.from('contas_bancarias').update({
+        nome: updatedAcc.name,
+        tipo: updatedAcc.type,
+        cor: updatedAcc.color,
+        saldo_inicial: updatedAcc.saldo_inicial
+      }).eq('id', updatedAcc.id).eq('user_id', user.id);
+
+      if (error) {
+        console.error('Erro ao atualizar conta:', error);
+        showNotification({
+          title: 'Erro de Sincronização',
+          message: 'Houve um problema ao salvar as alterações da conta.',
+          type: 'error'
+        });
+        fetchAccounts(user.id); // Rollback/Sync
+      }
+    }
+  };
+
+  const deleteAccount = async (id: string) => {
+    // Store current state for potential rollback
+    const previousAccounts = accounts;
+
+    // Optimistic Update: remove immediately from UI
+    setAccounts(prev => prev.filter(a => a.id !== id));
+
+    if (user.id !== 0) {
+      if (!isOnline) {
+        addToQueue('DELETE_ACCOUNT', id);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('contas_bancarias')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Erro ao excluir conta:', error);
+        // Rollback: put back in UI
+        setAccounts(previousAccounts);
+        showNotification({
+          title: 'Erro ao Excluir',
+          message: 'Não foi possível excluir a conta no servidor. Revertendo...',
+          type: 'error'
+        });
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -1789,7 +2023,13 @@ const AppContent: React.FC = () => {
         addBudget={addBudget}
         updateBudget={updateBudget}
         deleteBudget={deleteBudget}
+        accounts={accounts}
+        addAccount={addAccount}
+        updateAccount={updateAccount}
+        deleteAccount={deleteAccount}
         isFetchingData={isFetchingData}
+        isLimitModalOpen={isLimitModalOpen}
+        setIsLimitModalOpen={setIsLimitModalOpen}
       />
 
       {/* TrocoBot Global V2 - Outside of Layout transform wrappers */}
@@ -1800,6 +2040,8 @@ const AppContent: React.FC = () => {
           cards={cards}
           investments={investments}
           user={user}
+          accounts={accounts}
+          budgets={budgets}
         />
       )}
     </HashRouter>

@@ -13,6 +13,7 @@ interface ConfirmationModalProps {
     cancelText?: string;
     type?: 'danger' | 'warning' | 'info';
     isLoading?: boolean;
+    children?: React.ReactNode;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -24,7 +25,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     confirmText = 'Confirmar',
     cancelText = 'Cancelar',
     type = 'danger',
-    isLoading = false
+    isLoading = false,
+    children
 }) => {
     if (!isOpen) return null;
 
@@ -89,6 +91,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                         <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">
                             {message}
                         </p>
+
+                        {children && (
+                            <div className="mb-6 text-left">
+                                {children}
+                            </div>
+                        )}
 
                         <div className="flex gap-3">
                             <button

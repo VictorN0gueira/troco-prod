@@ -201,6 +201,8 @@ export const formatTransaction = (t: any): Transaction => {
     status: t.esta_pago ? 'completed' : 'pending',
     isRecurring: t.is_recurring,
     cardId: t.card_id,
+    accountId: t.conta_id,
+    destinationAccountId: t.conta_destino_id,
     installment_group: t.installment_group
   };
 };
@@ -234,3 +236,9 @@ export const parseCurrency = (value: string): number => {
   const cleanValue = value.replace(/\./g, '').replace(',', '.');
   return parseFloat(cleanValue) || 0;
 };
+
+/**
+ * Formata número para BRL (R$ 1.000,00)
+ */
+export const formatCurrency = (val: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);

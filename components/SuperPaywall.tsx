@@ -2,7 +2,7 @@ import React from 'react';
 import { Sparkles, TrendingUp, BellRing, Lock, ShieldCheck, Newspaper, CreditCard } from 'lucide-react';
 
 interface SuperPaywallProps {
-    feature: 'Investimentos' | 'Insights de Mercado' | 'Notificações Premium' | 'Cartões Ilimitados' | 'Lançamentos Ilimitados';
+    feature: 'Investimentos' | 'Insights de Mercado' | 'Notificações Premium' | 'Cartões Ilimitados' | 'Lançamentos Ilimitados' | 'Relatórios Avançados';
     userEmail?: string;
 }
 

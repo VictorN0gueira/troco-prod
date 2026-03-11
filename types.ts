@@ -1,6 +1,17 @@
 import React from 'react';
 
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense' | 'transfer';
+
+export interface BankAccount {
+  id: string; // UUID from DB
+  user_id: number;
+  name: string;
+  type: string;
+  color?: string;
+  balance?: number; // Current calculated balance
+  saldo_inicial?: number;
+  created_at?: string;
+}
 
 export type InvestmentType =
   // Brasil
@@ -65,6 +76,8 @@ export interface Transaction {
   date: string;
   status: 'completed' | 'pending';
   isRecurring?: boolean; // Nova flag para recorrência
+  accountId?: string; // ID da carteira atrelada (nova Conta Bancária, UUID)
+  destinationAccountId?: string; // ID da carteira de destino (para transferências)
   cardId?: number; // ID do cartão de crédito (opcional)
   installment_group?: string; // ID único agrupando parcelas de uma mesma compra
 }
@@ -88,6 +101,7 @@ export interface NavItem {
   path: string;
   icon: any; // Using any for simplicity as Lucide icons are valid React components
   disabled?: boolean;
+  category?: string;
 }
 
 export interface CreditCard {

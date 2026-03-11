@@ -151,10 +151,10 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
   };
 
   const handleOpenCreate = () => {
-    // Limit check for free tier: max 10 active reminders
+    // Limit check for free tier: max 5 active reminders
     if (user && user.status_assinatura !== 'active') {
       const activeReminders = transactions.filter(t => t.status === 'pending').length;
-      if (activeReminders >= 10) {
+      if (activeReminders >= 5) {
         setIsLimitModalOpen(true);
         return; // Block opening the modal
       }
@@ -171,7 +171,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
       amount: formatCurrency(t.amount),
       category: t.category,
       date: t.date,
-      type: t.type,
+      type: t.type === 'income' ? 'income' : 'expense',
       status: t.status,
       isRecurring: t.isRecurring || false
     });
@@ -281,7 +281,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
       {/* Over-limit banner — grandfathering */}
       {user && user.status_assinatura !== 'active' && (() => {
         const pending = transactions.filter(t => t.status === 'pending').length;
-        return pending > 10 ? <OverLimitBanner label="lembretes pendentes" current={pending} limit={10} /> : null;
+        return pending > 5 ? <OverLimitBanner label="lembretes pendentes" current={pending} limit={5} /> : null;
       })()}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -318,10 +318,10 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
               <div className="mt-2 w-full bg-white/20 rounded-full h-1.5 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-white transition-all duration-500"
-                  style={{ width: `${Math.min((activeCount / 10) * 100, 100)}%` }}
+                  style={{ width: `${Math.min((activeCount / 5) * 100, 100)}%` }}
                 />
                 <p className="text-[10px] text-white/80 mt-1">
-                  {activeCount}/10 lembretes ativos
+                  {activeCount}/5 lembretes ativos
                 </p>
               </div>
             );
@@ -783,7 +783,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         isOpen={isLimitModalOpen}
         onClose={() => setIsLimitModalOpen(false)}
         title="Limite de Lembretes Atingido"
-        description="No plano gratuito você pode ter até 10 lembretes ativos simultaneamente. Assine o Super Trocô para criar lembretes ilimitados e nunca mais esquecer uma conta."
+        description="No plano gratuito você pode ter até 5 lembretes ativos simultaneamente. Assine o Super Trocô para criar lembretes ilimitados e nunca mais esquecer uma conta."
         userEmail={user?.email}
       />
 

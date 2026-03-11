@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import { offlineQueueService } from '../localdb';
 
 // Tipos para as ações offline
-type OfflineActionType = 'ADD' | 'UPDATE' | 'DELETE';
+type OfflineActionType = 'ADD' | 'UPDATE' | 'DELETE' | 'ADD_ACCOUNT' | 'UPDATE_ACCOUNT' | 'DELETE_ACCOUNT';
 
 interface OfflineAction {
     id: string;

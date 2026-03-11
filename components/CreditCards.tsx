@@ -1,7 +1,7 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabaseClient';
-import { CreditCard, UserProfile, Transaction } from '../types';
+import { CreditCard, UserProfile, Transaction, BankAccount } from '../types';
 import { Plus, Trash2, Edit2, CreditCard as CardIcon, X, Check, Calendar, CalendarClock, TrendingUp, AlertCircle, Wallet, Star, ShieldCheck, ShieldAlert, ShieldX, Percent, ChevronLeft, ChevronRight, BarChart2, History, Lock } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import ConfirmationModal from './ConfirmationModal';
@@ -13,6 +13,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip
 import LimitPaywallModal from './LimitPaywallModal';
 import { UsageMeter } from './FreePlanBadge';
 import { GlareCard } from './ui/glare-card';
+import { CustomSelect } from './CustomSelect';
 import CreditCardForm from './CreditCards/CreditCardForm';
 import InvoiceViewer from './CreditCards/InvoiceViewer';
 import { renderBrandIcon } from './CreditCards/BrandIconsWrapper';
@@ -22,11 +23,12 @@ interface CreditCardsProps {
     user: UserProfile;
     cards: CreditCard[];
     transactions: Transaction[];
+    accounts?: BankAccount[];
     fetchCards: (userId: number) => Promise<void>;
-    payCardInvoice: (cardId: number, amount: number, transactionIds: string[]) => void;
+    payCardInvoice: (cardId: number, amount: number, transactionIds: string[], accountId?: string) => void;
 }
 
-const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fetchCards, payCardInvoice }) => {
+const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, accounts = [], fetchCards, payCardInvoice }) => {
     const [loading, setLoading] = useState(false);
     const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,6 +41,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
     // Invoice Payment Confirmation State
     const [invoiceToPay, setInvoiceToPay] = useState<{ id: number, amount: number, transactionIds: string[] } | null>(null);
     const [isPayInvoiceModalOpen, setIsPayInvoiceModalOpen] = useState(false);
+    const [paymentAccountId, setPaymentAccountId] = useState<string>('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     // Pagination State
@@ -255,10 +258,11 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
 
     const confirmPayInvoice = () => {
         if (!invoiceToPay) return;
-        payCardInvoice(invoiceToPay.id, invoiceToPay.amount, invoiceToPay.transactionIds);
+        payCardInvoice(invoiceToPay.id, invoiceToPay.amount, invoiceToPay.transactionIds, paymentAccountId || undefined);
         setViewingInvoice(null);
         setIsPayInvoiceModalOpen(false);
         setInvoiceToPay(null);
+        setPaymentAccountId('');
     };
 
     // Invoice Navigation
@@ -671,7 +675,26 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, fe
                 confirmText="Pagar Fatura"
                 cancelText="Cancelar"
                 type="info"
-            />
+            >
+                {accounts.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Debitar da Conta:
+                        </label>
+                        <CustomSelect
+                            value={paymentAccountId}
+                            onChange={(val) => setPaymentAccountId(val)}
+                            options={[
+                                { value: '', label: 'Nenhuma (Caixa Global)' },
+                                ...accounts.map(acc => ({
+                                    value: acc.id,
+                                    label: acc.name
+                                }))
+                            ]}
+                        />
+                    </div>
+                )}
+            </ConfirmationModal>
         </div>
     );
 };

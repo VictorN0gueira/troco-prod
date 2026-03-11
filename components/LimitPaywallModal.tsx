@@ -36,8 +36,9 @@ const LimitPaywallModal: React.FC<LimitPaywallModalProps> = ({ isOpen, onClose, 
                         </button>
 
                         <div className="relative z-10 flex flex-col items-center">
-                            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-black/10 border border-white/20">
-                                <Sparkles className="w-8 h-8 text-white" />
+                            <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-black/10 border border-white/20 overflow-hidden">
+                                {/* @ts-ignore */}
+                                <dotlottie-wc src="https://lottie.host/362a9394-4363-44d5-8178-bf7830cd11f1/EOnvKkK3yP.lottie" style={{ width: '100px', height: '100px' }} autoplay loop></dotlottie-wc>
                             </div>
                             <h3 className="text-2xl font-black text-white mb-2 tracking-tight" id="modal-title">
                                 {title}

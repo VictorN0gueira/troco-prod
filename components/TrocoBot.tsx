@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle, Trash2, History, Plus, Minus, Activity, CalendarDays, Repeat, Flame } from 'lucide-react';
-import { Transaction, Goal, UserProfile, CreditCard, Investment } from '../types';
+import { Transaction, Goal, UserProfile, CreditCard, Investment, BankAccount, Budget } from '../types';
+import { Bot, ChevronDown, Sparkles, TrendingDown, Target, Lightbulb, TrendingUp, CreditCard as CardIcon, MessageCircle, Trash2, History, Plus, Minus, Activity, CalendarDays, Repeat, Flame, Landmark, PieChart } from 'lucide-react';
 
 interface TrocoBotProps {
     transactions: Transaction[];
@@ -9,6 +9,8 @@ interface TrocoBotProps {
     cards: CreditCard[];
     investments: Investment[];
     user: UserProfile;
+    accounts: BankAccount[];
+    budgets: Budget[];
 }
 
 type Message = {
@@ -18,11 +20,12 @@ type Message = {
     isTyping?: boolean;
 };
 
-export default function TrocoBot({ transactions, goals, cards, investments, user }: TrocoBotProps) {
+export default function TrocoBot({ transactions, goals, cards, investments, user, accounts, budgets }: TrocoBotProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [isTyping, setIsTyping] = useState(false);
     const [showAllPrompts, setShowAllPrompts] = useState(false);
+    const [activeTab, setActiveTab] = useState<'reports' | 'spending' | 'future'>('reports');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const BOT_ICON_URL = "https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2FGemini_Generated_Image_s9cllds9cllds9cl.png&version_id=null";
@@ -356,6 +359,89 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         return text;
     };
 
+    const getAccountsSummary = () => {
+        if (!accounts || accounts.length === 0) {
+            return "Você ainda não tem **Contas Bancárias** cadastradas. Adicione suas contas na aba 'Contas' para que eu possa analisar sua liquidez total! 🏦";
+        }
+
+        const balances: Record<string, number> = {};
+        accounts.forEach(a => { balances[a.id] = Number(a.saldo_inicial) || 0; });
+
+        transactions.forEach(t => {
+            if (t.status !== 'completed' && String(t.status).toLowerCase() !== 'pago') return;
+            if (t.type === 'income' && t.accountId && balances[t.accountId] !== undefined) {
+                balances[t.accountId] += t.amount;
+            } else if (t.type === 'expense' && t.accountId && balances[t.accountId] !== undefined) {
+                balances[t.accountId] -= t.amount;
+            } else if (t.type === 'transfer' && t.amount > 0) {
+                if (t.accountId && balances[t.accountId] !== undefined) balances[t.accountId] -= t.amount;
+                if (t.destinationAccountId && balances[t.destinationAccountId] !== undefined) balances[t.destinationAccountId] += t.amount;
+            }
+        });
+
+        const totalLiquidity = Object.values(balances).reduce((a, b) => a + b, 0);
+        const mainAccount = [...accounts].sort((a, b) => (balances[b.id] || 0) - (balances[a.id] || 0))[0];
+
+        let text = `🏦 **Análise de Liquidez (Contas)**\n\n`;
+        text += `Você possui **${accounts.length} contas** ativas.\n`;
+        text += `💰 Liquidez Total: **${formatCurrency(totalLiquidity)}**\n\n`;
+
+        text += `📊 **Saldos Atuais:**\n`;
+        accounts.forEach(acc => {
+            text += `- **${acc.name}**: ${formatCurrency(balances[acc.id] || 0)}\n`;
+        });
+
+        if (mainAccount && (balances[mainAccount.id] || 0) > 0) {
+            text += `\nSua conta principal no momento é a **${mainAccount.name}**. `;
+            if (totalLiquidity > 0) {
+                text += `Essa grana é o seu fôlego financeiro. Já pensou em destinar uma parte para suas Metas? 🚀`;
+            }
+        }
+
+        return text;
+    };
+
+    const getBudgetsSummary = () => {
+        if (!budgets || budgets.length === 0) {
+            return "Você ainda não definiu **Orçamentos**. Vá na aba 'Orçamentos' e defina limites por categoria. Isso é fundamental para não gastar mais do que ganha! 🎯";
+        }
+
+        const expensesByCategory: Record<string, number> = {};
+        currentMonthTransactions.filter(t => t.type === 'expense').forEach(t => {
+            expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + Number(t.amount);
+        });
+
+        let text = `🎯 **Status dos Orçamentos (${now.getMonth() + 1}/${now.getFullYear()})**\n\n`;
+        let alerted = false;
+
+        budgets.forEach(b => {
+            const spent = expensesByCategory[b.categoria] || 0;
+            const remaining = Number(b.valor_limite) - spent;
+            const perc = Number(b.valor_limite) > 0 ? (spent / Number(b.valor_limite)) * 100 : 0;
+
+            let icon = '🟢';
+            if (perc >= 100) { icon = '🔴'; alerted = true; }
+            else if (perc >= 80) { icon = '🟡'; alerted = true; }
+
+            text += `${icon} **${b.categoria}**:\n`;
+            text += `   Gasto: ${formatCurrency(spent)} / Limite: ${formatCurrency(Number(b.valor_limite))}\n`;
+            
+            if (remaining > 0) {
+                text += `   Resta: **${formatCurrency(remaining)}** (${perc.toFixed(0)}% usado)\n\n`;
+            } else {
+                text += `   **Estourou em ${formatCurrency(Math.abs(remaining))}!** 😱\n\n`;
+            }
+        });
+
+        if (alerted) {
+            text += `⚠️ **Atenção:** Algumas categorias estão no limite ou já estouraram. É hora de segurar os gastos variáveis até o fim do mês! 🛑`;
+        } else {
+            text += `✅ Excelente! Você está respeitando todos os orçamentos definidos. Mantenha a disciplina! 🏆`;
+        }
+
+        return text;
+    };
+
     const getNoSpendStreak = () => {
         const today = new Date();
         const todayDay = today.getDate();
@@ -421,7 +507,7 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
         ]);
     };
 
-    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv' | 'recent' | 'health' | 'yearexpense' | 'subscriptions' | 'nospend') => {
+    const handleActionClick = (actionText: string, actionType: 'summary' | 'expense' | 'goals' | 'tip' | 'cards' | 'inv' | 'recent' | 'health' | 'yearexpense' | 'subscriptions' | 'nospend' | 'accounts' | 'budgets') => {
         // 1. Mensagem do usuário
         const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: actionText };
         setMessages(prev => [...prev, userMsg]);
@@ -441,6 +527,8 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
             else if (actionType === 'yearexpense') botText = getYearTopExpense();
             else if (actionType === 'subscriptions') botText = getSubscriptionsSummary();
             else if (actionType === 'nospend') botText = getNoSpendStreak();
+            else if (actionType === 'accounts') botText = getAccountsSummary();
+            else if (actionType === 'budgets') botText = getBudgetsSummary();
 
             const botMsg: Message = { id: (Date.now() + 1).toString(), sender: 'bot', text: botText };
             setIsTyping(false);
@@ -587,102 +675,138 @@ export default function TrocoBot({ transactions, goals, cards, investments, user
                                     <div ref={messagesEndRef} className="h-4" />
                                 </div>
 
-                                {/* Prompts Injetáveis da Interface Premium - Borda Fina no Topo */}
+                                {/* Tabbed Prompts Navigation */}
                                 <div className="p-4 sm:p-5 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 shrink-0 relative z-20 transition-all duration-300">
-                                    <div className="flex items-center justify-between mb-3 pl-1">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tópicos de Análise V2</p>
-                                        <button
-                                            onClick={() => setShowAllPrompts(!showAllPrompts)}
-                                            className="text-[10px] font-bold text-primary-500 uppercase tracking-wider flex items-center gap-1 hover:underline"
-                                        >
-                                            {showAllPrompts ? <><Minus className="w-3 h-3" /> Ver Menos</> : <><Plus className="w-3 h-3" /> Mais Opções</>}
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 pb-2">
-                                        <button
-                                            onClick={() => handleActionClick("Resumo do Mês", 'summary')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <Sparkles className="w-3.5 h-3.5 text-primary-500" />
-                                            Balanço Mês
-                                        </button>
-                                        <button
-                                            onClick={() => handleActionClick("Maior Despesa", 'expense')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
-                                            Maior Ralo
-                                        </button>
-                                        <button
-                                            onClick={() => handleActionClick("Analisar Cartões", 'cards')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <CardIcon className="w-3.5 h-3.5 text-amber-500" />
-                                            Faturas
-                                        </button>
-                                        <button
-                                            onClick={() => handleActionClick("Minhas Assinaturas", 'subscriptions')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <Repeat className="w-3.5 h-3.5 text-violet-500" />
-                                            Assinaturas
-                                        </button>
+                                    <div className="flex flex-col gap-4">
+                                        {/* Tab Headers */}
+                                        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-x-auto no-scrollbar mask-fade-right">
+                                            {[
+                                                { id: 'reports', label: 'Relatórios', icon: Activity },
+                                                { id: 'spending', label: 'Saídas', icon: TrendingDown },
+                                                { id: 'future', label: 'Futuro', icon: Target }
+                                            ].map((tab) => (
+                                                <button
+                                                    key={tab.id}
+                                                    onClick={() => setActiveTab(tab.id as any)}
+                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === tab.id
+                                                        ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    <tab.icon className="w-3 h-3" />
+                                                    {tab.label}
+                                                </button>
+                                            ))}
+                                        </div>
 
-                                        {/* Core view vs Expanded view */}
-                                        {(showAllPrompts) && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleActionClick("Investimentos", 'inv')}
-                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
-                                                >
-                                                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                                                    Investimentos
-                                                </button>
-                                                <button
-                                                    onClick={() => handleActionClick("Transações", 'recent')}
-                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
-                                                >
-                                                    <History className="w-3.5 h-3.5 text-blue-500" />
-                                                    Transações Recentes
-                                                </button>
-                                                <button
-                                                    onClick={() => handleActionClick("Saúde Financeira", 'health')}
-                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
-                                                >
-                                                    <Activity className="w-3.5 h-3.5 text-teal-500" />
-                                                    Saúde Financeira
-                                                </button>
-                                                <button
-                                                    onClick={() => handleActionClick("Maior Custo Anual", 'yearexpense')}
-                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
-                                                >
-                                                    <CalendarDays className="w-3.5 h-3.5 text-orange-500" />
-                                                    Maior Custo Anual
-                                                </button>
-                                                <button
-                                                    onClick={() => handleActionClick("No Spend Days", 'nospend')}
-                                                    className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 animate-fade-in"
-                                                >
-                                                    <Flame className="w-3.5 h-3.5 text-orange-400" />
-                                                    No Spend Days
-                                                </button>
-                                            </>
-                                        )}
+                                        {/* Tab Content - Responsive Grid to keep height compact */}
+                                        <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto no-scrollbar pr-1">
+                                            {activeTab === 'reports' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleActionClick("Resumo do Mês", 'summary')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <Sparkles className="w-3.5 h-3.5 text-primary-500" />
+                                                        Balanço Mês
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Saúde Financeira", 'health')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <Activity className="w-3.5 h-3.5 text-teal-500" />
+                                                        Saúde Financeira
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Analisar Contas", 'accounts')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <Landmark className="w-3.5 h-3.5 text-sky-500" />
+                                                        Contas
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Transações", 'recent')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <History className="w-3.5 h-3.5 text-blue-500" />
+                                                        Transações
+                                                    </button>
+                                                </>
+                                            )}
 
-                                        <button
-                                            onClick={() => handleActionClick("Minhas Metas", 'goals')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <Target className="w-3.5 h-3.5 text-purple-500" />
-                                            Metas Futuras
-                                        </button>
-                                        <button
-                                            onClick={() => handleActionClick("Me Dê Uma Dica!", 'tip')}
-                                            className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                                        >
-                                            <Lightbulb className="w-3.5 h-3.5 text-indigo-500" />
-                                            Dica Rápida
-                                        </button>
+                                            {activeTab === 'spending' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleActionClick("Maior Despesa", 'expense')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
+                                                        Maior Ralo
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Analisar Cartões", 'cards')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <CardIcon className="w-3.5 h-3.5 text-amber-500" />
+                                                        Faturas
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Minhas Assinaturas", 'subscriptions')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <Repeat className="w-3.5 h-3.5 text-violet-500" />
+                                                        Assinaturas
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Maior Custo Anual", 'yearexpense')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <CalendarDays className="w-3.5 h-3.5 text-orange-500" />
+                                                        Custo Anual
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {activeTab === 'future' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleActionClick("Investimentos", 'inv')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                                                        Investimentos
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Status de Orçamentos", 'budgets')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <PieChart className="w-3.5 h-3.5 text-indigo-500" />
+                                                        Orçamentos
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Minhas Metas", 'goals')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <Target className="w-3.5 h-3.5 text-purple-500" />
+                                                        Metas
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("No Spend Days", 'nospend')}
+                                                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-[12px] font-semibold text-slate-700 dark:text-slate-200 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                                    >
+                                                        <Flame className="w-3.5 h-3.5 text-orange-400" />
+                                                        No Spend
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleActionClick("Me Dê Uma Dica!", 'tip')}
+                                                        className="col-span-2 flex items-center justify-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 rounded-xl text-[12px] font-bold text-primary-600 dark:text-primary-400 transition-all border border-primary-200 dark:border-primary-800 shadow-sm"
+                                                    >
+                                                        <Lightbulb className="w-3.5 h-3.5" />
+                                                        Me dê uma dica Premium!
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

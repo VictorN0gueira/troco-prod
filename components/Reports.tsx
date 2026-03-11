@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Transaction } from '../types';
+import { Transaction, BankAccount, UserProfile } from '../types';
 import { parseDateFromDB, formatDateDisplay, getTodayLocalDate } from '../utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,14 +10,22 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useNotification } from '../contexts/NotificationContext';
 import { CustomSelect } from './CustomSelect';
+import SuperPaywall from './SuperPaywall';
 
 interface ReportsProps {
   transactions: Transaction[];
+  accounts: BankAccount[];
+  user: UserProfile;
 }
 
 type DateRangeType = 'today' | '7_days' | '6_months' | 'ytd' | '1_year' | 'all';
 
-const Reports: React.FC<ReportsProps> = ({ transactions }) => {
+const Reports: React.FC<ReportsProps> = ({ transactions, accounts, user }) => {
+  const isSuper = user?.status_assinatura === 'active';
+
+  if (!isSuper) {
+    return <SuperPaywall feature="Relatórios Avançados" userEmail={user?.email} />;
+  }
   const [dateRange, setDateRange] = useState<DateRangeType>('6_months');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -331,11 +339,84 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     drawPremiumCard(20 + cardWidth + gap, startY, "Despesas Totais", formatCurrency(kpis.totalExpense), 'expense');
     drawPremiumCard(20 + (cardWidth * 2) + (gap * 2), startY, "Resultado Líquido", formatCurrency(kpis.netResult), 'net');
 
+    let currentY = startY + cardHeight + 20;
+
+    // --- TABELA DE CONTAS BANCÁRIAS (Se houver) ---
+    if (accounts && accounts.length > 0) {
+      doc.setFontSize(16);
+      doc.setTextColor(colors.textMain[0], colors.textMain[1], colors.textMain[2]);
+      doc.setFont("helvetica", "bold");
+      doc.text("Resumo de Contas", 20, currentY);
+
+      // Calcular saldos das contas baseado em TODAS as transações
+      const balances: Record<string, number> = {};
+      accounts.forEach(acc => {
+          balances[acc.id] = acc.saldo_inicial || 0;
+      });
+      transactions.forEach(t => {
+          if (t.status !== 'completed') return;
+          if (t.type === 'income' && t.accountId && balances[t.accountId] !== undefined) {
+              balances[t.accountId] += t.amount;
+          } else if (t.type === 'expense' && t.accountId && balances[t.accountId] !== undefined) {
+              balances[t.accountId] -= t.amount;
+          } else if (t.type === 'transfer' && t.amount > 0) {
+              if (t.accountId && balances[t.accountId] !== undefined) balances[t.accountId] -= t.amount;
+              if (t.destinationAccountId && balances[t.destinationAccountId] !== undefined) balances[t.destinationAccountId] += t.amount;
+          }
+      });
+
+      const accountsData = accounts.map(acc => {
+        const balance = balances[acc.id] || 0;
+        return [
+          acc.name,
+          acc.type,
+          formatCurrency(balance)
+        ];
+      });
+
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Conta / Instituição', 'Tipo', 'Saldo Atual']],
+        body: accountsData,
+        theme: 'plain',
+        headStyles: {
+          fillColor: colors.bgLight,
+          textColor: colors.textMain,
+          fontStyle: 'bold',
+          fontSize: 10,
+          cellPadding: { top: 6, bottom: 6, left: 4, right: 4 }
+        },
+        bodyStyles: {
+          textColor: colors.textMuted,
+          fontSize: 9,
+          cellPadding: { top: 5, bottom: 5, left: 4, right: 4 }
+        },
+        styles: {
+          font: 'helvetica',
+          lineColor: colors.border,
+          lineWidth: { bottom: 0.1 }
+        },
+        columnStyles: {
+          2: { halign: 'right', fontStyle: 'bold', textColor: colors.textMain }
+        },
+        didParseCell: function (data) {
+          if (data.section === 'body' && data.column.index === 2) {
+            const rawVal = (data.row.raw as string[])[2];
+            const isNegative = rawVal.includes('-');
+            data.cell.styles.textColor = isNegative ? colors.expense : colors.textMain;
+          }
+        },
+        margin: { left: 20, right: 20 }
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+    }
+
     // --- TABELA DE TRANSAÇÕES ---
     doc.setFontSize(16);
     doc.setTextColor(colors.textMain[0], colors.textMain[1], colors.textMain[2]);
     doc.setFont("helvetica", "bold");
-    doc.text("Detalhamento de Lançamentos", 20, startY + cardHeight + 20);
+    doc.text("Detalhamento de Lançamentos", 20, currentY);
 
     const tableData = filteredTransactions.map(t => [
       formatDateDisplay(t.date),
@@ -347,7 +428,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     ]);
 
     autoTable(doc, {
-      startY: startY + cardHeight + 25,
+      startY: currentY + 5,
       head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']],
       body: tableData,
       theme: 'plain', // Usando plain para customizar totalmente as bordas

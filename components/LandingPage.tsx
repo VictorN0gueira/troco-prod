@@ -20,7 +20,9 @@ import {
     ExternalLink,
     Target,
     Repeat,
-    XCircle
+    XCircle,
+    Building2,
+    Activity
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
@@ -182,6 +184,7 @@ const LandingPage: React.FC = () => {
                 <div className="absolute top-40 -right-20 w-72 h-72 bg-emerald-300 dark:bg-emerald-900/30 rounded-full mix-blend-multiply dark:mix-blend-lighten filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
 
                 <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
+
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 dark:bg-primary-500/10 border border-primary-100 dark:border-primary-500/20 text-primary-600 dark:text-primary-400 text-xs font-bold mb-8 animate-fade-in-up">
                         <Zap className="w-3 h-3 fill-current" />
                         <span>NOVO: Gestão de Investimentos Avançada</span>
@@ -194,10 +197,15 @@ const LandingPage: React.FC = () => {
                         </span>
                     </h1>
 
-                    {/* Lottie Animation 1 - Growth */}
-                    <div className="flex justify-center mb-8 animate-fade-in-up md:absolute md:top-20 md:right-10 md:mb-0 pointer-events-none opacity-50 dark:opacity-30 lg:opacity-100 lg:relative lg:top-0 lg:right-0 lg:opacity-100">
+                    {/* Lottie Animation 1 - Growth (Centered) */}
+                    <div className="flex justify-center mb-12 animate-fade-in-up md:absolute md:top-20 md:right-10 md:mb-0 pointer-events-none opacity-50 dark:opacity-30 lg:opacity-100 lg:relative lg:top-0 lg:right-0 lg:opacity-100">
                         {/* @ts-ignore */}
-                        <dotlottie-wc src="https://lottie.host/b973fc56-4f42-4bb1-be7f-853a3bfbf744/JqenXfBHCC.lottie" style={{ width: '200px', height: '200px' }} autoplay loop></dotlottie-wc>
+                        <dotlottie-wc 
+                            src="https://lottie.host/b973fc56-4f42-4bb1-be7f-853a3bfbf744/JqenXfBHCC.lottie" 
+                            style={{ width: '250px', height: '250px' }} 
+                            autoplay 
+                            loop
+                        ></dotlottie-wc>
                     </div>
 
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-12 leading-relaxed animate-fade-in-up" style={{ animationDelay: '200ms' }}>
@@ -258,10 +266,12 @@ const LandingPage: React.FC = () => {
                     <div className="flex flex-wrap justify-center gap-8">
                         {[
                             { icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10', title: 'Gestão de Cartões', desc: 'Acompanhe faturamentos, limites e melhores datas de compra automaticamente.' },
-                            { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10', title: 'Investimentos', desc: 'Sua carteira consolidada com cotações em tempo real e análise de performance.' },
+                            { icon: Building2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10', title: 'Contas Bancárias', desc: 'Centralize todos os seus saldos. Realize transferências entre contas e acompanhe seu fluxo de caixa real.' },
+                            { icon: TrendingUp, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10', title: 'Investimentos', desc: 'Sua carteira consolidada com cotações em tempo real e análise de performance.' },
                             { icon: Bell, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10', title: 'Contas e Lembretes', desc: 'Nunca mais esqueça de pagar um boleto. Notificações inteligentes de vencimento.' },
-                            { icon: MessageCircle, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10', title: 'Agente WhatsApp', desc: 'Interaja com seu assistente financeiro direto pelo WhatsApp via comandos de voz ou texto.' },
-                            { icon: Repeat, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10', title: 'Gestor de Assinaturas', desc: 'Visualize, analise e controle todos seus gastos recorrentes em um painel dedicado. Saiba exatamente quanto suas assinaturas custam ao ano.' },
+                            { icon: Repeat, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10', title: 'Gestor de Assinaturas', desc: 'Controle todos os seus serviços recorrentes e evite gastos desnecessários com renovações.' },
+                            { icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50 dark:bg-teal-500/10', title: 'Relatórios Inteligentes', desc: 'Visualize sua saúde financeira com gráficos detalhados e insights automáticos.' },
+                            { icon: MessageCircle, color: 'text-primary-500', bg: 'bg-primary-50 dark:bg-primary-500/10', title: 'Agente WhatsApp', desc: 'Interaja com seu assistente financeiro direto pelo WhatsApp via comandos de voz ou texto.' },
                             { icon: Target, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10', title: 'Metas Financeiras', desc: 'Defina, acompanhe e alcance seus objetivos financeiros mais rápido com metas inteligentes.' }
                         ].map((f, i) => (
                             <div key={i} className="flex-1 min-w-[280px] max-w-[320px] group p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-primary-500/50 hover:shadow-2xl hover:shadow-primary-500/10 transition-all duration-500">
@@ -427,9 +437,10 @@ const LandingPage: React.FC = () => {
                             </div>
                             <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-700">
                                 {[
-                                    '30 lançamentos/mês',
+                                    '20 lançamentos/mês',
+                                    '2 contas bancárias',
                                     '5 assinaturas recorrentes',
-                                    '10 lembretes pendentes',
+                                    '5 lembretes pendentes',
                                     '5 metas financeiras',
                                     'Cartões (básico)',
                                     'Relatórios básicos',
@@ -439,7 +450,7 @@ const LandingPage: React.FC = () => {
                                         {f}
                                     </div>
                                 ))}
-                                {['Investimentos', 'Agente WhatsApp IA', 'Suporte prioritário'].map((f, i) => (
+                                {['Investimentos', 'Agente WhatsApp IA', 'Suporte prioritário', 'Relatórios avançados'].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-slate-400">
                                         <XCircle className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
                                         {f}
@@ -546,13 +557,14 @@ const LandingPage: React.FC = () => {
                         {/* Feature Rows */}
                         <div className="mt-2 space-y-1">
                             {[
-                                { feature: 'Lançamentos / mês', free: '30', monthly: 'Ilimitados', annual: 'Ilimitados' },
+                                { feature: 'Lançamentos / mês', free: '20', monthly: 'Ilimitados', annual: 'Ilimitados' },
+                                { feature: 'Contas Bancárias', free: '2', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
                                 { feature: 'Assinaturas recorrentes', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
-                                { feature: 'Lembretes pendentes', free: '10', monthly: 'Ilimitados', annual: 'Ilimitados' },
+                                { feature: 'Lembretes pendentes', free: '5', monthly: 'Ilimitados', annual: 'Ilimitados' },
                                 { feature: 'Metas financeiras', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
                                 { feature: 'Gestão de Cartões', free: 'Básica', monthly: true, annual: true },
                                 { feature: 'Investimentos', free: false, monthly: true, annual: true },
-                                { feature: 'Relatórios avançados', free: true, monthly: true, annual: true },
+                                { feature: 'Relatórios avançados', free: false, monthly: true, annual: true },
                                 { feature: 'Agente WhatsApp IA', free: false, monthly: true, annual: true },
                                 { feature: 'Gestor de Assinaturas', free: true, monthly: true, annual: true },
                                 { feature: 'Suporte prioritário', free: false, monthly: true, annual: true },

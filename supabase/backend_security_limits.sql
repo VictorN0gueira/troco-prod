@@ -30,13 +30,14 @@ BEGIN
   -- LIMIT CHECK 1: Max 10 Active Reminders
   -- ==========================================================
   -- A reminder is identified by esta_pago = false
-  IF NEW.esta_pago = false THEN
-    SELECT COUNT(*) INTO v_reminder_count
-    FROM public.transacoes
-    WHERE user_id = NEW.user_id AND esta_pago = false;
+  -- LIMIT CHECK 1: Max 5 Active Reminders
+  SELECT COUNT(*) INTO v_reminder_count
+  FROM public.transacoes
+  WHERE user_id = NEW.user_id AND esta_pago = false;
 
-    IF v_reminder_count >= 10 THEN
-      RAISE EXCEPTION 'Limites do Plano: O plano gratuito permite no máximo 10 lembretes ativos.';
+  IF NEW.esta_pago = false AND TG_OP = 'INSERT' THEN
+    IF v_reminder_count >= 5 THEN
+      RAISE EXCEPTION 'Limites do Plano: O plano gratuito permite no máximo 5 lembretes ativos.';
     END IF;
   END IF;
 

@@ -39,6 +39,11 @@ export const budgetsDB = localforage.createInstance({
     storeName: 'budgets'
 });
 
+export const accountsDB = localforage.createInstance({
+    name: 'TrocoDB',
+    storeName: 'accounts'
+});
+
 export const syncQueueDB = localforage.createInstance({
     name: 'TrocoDB',
     storeName: 'sync_queue'

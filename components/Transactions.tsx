@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Transaction, CreditCard, Budget } from '../types';
+import { Transaction, CreditCard, Budget, BankAccount, TransactionType } from '../types';
 import { CATEGORIES, CATEGORY_ICONS } from '../constants';
 import {
   getTodayLocalDate,
@@ -59,12 +59,13 @@ interface TransactionsProps {
   cards?: CreditCard[];
   user?: any;
   budgets?: Budget[];
+  accounts?: BankAccount[];
   isLoadingData?: boolean;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddMultiple, onEdit, onDelete, cards = [], user, budgets = [], isLoadingData = false }) => {
+const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddMultiple, onEdit, onDelete, cards = [], user, budgets = [], accounts = [], isLoadingData = false }) => {
   const { showNotification } = useNotification();
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [limitModalMessage, setLimitModalMessage] = useState<{ title: string; description: string }>({ title: '', description: '' });
@@ -111,10 +112,12 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
     amount: '',
     category: CATEGORIES[0],
     date: getTodayLocalDate(), // Usa data local correta
-    type: 'expense' as 'income' | 'expense',
+    type: 'expense' as TransactionType,
     status: 'pending' as 'completed' | 'pending',
     isRecurring: false,
     cardId: '' as string | number, // Store as string for select, convert to number on submit
+    accountId: '' as string,
+    destinationAccountId: '' as string,
     installments: 1
   };
 
@@ -319,6 +322,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
       status: t.status,
       isRecurring: t.isRecurring || false,
       cardId: t.cardId || '',
+      accountId: t.accountId || '',
+      destinationAccountId: '',
       installments: 1
     });
     setEditingId(t.id);
@@ -348,7 +353,9 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         type: formData.type,
         status: formData.status,
         isRecurring: formData.isRecurring,
-        cardId: formData.cardId ? Number(formData.cardId) : undefined
+        cardId: formData.cardId ? Number(formData.cardId) : undefined,
+        accountId: formData.accountId || undefined,
+        destinationAccountId: formData.destinationAccountId || undefined
       };
       onEdit(updatedTransaction);
     } else {
@@ -381,6 +388,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
             status: formData.status,
             isRecurring: false, // parcelas não são recorrentes infinitamente
             cardId: Number(formData.cardId),
+            accountId: undefined,
             installment_group: groupId
           });
         }
@@ -395,7 +403,9 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
           type: formData.type,
           status: formData.status,
           isRecurring: formData.isRecurring,
-          cardId: formData.cardId ? Number(formData.cardId) : undefined
+          cardId: formData.cardId ? Number(formData.cardId) : undefined,
+          accountId: formData.accountId || undefined,
+          destinationAccountId: formData.destinationAccountId || undefined
         };
 
         // Free plan limit checks before saving
@@ -1150,11 +1160,11 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                  <div className="grid grid-cols-2 gap-4 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
+                  <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, type: 'income' })}
-                      className={`py-2 rounded-lg text-sm font-semibold transition-all ${formData.type === 'income'
+                      onClick={() => setFormData({ ...formData, type: 'income', accountId: formData.accountId, destinationAccountId: '' })}
+                      className={`py-2 rounded-lg text-xs font-semibold transition-all ${formData.type === 'income'
                         ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
@@ -1163,13 +1173,23 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, type: 'expense' })}
-                      className={`py-2 rounded-lg text-sm font-semibold transition-all ${formData.type === 'expense'
+                      onClick={() => setFormData({ ...formData, type: 'expense', destinationAccountId: '' })}
+                      className={`py-2 rounded-lg text-xs font-semibold transition-all ${formData.type === 'expense'
                         ? 'bg-white dark:bg-slate-800 text-rose-500 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
                     >
                       Despesa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, type: 'transfer', cardId: '', isRecurring: false })}
+                      className={`py-2 rounded-lg text-xs font-semibold transition-all ${formData.type === 'transfer'
+                        ? 'bg-white dark:bg-slate-800 text-blue-500 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                      Transferir
                     </button>
                   </div>
 
@@ -1269,6 +1289,65 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
                       />
                     </div>
                   </div>
+
+                  {/* Bank Account Selector */}
+                  {accounts.length > 0 && !formData.cardId && (
+                    <div className="space-y-4">
+                      {formData.type === 'transfer' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div> Origem (Sairá de)
+                            </label>
+                            <CustomSelect
+                              value={formData.accountId}
+                              onChange={(val: string) => setFormData({ ...formData, accountId: val })}
+                              options={[
+                                { value: '', label: 'Selecione...' },
+                                ...accounts.map(acc => ({
+                                  value: acc.id,
+                                  label: acc.name
+                                }))
+                              ]}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Destino (Irá para)
+                            </label>
+                            <CustomSelect
+                              value={formData.destinationAccountId}
+                              onChange={(val: string) => setFormData({ ...formData, destinationAccountId: val })}
+                              options={[
+                                { value: '', label: 'Selecione...' },
+                                ...accounts.filter(a => a.id !== formData.accountId).map(acc => ({
+                                  value: acc.id,
+                                  label: acc.name
+                                }))
+                              ]}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            {formData.type === 'income' ? 'Receber em (Conta / Carteira)' : 'Pagar com (Conta / Carteira)'}
+                          </label>
+                          <CustomSelect
+                            value={formData.accountId}
+                            onChange={(val: string) => setFormData({ ...formData, accountId: val })}
+                            options={[
+                              { value: '', label: 'Nenhuma (Caixa Global)' },
+                              ...accounts.map(acc => ({
+                                value: acc.id,
+                                label: acc.name
+                              }))
+                            ]}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Credit Card Selector (Only for Expenses) */}
                   {formData.type === 'expense' && cards.length > 0 && (
