@@ -959,7 +959,6 @@ const AppContent: React.FC = () => {
           if (payload.eventType === 'INSERT') {
             const newTx = formatTransaction(payload.new);
             setTransactions((prev) => {
-              // Evita duplicatas vindas do Realtime se já estiver no estado (Optimistic UI / Sync Fila)
               if (prev.some(t => t.id === newTx.id)) return prev;
               return [newTx, ...prev];
             });
@@ -976,21 +975,21 @@ const AppContent: React.FC = () => {
               prev.filter((t) => t.id !== deletedId)
             );
           }
+          // Recarregar os saldos das contas sempre que houver mudança nas transações
+          fetchAccounts(user.id);
         }
       )
       .subscribe();
 
-    // Canal de Cartões
     const channelCards = supabase
       .channel(`realtime:cards:${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'credit_cards', filter: `user_id=eq.${user.id}` },
-        () => fetchCards(user.id) // Refetch é mais simples para manter consistência de totais
+        () => fetchCards(user.id)
       )
       .subscribe();
 
-    // Canal de Metas
     const channelGoals = supabase
       .channel(`realtime:goals:${user.id}`)
       .on(
@@ -1000,7 +999,6 @@ const AppContent: React.FC = () => {
       )
       .subscribe();
 
-    // Canal de Investimentos
     const channelInvestments = supabase
       .channel(`realtime:investments:${user.id}`)
       .on(
@@ -1010,11 +1008,21 @@ const AppContent: React.FC = () => {
       )
       .subscribe();
 
+    const channelAccounts = supabase
+      .channel(`realtime:accounts:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contas_bancarias', filter: `user_id=eq.${user.id}` },
+        () => fetchAccounts(user.id)
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channelTx);
       supabase.removeChannel(channelCards);
       supabase.removeChannel(channelGoals);
       supabase.removeChannel(channelInvestments);
+      supabase.removeChannel(channelAccounts);
     };
   }, [user.id]);
 
@@ -1078,8 +1086,9 @@ const AppContent: React.FC = () => {
         type: a.tipo,
         color: a.cor,
         saldo_inicial: Number(a.saldo_inicial),
+        saldo_atual: Number(a.saldo_atual),
         created_at: a.created_at,
-        balance: 0 // Will be calculated by UI
+        balance: Number(a.saldo_atual) || 0
       }));
       setAccounts(mapped);
       await accountsDB.setItem(`accounts_${userId}`, mapped);

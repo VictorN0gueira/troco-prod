@@ -172,33 +172,11 @@ export default function BankAccounts({ accounts, transactions, onAdd, onEdit, on
     // Calcula saldos baseados nas transações
     const accountBalances = useMemo(() => {
         const balances: Record<string, number> = {};
-
-        // Inicializar com saldo inicial
         accounts.forEach(a => {
-            balances[a.id] = Number(a.saldo_inicial) || 0;
+            balances[a.id] = a.saldo_atual ?? a.balance ?? a.saldo_inicial ?? 0;
         });
-
-        // Somar e subtrair transações
-        transactions.forEach(t => {
-            // Ignorar transações futuras ou não pagas? Normalmente saldo atual é das completadas
-            if (t.status !== 'completed' && String(t.status).toLowerCase() !== 'pago') return;
-
-            if (t.type === 'income' && t.accountId && balances[t.accountId] !== undefined) {
-                balances[t.accountId] += t.amount;
-            } else if (t.type === 'expense' && t.accountId && balances[t.accountId] !== undefined) {
-                balances[t.accountId] -= t.amount;
-            } else if (t.type === 'transfer' && t.amount > 0) {
-                if (t.accountId && balances[t.accountId] !== undefined) {
-                    balances[t.accountId] -= t.amount;
-                }
-                if (t.destinationAccountId && balances[t.destinationAccountId] !== undefined) {
-                    balances[t.destinationAccountId] += t.amount;
-                }
-            }
-        });
-
         return balances;
-    }, [accounts, transactions]);
+    }, [accounts]);
 
     // Pagination Logic
     const totalItems = accounts.length;
