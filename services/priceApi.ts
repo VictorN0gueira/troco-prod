@@ -15,7 +15,7 @@
 import { Investment, InvestmentType, InvestmentNews } from '../types';
 import { supabase } from '../supabaseClient';
 
-// Helper function to replace AbortSignal.timeout which crashes on older iOS Safari
+// Helper function wrapper for fetch with AbortController for older browsers/iOS
 async function fetchWithTimeout(resource: RequestInfo | URL, options: RequestInit & { timeout?: number } = {}) {
     const { timeout = 8000 } = options;
 
@@ -389,33 +389,36 @@ async function fetchSelicRate(): Promise<number | null> {
 export async function fetchMarketOverview(): Promise<MarketOverview> {
     const overview: MarketOverview = { updatedAt: new Date() };
 
-    const safe = <T>(p: Promise<T>): Promise<T | null> =>
-        p.catch(() => null);
+    const safe = <T>(name: string, p: Promise<T>): Promise<T | null> =>
+        p.catch((e) => {
+            console.error(`[MarketOverview] API failed for ${name}:`, e);
+            return null;
+        });
 
     const [awesomeJson, mbBtcJson, cgCryptoJson, brapiIbovJson, selicRate] = await Promise.all([
         // USD/BRL + EUR/BRL + XAU/BRL — AwesomeAPI (free, CORS-friendly, no key)
-        safe(
+        safe('AwesomeAPI (USD/EUR)',
             fetchWithTimeout('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,XAU-BRL', {
                 timeout: 8_000,
             }).then(r => r.ok ? r.json() : null)
         ),
         // BTC price — Mercado Bitcoin (Brazilian exchange, always available, CORS ok)
-        safe(
+        safe('MercadoBitcoin',
             fetchWithTimeout('https://www.mercadobitcoin.net/api/BTC/ticker/', {
                 timeout: 8_000,
             }).then(r => r.ok ? r.json() : null)
         ),
         // BTC + ETH price & 24h change — CoinGecko free tier (CORS ok)
-        safe(
+        safe('CoinGecko',
             fetchWithTimeout(
                 `${COINGECKO_BASE}/simple/price?ids=bitcoin,ethereum&vs_currencies=brl&include_24hr_change=true`,
                 { timeout: 8_000 },
             ).then(r => r.ok ? r.json() : null)
         ),
         // IBOV — via helper with multiple fallbacks
-        safe(fetchIbovData()),
+        safe('IBOV', fetchIbovData()),
         // SELIC annual rate — via helper with multiple fallbacks
-        safe(fetchSelicRate()),
+        safe('Selic', fetchSelicRate()),
     ]);
 
     // ── USD/BRL  { USDBRL: { bid, pctChange } }
@@ -572,7 +575,11 @@ export async function fetchInvestmentNews(): Promise<InvestmentNews[]> {
                 const json = await res.json();
                 const articles: InvestmentNews[] = json?.articles ?? [];
                 if (articles.length > 0) {
-                    return articles;
+                    // Limpar HTML Entities encodados pela Edge Function (ex: &amp;) nas imagens
+                    return articles.map(a => ({
+                        ...a,
+                        image: a.image ? a.image.replace(/&amp;/g, '&') : a.image
+                    }));
                 }
             }
         }
@@ -590,7 +597,7 @@ export async function fetchInvestmentNews(): Promise<InvestmentNews[]> {
     try {
         const promises = RSS_SOURCES.map(async (source) => {
             const encoded = encodeURIComponent(source.url);
-            const url = `https://api.rss2json.com/v1/api.json?rss_url=${encoded}&count=8`;
+            const url = `https://api.rss2json.com/v1/api.json?rss_url=${encoded}`;
             try {
                 const res = await fetchWithTimeout(url, { timeout: 8_000 });
                 if (!res.ok) return [];
