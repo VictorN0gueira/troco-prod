@@ -5,6 +5,7 @@ import { X, ChevronRight } from 'lucide-react';
 interface OnboardingTourProps {
     userId: number;
     user?: any;
+    isTermsAccepted?: boolean;
 }
 
 const TOUR_STEPS: Step[] = [
@@ -12,9 +13,12 @@ const TOUR_STEPS: Step[] = [
         target: 'body',
         placement: 'center',
         content: (
-            <div className="text-center space-y-3">
+            <div className="text-center space-y-3 p-2">
+                <div className="flex justify-center mb-2">
+                    <span className="text-4xl">✨</span>
+                </div>
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Bem-vindo ao Trocô! 🎉</h2>
-                <p className="text-slate-600 dark:text-slate-300 text-sm">
+                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
                     Ficamos felizes em ter você aqui. Preparamos um tour rápido para você conhecer as principais funcionalidades e começar a cuidar do seu dinheiro do jeito certo!
                 </p>
             </div>
@@ -139,64 +143,87 @@ const CustomTooltip = ({
     primaryProps,
     tooltipProps,
     isLastStep,
+    size,
 }: TooltipRenderProps) => {
+    const isFirstStep = index === 0;
     return (
         <div
             {...tooltipProps}
-            className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700/50 p-6 sm:p-8 max-w-[90vw] sm:max-w-sm w-full mx-auto"
+            className="flex flex-col max-w-[320px] md:max-w-[400px] bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-200/50 dark:border-slate-800/50 animate-in fade-in zoom-in duration-500"
+            style={{
+                zIndex: 10001,
+                backdropFilter: 'blur(20px)',
+                backgroundColor: 'rgba(255, 255, 255, 0.92)'
+            }}
         >
-            <div className="flex justify-between items-start mb-4">
-                {step.title && (
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-white w-full pr-6">
-                        {step.title}
-                    </h3>
-                )}
-                {/* Always push X button to top right even without title */}
-                <button
-                    {...closeProps}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95"
-                    aria-label="Pular Tour"
-                    title="Pular Tour"
-                >
-                    <X className="w-5 h-5" />
-                </button>
-            </div>
-
-            <div className="text-slate-600 dark:text-slate-300 text-sm mb-8 leading-relaxed">
-                {step.content}
-            </div>
-
-            <div className="flex items-center justify-between mt-auto">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-full">
-                    {index + 1} / {TOUR_STEPS.length}
-                </div>
-                <div className="flex items-center gap-2">
-                    {index > 0 && (
-                        <button
-                            {...backProps}
-                            className="px-4 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all active:scale-95"
-                        >
-                            Voltar
-                        </button>
-                    )}
+            <div className={`p-8 md:p-10 ${isLastStep ? 'bg-gradient-to-br from-primary-500/10 to-emerald-500/10' : ''}`}>
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-500 mb-1.5">Passo {index + 1} de {size}</span>
+                        <div className="h-1 w-12 bg-primary-500 rounded-full" />
+                    </div>
                     <button
-                        {...primaryProps}
-                        className="px-5 py-2 text-sm font-bold text-white bg-primary-500 hover:bg-primary-600 active:scale-95 rounded-xl transition-all shadow-lg shadow-primary-500/30 flex items-center justify-center gap-1 min-w-[100px]"
+                        onClick={(e) => closeProps.onClick(e as any)}
+                        className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all text-slate-400 dark:text-slate-500 active:scale-90"
+                        title="Pular Tour"
                     >
-                        {isLastStep ? 'Concluir' : 'Próximo'}
-                        {!isLastStep && <ChevronRight className="w-4 h-4" />}
+                        <X className="w-5 h-5" />
                     </button>
+                </div>
+
+                <div className="relative text-slate-700 dark:text-slate-200">
+                    {step.content}
+                </div>
+
+                <div className="mt-10 flex items-center justify-between gap-6">
+                    <div className="flex gap-2">
+                        {Array.from({ length: size }).map((_, i) => (
+                            <div
+                                key={i}
+                                className={`h-1.5 rounded-full transition-all duration-500 ${i === index ? 'w-8 bg-primary-500' : 'w-1.5 bg-slate-200 dark:bg-slate-800'}`}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {!isFirstStep && (
+                            <button
+                                {...backProps}
+                                className="px-4 py-2.5 text-sm font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                            >
+                                Voltar
+                            </button>
+                        )}
+                        <button
+                            {...primaryProps}
+                            className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/20 dark:shadow-white/10"
+                        >
+                            {isLastStep ? 'Começar Agora' : 'Próximo'}
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user }) => {
+const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user, isTermsAccepted = true }) => {
     const [run, setRun] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
     useEffect(() => {
-        if (!userId || userId === 0 || !user) return;
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        if (!userId || userId === 0 || !user || !isTermsAccepted) {
+            setRun(false);
+            return;
+        }
+
         if (window.location.hash !== '#/dashboard') return;
 
         const tourStatus = localStorage.getItem(`troco_tour_completed_${userId}`);
@@ -216,10 +243,29 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user }) => {
 
             const timer = setTimeout(() => {
                 setRun(true);
-            }, 1000);
+            }, 1500); // 1.5s delay to let animations finish
             return () => clearTimeout(timer);
         }
-    }, [userId, user]);
+    }, [userId, user, isTermsAccepted]);
+
+    const steps = TOUR_STEPS.map(step => {
+        if (isMobile && typeof step.target === 'string' && step.target.includes('nav')) {
+            return {
+                ...step,
+                placement: 'bottom' as const,
+                content: (
+                    <div className="space-y-2">
+                        {step.content}
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
+                            <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Dica Mobile</p>
+                            <p className="text-[11px] text-emerald-600 dark:text-emerald-300/80">O menu lateral pode ser aberto clicando no ícone ☰ no topo à esquerda.</p>
+                        </div>
+                    </div>
+                )
+            };
+        }
+        return step;
+    });
 
     const handleJoyrideCallback = (data: CallBackProps) => {
         const { status } = data;
@@ -240,7 +286,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ userId, user }) => {
             scrollToFirstStep
             showProgress={false} // Handled customly
             showSkipButton={false} // The X icon serves as skip in custom component
-            steps={TOUR_STEPS}
+            steps={steps}
             tooltipComponent={CustomTooltip}
             styles={{
                 options: {

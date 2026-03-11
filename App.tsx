@@ -1985,7 +1985,7 @@ const AppContent: React.FC = () => {
 
   return (
     <HashRouter>
-      <OnboardingTour userId={user.id} user={user} />
+      <OnboardingTour userId={user.id} user={user} isTermsAccepted={user.contrato_assinado} />
       <RecoveryModal isOpen={showRecoveryModal} onSubmit={handleRecoveryPasswordSubmit} />
       {isAuthenticated && user.id !== 0 && user.contrato_assinado === false && (
         <TermsModal
