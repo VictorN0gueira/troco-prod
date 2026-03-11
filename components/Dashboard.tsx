@@ -350,7 +350,7 @@ inline-block align-middle
         );
       case 'balance':
         return (
-          <SpotlightCard id="tour-dashboard-balance" className="bg-slate-900 border-none dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl group h-full">
+          <SpotlightCard className="bg-slate-900 border-none dark:bg-slate-950 rounded-3xl p-6 md:p-8 text-white shadow-xl group h-full">
             {/* Border Beam */}
             <div className="border-beam" />
 

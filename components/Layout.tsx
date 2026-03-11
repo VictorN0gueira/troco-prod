@@ -128,7 +128,7 @@ const Layout: React.FC<LayoutProps> = ({
           </button>
         </div>
 
-        <nav id="tour-nav-menu" className="flex-1 px-4 py-6 space-y-6 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto custom-scrollbar">
           {categories.map((category) => (
             <div key={category} className="space-y-1">
               <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2">
@@ -155,8 +155,6 @@ const Layout: React.FC<LayoutProps> = ({
 
                   return (
                     <NavLink
-                      key={item.path}
-                      id={`tour-nav-${item.path.replace('/', '')}`}
                       to={item.path}
                       onClick={() => setIsSidebarOpen(false)}
                       className={({ isActive }) => `
@@ -243,7 +241,6 @@ const Layout: React.FC<LayoutProps> = ({
             {togglePrivacyMode && (
               <div className="relative group">
                 <button
-                  id="tour-privacy-toggle"
                   onClick={togglePrivacyMode}
                   onContextMenu={(e) => { e.preventDefault(); togglePrivacyPlusMode?.(); }}
                   className={`p-2 sm:p-2.5 rounded-full transition-colors relative w-10 h-10 flex items-center justify-center overflow-hidden
@@ -273,7 +270,6 @@ const Layout: React.FC<LayoutProps> = ({
             )}
 
             <button
-              id="tour-theme-toggle"
               onClick={toggleDarkMode}
               className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >

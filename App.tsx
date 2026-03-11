@@ -46,7 +46,7 @@ import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB, budgetsDB, acc
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
-import OnboardingTour from './components/OnboardingTour';
+
 import TermsModal from './components/TermsModal';
 import TrocoBot from './components/TrocoBot';
 import LimitPaywallModal from './components/LimitPaywallModal';
@@ -1995,7 +1995,7 @@ const AppContent: React.FC = () => {
 
   return (
     <HashRouter>
-      <OnboardingTour userId={user.id} user={user} isTermsAccepted={user.contrato_assinado} />
+
       <RecoveryModal isOpen={showRecoveryModal} onSubmit={handleRecoveryPasswordSubmit} />
       {isAuthenticated && user.id !== 0 && user.contrato_assinado === false && (
         <TermsModal

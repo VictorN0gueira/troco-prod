@@ -135,9 +135,17 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
         const isoStr = value.length === 7 ? value + '-01' : value;
         const date = new Date(isoStr + 'T12:00:00');
         if (isNaN(date.getTime())) return value;
-        if (mode === 'month') {
+        
+        // Se for uma data completa (YYYY-MM-DD), mostra formatada com dia
+        if (value.length === 10) {
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+        
+        // Se for apenas mês (YYYY-MM), mostra mês longo e ano
+        if (mode === 'month' || value.length === 7) {
             return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         }
+        
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }, [value, mode]);
 
@@ -343,11 +351,12 @@ export const CustomCalendar: React.FC<CustomCalendarProps> = ({
                                 type="button"
                                 onClick={() => {
                                     const now = new Date();
-                                    if (mode === 'month') {
-                                        onChange(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
-                                    } else {
-                                        onChange(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
-                                    }
+                                    const y = now.getFullYear();
+                                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                                    const d = String(now.getDate()).padStart(2, '0');
+                                    
+                                    // Sempre retorna a data completa para o filtro ser preciso
+                                    onChange(`${y}-${m}-${d}`);
                                     setIsOpen(false);
                                 }}
                                 className="flex-1 py-3 text-xs font-black text-primary-500 hover:text-primary-600 uppercase tracking-widest transition-colors hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-xl"
