@@ -147,6 +147,7 @@ export interface Budget {
   user_id: number;
   categoria: string;
   valor_limite: number;
+  valor_consumido?: number;
   mes: number;
   ano: number;
 }

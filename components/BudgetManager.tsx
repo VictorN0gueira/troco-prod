@@ -132,7 +132,8 @@ export function BudgetManager({ budgets, transactions, onAddBudget, onUpdateBudg
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {paginatedBudgets.map(b => {
                             const Icon = CATEGORY_ICONS[b.categoria] || TrendingDown;
-                            const spent = currentTransactions.filter(t => t.category === b.categoria).reduce((acc, t) => acc + t.amount, 0);
+                            // Use valor_consumido from DB if available (fallback to frontend calc for legacy/offline)
+                            const spent = b.valor_consumido !== undefined ? b.valor_consumido : currentTransactions.filter(t => t.category === b.categoria).reduce((acc, t) => acc + t.amount, 0);
                             const progress = Math.min((spent / b.valor_limite) * 100, 100);
                             const isOver = spent > b.valor_limite;
                             const isNear = progress >= 85 && !isOver;
