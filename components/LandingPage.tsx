@@ -243,7 +243,7 @@ const LandingPage: React.FC = () => {
                                     </div>
                                     <div className="flex-1 overflow-hidden relative flex items-center justify-center bg-slate-50 dark:bg-slate-900 ring-1 ring-inset ring-slate-200/50 dark:ring-slate-700/50">
                                         <img
-                                            src="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2Fdashboard_preview.png&version_id=null"
+                                            src="https://minio.vnone.com.br/api/v1/buckets/empresas/objects/download?preview=true&prefix=VN%20One%2FTroc%C3%B4%2Fdashboard_atualizado.png&version_id=null"
                                             alt="Dashboard Trocô"
                                             className="w-full h-full object-contain p-1 md:p-2 transition-transform duration-700 hover:scale-[1.01]"
                                         />
@@ -437,11 +437,11 @@ const LandingPage: React.FC = () => {
                             </div>
                             <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-700">
                                 {[
-                                    '20 lançamentos/mês',
+                                    '15 lançamentos/mês',
                                     '2 contas bancárias',
-                                    '5 assinaturas recorrentes',
+                                    '3 assinaturas recorrentes',
                                     '5 lembretes pendentes',
-                                    '5 metas financeiras',
+                                    '3 metas financeiras',
                                     'Cartões (básico)',
                                     'Relatórios básicos',
                                 ].map((f, i) => (
@@ -557,11 +557,11 @@ const LandingPage: React.FC = () => {
                         {/* Feature Rows */}
                         <div className="mt-2 space-y-1">
                             {[
-                                { feature: 'Lançamentos / mês', free: '20', monthly: 'Ilimitados', annual: 'Ilimitados' },
+                                { feature: 'Lançamentos / mês', free: '15', monthly: 'Ilimitados', annual: 'Ilimitados' },
                                 { feature: 'Contas Bancárias', free: '2', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
-                                { feature: 'Assinaturas recorrentes', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
+                                { feature: 'Assinaturas recorrentes', free: '3', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
                                 { feature: 'Lembretes pendentes', free: '5', monthly: 'Ilimitados', annual: 'Ilimitados' },
-                                { feature: 'Metas financeiras', free: '5', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
+                                { feature: 'Metas financeiras', free: '3', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
                                 { feature: 'Gestão de Cartões', free: 'Básica', monthly: true, annual: true },
                                 { feature: 'Investimentos', free: false, monthly: true, annual: true },
                                 { feature: 'Relatórios avançados', free: false, monthly: true, annual: true },

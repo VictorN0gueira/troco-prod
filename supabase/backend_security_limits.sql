@@ -42,7 +42,7 @@ BEGIN
   END IF;
 
   -- ==========================================================
-  -- LIMIT CHECK 2: Max 30 Transactions Per Month
+  -- LIMIT CHECK 2: Max 15 Transactions Per Month
   -- ==========================================================
   -- Check transactions matching the same YYYY-MM prefix as the new insert date
   v_month_prefix := to_char(NEW.data::date, 'YYYY-MM');
@@ -52,8 +52,8 @@ BEGIN
   WHERE user_id = NEW.user_id 
     AND to_char(data::date, 'YYYY-MM') = v_month_prefix;
 
-  IF v_transaction_count >= 30 THEN
-    RAISE EXCEPTION 'Limites do Plano: O plano gratuito permite no máximo 30 lançamentos por mês.';
+  IF v_transaction_count >= 15 THEN
+    RAISE EXCEPTION 'Limites do Plano: O plano gratuito permite no máximo 15 lançamentos por mês.';
   END IF;
 
   RETURN NEW;
@@ -112,5 +112,43 @@ CREATE TRIGGER enforce_free_tier_card_limits
   EXECUTE FUNCTION public.check_free_tier_card_limits();
 
 -- ==============================================================================
+-- 5. Create a function to check limits before inserting into metas (goals)
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.check_free_tier_goal_limits()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_tem_plano boolean;
+  v_goal_count integer;
+BEGIN
+  SELECT tem_plano INTO v_tem_plano
+  FROM public.usuarios
+  WHERE id = NEW.user_id;
+
+  IF v_tem_plano = true THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT COUNT(*) INTO v_goal_count
+  FROM public.metas
+  WHERE user_id = NEW.user_id;
+
+  IF v_goal_count >= 3 THEN
+    RAISE EXCEPTION 'Limites do Plano: O plano gratuito permite no máximo 3 metas financeiras.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS enforce_free_tier_goal_limits ON public.metas;
+
+CREATE TRIGGER enforce_free_tier_goal_limits
+  BEFORE INSERT ON public.metas
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_free_tier_goal_limits();
+
 -- ✅ DONE! Agora é matematicamente impossível fraudar os limites pelo Frontend.
 -- ==============================================================================

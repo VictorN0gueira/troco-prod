@@ -295,12 +295,12 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   };
 
   const handleOpenCreate = () => {
-    // Limit check for free tier: max 30 transactions in TOTAL
+    // Limit check for free tier: max 15 transactions
     if (user && user.status_assinatura !== 'active') {
-      if (transactions.length >= 30) {
+      if (transactions.length >= 15) {
         setLimitModalMessage({
           title: 'Limite de Transações Atingido',
-          description: 'No plano gratuito você pode ter até 30 lançamentos. Assine o Super Trocô para lançamentos ilimitados e controle total.'
+          description: 'No plano gratuito você pode ter até 15 lançamentos. Assine o Super Trocô para lançamentos ilimitados e controle total.'
         });
         setIsLimitModalOpen(true);
         return; // Block opening the modal
@@ -413,10 +413,10 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
           if (newTransaction.isRecurring && newTransaction.type === 'expense') {
             // Group into unique subscriptions
             const uniqueSubscriptions = new Set(transactions.filter(t => t.type === 'expense' && t.isRecurring).map(t => t.description.trim().toLowerCase()));
-            if (uniqueSubscriptions.size >= 5) {
+            if (uniqueSubscriptions.size >= 3) {
               setLimitModalMessage({
                 title: 'Limite de Assinaturas Atingido',
-                description: 'No plano gratuito você pode ter até 5 assinaturas recorrentes. Assine o Super Trocô para assinaturas ilimitadas.'
+                description: 'No plano gratuito você pode ter até 3 assinaturas recorrentes. Assine o Super Trocô para assinaturas ilimitadas.'
               });
               setIsLimitModalOpen(true);
               return;
@@ -1475,7 +1475,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         isOpen={isLimitModalOpen}
         onClose={() => setIsLimitModalOpen(false)}
         title={limitModalMessage.title || 'Limite Atingido'}
-        description={limitModalMessage.description || 'No plano gratuito você pode ter até 30 lançamentos. Assine o Super Trocô para lançamentos ilimitados e controle total.'}
+        description={limitModalMessage.description || 'No plano gratuito você pode ter até 15 lançamentos. Assine o Super Trocô para lançamentos ilimitados e controle total.'}
         userEmail={user?.email}
       />
 

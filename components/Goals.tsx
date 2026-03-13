@@ -94,7 +94,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
 
     const openAddModal = () => {
         if (user && user.status_assinatura !== 'active') {
-            if (goals.length >= 5) {
+            if (goals.length >= 3) {
                 setIsLimitModalOpen(true);
                 return;
             }
@@ -259,8 +259,8 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
     return (
         <div className="space-y-6 animate-fade-in pb-20 lg:pb-0">
             {/* Over-limit banner — grandfathering: dados herdados do Pro são preservados */}
-            {user && user.status_assinatura !== 'active' && goals.length > 5 && (
-                <OverLimitBanner label="metas financeiras" current={goals.length} limit={5} />
+            {user && user.status_assinatura !== 'active' && goals.length > 3 && (
+                <OverLimitBanner label="metas financeiras" current={goals.length} limit={3} />
             )}
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -273,7 +273,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                     {/* Indicador de uso para plano free */}
                     {user.status_assinatura !== 'active' && (
                         <div className="mt-2 max-w-xs">
-                            <UsageMeter current={goals.length} max={5} label="metas" />
+                            <UsageMeter current={goals.length} max={3} label="metas" />
                         </div>
                     )}
                 </div>
@@ -692,7 +692,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                 isOpen={isLimitModalOpen}
                 onClose={() => setIsLimitModalOpen(false)}
                 title="Limite Atingido"
-                description="No plano gratuito você pode criar até 5 metas. Assine o Super Trocô para criar metas ilimitadas e realizar seus sonhos mais rápido."
+                description="No plano gratuito você pode criar até 3 metas. Assine o Super Trocô para criar metas ilimitadas e realizar seus sonhos mais rápido."
                 userEmail={user?.email}
             />
         </div >
