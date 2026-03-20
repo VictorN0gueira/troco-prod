@@ -111,18 +111,30 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
     const getCardMetrics = (card: CreditCard) => {
         const { id: cardId, limit_amount: limit, closing_day: closingDay, current_usage: dbUsage } = card;
         const now = new Date();
+        
+        // Mês da fatura atual (sempre a próxima se já passou do dia de fechamento)
         const currentInvoiceMonth = now.getDate() >= closingDay
             ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
             : new Date(now.getFullYear(), now.getMonth(), 1);
 
+        // Mês da fatura que acabou de fechar (mês anterior ao currentInvoiceMonth)
+        const priorInvoiceMonth = new Date(currentInvoiceMonth.getFullYear(), currentInvoiceMonth.getMonth() - 1, 1);
+
         const cardTransactions = transactions.filter(t => {
             if (t.cardId !== cardId || t.type !== 'expense') return false;
-
             const tInvoiceDate = getTransactionInvoiceDate(t.date, closingDay);
             return tInvoiceDate.getTime() === currentInvoiceMonth.getTime();
         });
 
+        const priorTransactions = transactions.filter(t => {
+            if (t.cardId !== cardId || t.type !== 'expense' || t.status === 'completed') return false;
+            const tInvoiceDate = getTransactionInvoiceDate(t.date, closingDay);
+            return tInvoiceDate.getTime() === priorInvoiceMonth.getTime();
+        });
+
         const invoiceAmount = cardTransactions.reduce((sum, t) => sum + t.amount, 0);
+        const invoiceAmountPrior = priorTransactions.reduce((sum, t) => sum + t.amount, 0);
+        const priorTransactionIds = priorTransactions.map(t => t.id);
 
         // Available limit should consider ALL pending expenses
         const allPendingExpenses = transactions.filter(t => t.cardId === cardId && t.status === 'pending' && t.type === 'expense');
@@ -133,7 +145,15 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
         const availableLimit = limit - totalUsedLimit;
         const usagePercentage = Math.min(150, (totalUsedLimit / limit) * 100); // cap at 150% for visual
 
-        return { invoiceAmount, availableLimit, currentInvoiceMonth, totalUsedLimit, usagePercentage };
+        return { 
+            invoiceAmount, 
+            invoiceAmountPrior, 
+            priorTransactionIds, 
+            availableLimit, 
+            currentInvoiceMonth, 
+            totalUsedLimit, 
+            usagePercentage 
+        };
     };
 
     const handleOpenModal = (card?: CreditCard) => {
@@ -421,7 +441,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
             >
                 <AnimatePresence>
                     {cards.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((card) => {
-                        const { invoiceAmount, availableLimit, currentInvoiceMonth, totalUsedLimit, usagePercentage } = getCardMetrics(card);
+                        const { invoiceAmount, invoiceAmountPrior, priorTransactionIds, availableLimit, currentInvoiceMonth, totalUsedLimit, usagePercentage } = getCardMetrics(card);
 
                         const isOverLimit = totalUsedLimit > card.limit_amount;
                         const barColor = usagePercentage >= 100 ? '#EF4444'
@@ -472,7 +492,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
                                                     const dueSoon = daysToDue <= 5 && daysToDue >= 0;
 
                                                     const refDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-                                                    const isClosed = isInvoiceClosed(card.closing_day, refDate);
+                                                    const isClosed = isInvoiceClosed(card.closing_day, refDate) && invoiceAmountPrior > 0;
 
                                                     if (isClosed) return <span className="bg-rose-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1 animate-pulse"><Lock className="w-3 h-3" /> Fatura Fechada</span>;
                                                     if (bestDay) return <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><Check className="w-3 h-3" /> Melhor Dia</span>;
@@ -545,19 +565,29 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
                                 </GlareCard>
 
                                 {/* Action Buttons — always visible on mobile, hover on desktop */}
-                                <div className="flex gap-2 mt-2 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-800/30 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-semibold transition-all active:scale-95 border border-blue-200 dark:border-blue-700/50"
-                                    >
-                                        <Edit2 className="w-3.5 h-3.5" /> Editar
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(card.id); }}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-800/30 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold transition-all active:scale-95 border border-rose-200 dark:border-rose-700/50"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" /> Excluir
-                                    </button>
+                                <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+                                    {isInvoiceClosed(card.closing_day, new Date(new Date().getFullYear(), new Date().getMonth(), 1)) && invoiceAmountPrior > 0 && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handlePayInvoiceClick(card.id, invoiceAmountPrior, priorTransactionIds); }}
+                                            className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-primary-500/20 mb-1 sm:mb-0"
+                                        >
+                                            <Check className="w-3.5 h-3.5" /> Pagar Fatura
+                                        </button>
+                                    )}
+                                    <div className="flex gap-2 flex-1 w-full">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleOpenModal(card); }}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-800/30 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-semibold transition-all active:scale-95 border border-blue-200 dark:border-blue-700/50"
+                                        >
+                                            <Edit2 className="w-3.5 h-3.5" /> Editar
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(card.id); }}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-800/30 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold transition-all active:scale-95 border border-rose-200 dark:border-rose-700/50"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" /> Excluir
+                                        </button>
+                                    </div>
                                 </div>
                             </motion.div>
                         );
