@@ -1359,24 +1359,53 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const payCardInvoice = async (cardId: number, totalAmount: number, invoiceTransactionsIds: string[], accountId?: string) => {
+  const payCardInvoice = async (cardId: number, totalAmount: number, invoiceTransactionsIds: string[], accountId?: string, paymentAmount?: number) => {
     // 1. Encontrar o cartão correspondente e atualizar limite no JS
     const cardToPay = cards.find(c => c.id === cardId);
     if (!cardToPay) return;
 
+    const actualPaid = paymentAmount !== undefined ? paymentAmount : totalAmount;
+    const remaining = totalAmount - actualPaid;
+    
+    // Adicionar Transação de "Pagamento de Fatura" para o Histórico de Débito da Conta
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayString = `${y}-${m}-${d}`;
+
+    const rolloverTxId = remaining > 0 ? generateTransactionId(6) : '';
+
     // 2. Atualizar localmente as transações da fatura e limite do cartão
-    setTransactions(prev => prev.map(t =>
-      invoiceTransactionsIds.includes(t.id) ? { ...t, status: 'completed' } : t
-    ));
+    setTransactions(prev => {
+        const updated = prev.map(t =>
+            invoiceTransactionsIds.includes(t.id) ? { ...t, status: 'completed' as const } : t
+        );
+        
+        if (remaining > 0) {
+            return [{
+                id: rolloverTxId,
+                description: `Rotativo / Restante da Fatura`,
+                amount: remaining,
+                type: 'expense',
+                category: 'Financeiro',
+                date: todayString, // Data atual para cair na fatura aberta
+                status: 'pending',
+                isRecurring: false,
+                cardId: cardId
+            }, ...updated];
+        }
+        return updated;
+    });
 
     setCards(prev => prev.map(c =>
-      c.id === cardId ? { ...c, current_usage: Math.max(0, c.current_usage - totalAmount) } : c
+      c.id === cardId ? { ...c, current_usage: Math.max(0, c.current_usage - actualPaid) } : c
     ));
 
     if (user.id !== 0 && isOnline) {
       // 3. Update BD
 
-      // Update das transações para esta_pago = true
+      // Update das transações originais para esta_pago = true
       const { error: txError } = await supabase
         .from('transacoes')
         .update({ esta_pago: true })
@@ -1391,30 +1420,39 @@ const AppContent: React.FC = () => {
         });
       }
 
+      // Inserir Rolagem (caso o valor pago seja menor que a fatura)
+      if (remaining > 0) {
+         const payloadRollover = {
+             user_id: user.id,
+             descricao: `Rotativo / Restante da Fatura`,
+             valor: remaining,
+             tipo: 'Despesa',
+             categoria: 'Financeiro',
+             data: todayString,
+             esta_pago: false,
+             identificador: rolloverTxId,
+             is_recurring: false,
+             card_id: cardId,
+         };
+         const { error: rollError } = await supabase.from('transacoes').insert(payloadRollover);
+         if (rollError) console.error("Erro ao inserir rolagem:", rollError);
+      }
+
       // Atualizar current_usage no Cartão
-      const newUsage = Math.max(0, cardToPay.current_usage - totalAmount);
+      const newUsage = Math.max(0, cardToPay.current_usage - actualPaid);
       const { error: cardError } = await supabase
         .from('credit_cards')
         .update({ current_usage: newUsage })
         .eq('id', cardToPay.id);
 
-      if (cardError) {
-        console.error("Erro ao atualizar limite do cartão:", cardError);
-      }
-
-      // Adicionar Transação de "Pagamento de Fatura"
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const d = String(now.getDate()).padStart(2, '0');
-      const todayString = `${y}-${m}-${d}`;
+      if (cardError) console.error("Erro ao atualizar limite do cartão:", cardError);
 
       const paymentTxId = generateTransactionId(6);
 
       const payloadPayment = {
         user_id: user.id,
         descricao: `Pagamento de Fatura - ${cardToPay.name}`,
-        valor: totalAmount,
+        valor: actualPaid,
         tipo: 'Despesa',
         categoria: 'Financeiro',
         data: todayString,

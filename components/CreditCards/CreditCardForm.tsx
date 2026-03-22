@@ -20,6 +20,8 @@ interface FormDataProps {
     brand: string;
     current_usage: string;
     cashback_rate: string;
+    annual_fee_date: string;
+    annual_fee_amount: string;
 }
 
 interface CreditCardFormProps {
@@ -53,14 +55,14 @@ const CreditCardForm: React.FC<CreditCardFormProps> = ({
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div className="flex min-h-screen items-start justify-center px-4 pt-12 pb-24 text-center sm:items-center sm:p-0">
             <div
                 className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity"
                 aria-hidden="true"
                 onClick={onClose}
             />
             <span className="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
-            <div className="relative inline-block transform overflow-hidden rounded-3xl bg-white dark:bg-slate-850 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-slate-100 dark:border-slate-800 align-bottom sm:align-middle w-full">
+            <div className="relative inline-block transform overflow-hidden rounded-3xl bg-white dark:bg-slate-850 text-left shadow-2xl transition-all w-full my-8 sm:max-w-lg border border-slate-100 dark:border-slate-800 sm:align-middle">
                 <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 rounded-t-3xl">
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white">
                         {editingCard ? 'Editar Cartão' : 'Novo Cartão'}
@@ -150,6 +152,47 @@ const CreditCardForm: React.FC<CreditCardFormProps> = ({
                                 />
                                 <Calendar className="absolute right-3 top-3.5 w-5 h-5 text-slate-400 pointer-events-none" />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Anuidade */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Mês da Anuidade</label>
+                            <select
+                                value={formData.annual_fee_date}
+                                onChange={e => setFormData({ ...formData, annual_fee_date: e.target.value })}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                            >
+                                <option value="">Não possui</option>
+                                <option value="01-01">Janeiro</option>
+                                <option value="02-01">Fevereiro</option>
+                                <option value="03-01">Março</option>
+                                <option value="04-01">Abril</option>
+                                <option value="05-01">Maio</option>
+                                <option value="06-01">Junho</option>
+                                <option value="07-01">Julho</option>
+                                <option value="08-01">Agosto</option>
+                                <option value="09-01">Setembro</option>
+                                <option value="10-01">Outubro</option>
+                                <option value="11-01">Novembro</option>
+                                <option value="12-01">Dezembro</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Valor Total</label>
+                            <input
+                                type="text"
+                                disabled={!formData.annual_fee_date}
+                                value={formData.annual_fee_amount}
+                                onChange={e => {
+                                    const raw = e.target.value.replace(/\D/g, '');
+                                    const num = raw ? Number(raw) / 100 : 0;
+                                    setFormData({ ...formData, annual_fee_amount: raw ? formatCurrency(num) : '' });
+                                }}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50"
+                                placeholder="R$ 0,00"
+                            />
                         </div>
                     </div>
 

@@ -25,7 +25,7 @@ interface CreditCardsProps {
     transactions: Transaction[];
     accounts?: BankAccount[];
     fetchCards: (userId: number) => Promise<void>;
-    payCardInvoice: (cardId: number, amount: number, transactionIds: string[], accountId?: string) => void;
+    payCardInvoice: (cardId: number, amount: number, transactionIds: string[], accountId?: string, paymentAmount?: number) => void;
 }
 
 const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, accounts = [], fetchCards, payCardInvoice }) => {
@@ -42,6 +42,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
     const [invoiceToPay, setInvoiceToPay] = useState<{ id: number, amount: number, transactionIds: string[] } | null>(null);
     const [isPayInvoiceModalOpen, setIsPayInvoiceModalOpen] = useState(false);
     const [paymentAccountId, setPaymentAccountId] = useState<string>('');
+    const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     // Pagination State
@@ -51,7 +52,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
     // Invoice Visual State
     const [viewingInvoice, setViewingInvoice] = useState<CreditCard | null>(null);
     const [currentInvoiceDate, setCurrentInvoiceDate] = useState(new Date());
-    const [invoiceTab, setInvoiceTab] = useState<'transactions' | 'history'>('transactions');
+    const [invoiceTab, setInvoiceTab] = useState<'transactions' | 'history' | 'subscriptions'>('transactions');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -63,6 +64,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
         brand: 'Mastercard',
         current_usage: '',
         cashback_rate: '',
+        annual_fee_date: '',
+        annual_fee_amount: ''
     });
 
     // Formatting Helper
@@ -171,10 +174,12 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
                 brand: card.brand || 'Mastercard',
                 current_usage: card.current_usage ? formatCurrency(card.current_usage) : '',
                 cashback_rate: card.cashback_rate ? card.cashback_rate.toString() : '',
+                annual_fee_date: card.annual_fee_date || '',
+                annual_fee_amount: card.annual_fee_amount ? formatCurrency(card.annual_fee_amount) : '',
             });
         } else {
             setEditingCard(null);
-            setFormData({ name: '', limit_amount: '', closing_day: '', due_day: '', color: '#10B981', brand: 'Mastercard', current_usage: '', cashback_rate: '' });
+            setFormData({ name: '', limit_amount: '', closing_day: '', due_day: '', color: '#10B981', brand: 'Mastercard', current_usage: '', cashback_rate: '', annual_fee_date: '', annual_fee_amount: '' });
         }
         setIsModalOpen(true);
     };
@@ -189,6 +194,9 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
         const rawUsage = formData.current_usage.toString().replace(/\D/g, "");
         const usageFloat = rawUsage ? Number(rawUsage) / 100 : 0;
 
+        const rawAnnualFee = formData.annual_fee_amount.toString().replace(/\D/g, "");
+        const annualFeeFloat = rawAnnualFee ? Number(rawAnnualFee) / 100 : null;
+
         const payload = {
             user_id: user.id,
             name: formData.name,
@@ -199,6 +207,8 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
             color: formData.color,
             brand: formData.brand,
             cashback_rate: formData.cashback_rate ? parseFloat(formData.cashback_rate) : null,
+            annual_fee_date: formData.annual_fee_date || null,
+            annual_fee_amount: annualFeeFloat,
         };
 
         try {
@@ -273,16 +283,24 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
 
     const handlePayInvoiceClick = (id: number, amount: number, transactionIds: string[]) => {
         setInvoiceToPay({ id, amount, transactionIds });
+        setPaymentAmountInput(amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
         setIsPayInvoiceModalOpen(true);
     };
 
     const confirmPayInvoice = () => {
         if (!invoiceToPay) return;
-        payCardInvoice(invoiceToPay.id, invoiceToPay.amount, invoiceToPay.transactionIds, paymentAccountId || undefined);
+        
+        // Parse the formatted currency string back to float
+        const rawAmount = paymentAmountInput.replace(/\D/g, "");
+        const parsedAmount = rawAmount ? Number(rawAmount) / 100 : invoiceToPay.amount;
+        
+        payCardInvoice(invoiceToPay.id, invoiceToPay.amount, invoiceToPay.transactionIds, paymentAccountId || undefined, parsedAmount);
+        
         setViewingInvoice(null);
         setIsPayInvoiceModalOpen(false);
         setInvoiceToPay(null);
         setPaymentAccountId('');
+        setPaymentAmountInput('');
     };
 
     // Invoice Navigation
@@ -499,6 +517,15 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
                                                     if (dueSoon) return <span className="bg-orange-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Vence em {daysToDue}d</span>;
                                                     return null;
                                                 })()}
+                                                {card.annual_fee_date && (() => {
+                                                    const currentMonth = new Date().getMonth() + 1;
+                                                    const feeMonth = parseInt(card.annual_fee_date.split('-')[0], 10);
+                                                    if (currentMonth === feeMonth) {
+                                                        const feeFmt = card.annual_fee_amount ? `(R$ ${card.annual_fee_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})` : '';
+                                                        return <span className="bg-purple-500/80 backdrop-blur-sm text-white text-[10px] uppercase font-bold px-2 py-1 rounded-full flex items-center gap-1 border border-purple-400/50"><Calendar className="w-3 h-3" /> Anuidade este Mês {feeFmt}</span>;
+                                                    }
+                                                    return null;
+                                                })()}
                                                 <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-black/20 backdrop-blur-sm ${health.color}`}>
                                                     {health.icon} {health.label}
                                                 </span>
@@ -701,29 +728,56 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
                 onClose={() => setIsPayInvoiceModalOpen(false)}
                 onConfirm={confirmPayInvoice}
                 title="Pagar Fatura"
-                message={`Tem certeza que deseja registrar o pagamento desta fatura no valor de R$ ${invoiceToPay?.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}? As transações serão marcadas como pagas e o limite do cartão será liberado.`}
-                confirmText="Pagar Fatura"
+                message={`Verifique o valor da fatura. Você pode adiantar valores maiores ou pagar um valor parcial (o saldo restante será rolado como uma nova despesa do cartão).`}
+                confirmText="Confirmar Pagamento"
                 cancelText="Cancelar"
                 type="info"
             >
-                {accounts.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <div className="mt-4 space-y-4">
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            Debitar da Conta:
+                            Valor Pago:
                         </label>
-                        <CustomSelect
-                            value={paymentAccountId}
-                            onChange={(val) => setPaymentAccountId(val)}
-                            options={[
-                                { value: '', label: 'Nenhuma (Caixa Global)' },
-                                ...accounts.map(acc => ({
-                                    value: acc.id,
-                                    label: acc.name
-                                }))
-                            ]}
-                        />
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">R$</span>
+                            <input
+                                type="text"
+                                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-slate-800 dark:text-white font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+                                value={paymentAmountInput}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, "");
+                                    const formatted = (Number(val) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                                    setPaymentAmountInput(formatted);
+                                }}
+                            />
+                        </div>
+                        <p className="text-xs text-slate-400 mt-2 flex justify-between">
+                            <span>Fatura atual fechada:</span>
+                            <span className="font-semibold text-slate-600 dark:text-slate-300">
+                                R$ {invoiceToPay?.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                        </p>
                     </div>
-                )}
+
+                    {accounts.length > 0 && (
+                        <div className="pt-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                Debitar de qual Conta?
+                            </label>
+                            <CustomSelect
+                                value={paymentAccountId}
+                                onChange={(val) => setPaymentAccountId(val)}
+                                options={[
+                                    { value: '', label: 'Nenhuma (Apenas registrar)' },
+                                    ...accounts.map(acc => ({
+                                        value: acc.id,
+                                        label: acc.name
+                                    }))
+                                ]}
+                            />
+                        </div>
+                    )}
+                </div>
             </ConfirmationModal>
         </div>
     );

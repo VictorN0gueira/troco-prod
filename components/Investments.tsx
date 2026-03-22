@@ -8,7 +8,8 @@ import {
     ArrowUpRight, ArrowDownRight, Info, RefreshCw, CheckCircle2,
     TrendingUp as TrendUp, Activity, Wifi, WifiOff, Clock,
     Layers, Home, ShieldCheck, Coins, Flame, Star,
-    Download, ChevronsUpDown, ChevronUp, AlertTriangle, Zap, Target
+    Download, ChevronsUpDown, ChevronUp, AlertTriangle, Zap, Target,
+    Calculator, PiggyBank
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, Tooltip as PieTooltip, Legend, ResponsiveContainer,
@@ -17,11 +18,17 @@ import {
 } from 'recharts';
 import ConfirmationModal from './ConfirmationModal';
 import { CustomSelect } from './CustomSelect';
+import TickerAutocomplete from './investments/TickerAutocomplete';
 import {
     fetchInvestmentPrices, fetchMarketOverview,
     PriceResult, MarketOverview, UPDATABLE_TYPES
 } from '../services/priceApi';
 import { CustomCalendar } from './ui/CustomCalendar';
+import SimuladorAportes from './investments/SimuladorAportes';
+import MetasAlocacao from './investments/MetasAlocacao';
+import CalculadoraIR from './investments/CalculadoraIR';
+import Dividendos from './investments/Dividendos';
+import { getPriceCache, setPriceCache } from './investments/helpers';
 
 // ─── Types & Helpers ─────────────────────────────────────────────────────────
 
@@ -354,7 +361,16 @@ const InvestmentModal: React.FC<ModalProps> = ({ investment, userId, onClose, on
                             </div>
                             <div>
                                 <label className={labelClass}>Ticker / Código</label>
-                                <input className={inputClass} placeholder="PETR4, BTC" value={form.ticker} onChange={e => set('ticker', e.target.value.toUpperCase())} />
+                                <TickerAutocomplete
+                                    value={form.ticker}
+                                    onChange={(val: string) => set('ticker', val)}
+                                    onSelect={(ticker: string) => {
+                                        set('ticker', ticker);
+                                        if (!form.name.trim()) set('name', ticker);
+                                    }}
+                                    className={inputClass}
+                                    placeholder="PETR4, MXRF11..."
+                                />
                             </div>
                         </div>
 
@@ -515,6 +531,12 @@ const Investments: React.FC<InvestmentsProps> = ({
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'list' | 'charts' | 'benchmark'>('list');
 
+    // ── New feature modals
+    const [showSimulador, setShowSimulador] = useState(false);
+    const [showMetas, setShowMetas] = useState(false);
+    const [showCalculadoraIR, setShowCalculadoraIR] = useState(false);
+    const [showDividendos, setShowDividendos] = useState(false);
+
     // ── Price Update state
     const [priceResults, setPriceResults] = useState<Map<string, PriceResult>>(new Map());
     const [updatingPrices, setUpdatingPrices] = useState(false);
@@ -526,17 +548,16 @@ const Investments: React.FC<InvestmentsProps> = ({
     const [market, setMarket] = useState<MarketOverview | null>(null);
     const [marketLoading, setMarketLoading] = useState(false);
 
-    // Load market overview on mount
+    // Load market overview on mount + apply cached prices
     useEffect(() => {
         const loadMarket = async () => {
             setMarketLoading(true);
             try {
-                // BACKEND SECURITY CHECK: Prevent React State Spoofing
                 if (user?.id) {
                     const { data: dbUser } = await supabase.from('usuarios').select('tem_plano').eq('id', user.id).single();
                     if (!dbUser?.tem_plano) {
                         setMarketLoading(false);
-                        return; // Silent fail if UI spoofed
+                        return;
                     }
                 }
                 const data = await fetchMarketOverview();
@@ -548,7 +569,28 @@ const Investments: React.FC<InvestmentsProps> = ({
             }
         };
         loadMarket();
+
+        // Apply cached prices instantly on load
+        const cached = getPriceCache();
+        if (cached) {
+            const updates = Object.entries(cached.prices)
+                .filter(([id]) => investments.some(i => i.id === id))
+                .map(([id, price]) => ({ id, current_price: price }));
+            if (updates.length > 0) {
+                onUpdatePrices(updates).catch(() => {});
+                setLastUpdated(new Date(cached.timestamp));
+            }
+        }
     }, [user?.id]);
+
+    // Auto-update prices every 15 minutes
+    useEffect(() => {
+        if (investments.length === 0) return;
+        const interval = setInterval(() => {
+            handleUpdatePrices();
+        }, 15 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [investments.length]);
 
     // Auto-dismiss success
     useEffect(() => {
@@ -590,6 +632,17 @@ const Investments: React.FC<InvestmentsProps> = ({
             if (updates.length > 0) {
                 await onUpdatePrices(updates);
                 setUpdateSuccess(true);
+                // Save to cache for instant load next time
+                const cacheMap: Record<string, number> = {};
+                updates.forEach(u => { cacheMap[u.id] = u.current_price; });
+                setPriceCache(cacheMap);
+
+                // Alerta se houve tickers com erro (sucesso parcial)
+                const failed = results.filter(r => r.error || r.price <= 0);
+                if (failed.length > 0) {
+                    const failedNames = failed.map(f => f.ticker).join(', ');
+                    setUpdateError(`${updates.length} atualizado(s), ${failed.length} com erro: ${failedNames}`);
+                }
             } else {
                 setUpdateError('Nenhum preço pôde ser atualizado. Verifique os tickers.');
             }
@@ -853,7 +906,7 @@ const Investments: React.FC<InvestmentsProps> = ({
                         Acompanhe e gerencie sua carteira de investimentos.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Update Prices Button */}
                     {updatableCount > 0 && (
                         <button
@@ -876,15 +929,30 @@ const Investments: React.FC<InvestmentsProps> = ({
                             )}
                         </button>
                     )}
+                    {/* New Feature Buttons */}
                     {investments.length > 0 && (
-                        <button
-                            onClick={exportCSV}
-                            title="Exportar carteira em CSV (abre no Excel)"
-                            className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all text-sm whitespace-nowrap"
-                        >
-                            <Download className="w-4 h-4" />
-                            Exportar CSV
-                        </button>
+                        <>
+                            <button onClick={() => setShowDividendos(true)} title="Dividendos & Proventos"
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all text-sm whitespace-nowrap">
+                                <Coins className="w-4 h-4" /> Proventos
+                            </button>
+                            <button onClick={() => setShowSimulador(true)} title="Simulador de Aportes"
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-violet-300 hover:text-violet-600 dark:hover:text-violet-400 transition-all text-sm whitespace-nowrap">
+                                <Calculator className="w-4 h-4" /> Simulador
+                            </button>
+                            <button onClick={() => setShowMetas(true)} title="Metas de Alocação"
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-amber-300 hover:text-amber-600 dark:hover:text-amber-400 transition-all text-sm whitespace-nowrap">
+                                <Target className="w-4 h-4" /> Metas
+                            </button>
+                            <button onClick={() => setShowCalculadoraIR(true)} title="Calculadora de IR"
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-rose-300 hover:text-rose-600 dark:hover:text-rose-400 transition-all text-sm whitespace-nowrap">
+                                <PiggyBank className="w-4 h-4" /> IR
+                            </button>
+                            <button onClick={exportCSV} title="Exportar carteira em CSV"
+                                className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all text-sm whitespace-nowrap">
+                                <Download className="w-4 h-4" /> CSV
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={openAdd}
@@ -933,55 +1001,55 @@ const Investments: React.FC<InvestmentsProps> = ({
             )}
 
             {/* ── Summary Cards ───────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                 {/* Total Investido */}
-                <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-                    <div className="absolute top-0 right-0 p-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <DollarSign className="w-20 h-20" />
+                <div className="bg-white dark:bg-slate-850 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+                    <div className="absolute top-0 right-0 p-3 sm:p-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                        <DollarSign className="w-12 h-12 sm:w-20 sm:h-20" />
                     </div>
-                    <div className="p-2.5 w-fit rounded-2xl bg-blue-50 dark:bg-blue-500/10 mb-3">
-                        <DollarSign className="w-5 h-5 text-blue-500" />
+                    <div className="p-1.5 sm:p-2.5 w-fit rounded-xl sm:rounded-2xl bg-blue-50 dark:bg-blue-500/10 mb-2 sm:mb-3">
+                        <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                     </div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Investido</p>
-                    <p className="text-xl font-bold text-slate-800 dark:text-white mt-1 truncate">
+                    <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Investido</p>
+                    <p className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mt-1 break-all leading-tight">
                         <BlurText privacyMode={privacyMode}>{formatCurrency(stats.totalCost)}</BlurText>
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">{stats.count} ativos</p>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-1">{stats.count} ativos</p>
                 </div>
 
                 {/* Patrimônio Atual */}
-                <div className="bg-white dark:bg-slate-850 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-                    <div className="absolute top-0 right-0 p-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <Briefcase className="w-20 h-20" />
+                <div className="bg-white dark:bg-slate-850 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-100 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+                    <div className="absolute top-0 right-0 p-3 sm:p-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                        <Briefcase className="w-12 h-12 sm:w-20 sm:h-20" />
                     </div>
-                    <div className="p-2.5 w-fit rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 mb-3">
-                        <Briefcase className="w-5 h-5 text-emerald-500" />
+                    <div className="p-1.5 sm:p-2.5 w-fit rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 mb-2 sm:mb-3">
+                        <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
                     </div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Patrimônio Atual</p>
-                    <p className="text-xl font-bold text-slate-800 dark:text-white mt-1 truncate">
+                    <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Patrimônio Atual</p>
+                    <p className="text-sm sm:text-xl font-bold text-slate-800 dark:text-white mt-1 break-all leading-tight">
                         <BlurText privacyMode={privacyMode}>{formatCurrency(stats.totalCurrent)}</BlurText>
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">Valor de mercado</p>
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-1">Valor de mercado</p>
                 </div>
 
                 {/* Lucro/Prejuízo */}
-                <div className={`rounded-3xl p-5 border shadow-lg dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 col-span-2 lg:col-span-1 ${stats.pnlAbs >= 0
+                <div className={`rounded-2xl sm:rounded-3xl p-3 sm:p-5 border shadow-lg dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 col-span-2 lg:col-span-1 ${stats.pnlAbs >= 0
                     ? 'bg-white dark:bg-slate-850 border-slate-100 dark:border-slate-800 shadow-slate-200/50'
                     : 'bg-white dark:bg-slate-850 border-slate-100 dark:border-slate-800 shadow-slate-200/50'
                     }`}>
-                    <div className="absolute top-0 right-0 p-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        {stats.pnlAbs >= 0 ? <TrendingUp className="w-20 h-20" /> : <TrendingDown className="w-20 h-20" />}
+                    <div className="absolute top-0 right-0 p-3 sm:p-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                        {stats.pnlAbs >= 0 ? <TrendingUp className="w-12 h-12 sm:w-20 sm:h-20" /> : <TrendingDown className="w-12 h-12 sm:w-20 sm:h-20" />}
                     </div>
-                    <div className={`p-2.5 w-fit rounded-2xl mb-3 ${stats.pnlAbs >= 0 ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-rose-50 dark:bg-rose-500/10'}`}>
+                    <div className={`p-1.5 sm:p-2.5 w-fit rounded-xl sm:rounded-2xl mb-2 sm:mb-3 ${stats.pnlAbs >= 0 ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-rose-50 dark:bg-rose-500/10'}`}>
                         {stats.pnlAbs >= 0
-                            ? <ArrowUpRight className="w-5 h-5 text-emerald-500" />
-                            : <ArrowDownRight className="w-5 h-5 text-rose-500" />}
+                            ? <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+                            : <ArrowDownRight className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />}
                     </div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lucro / Prejuízo</p>
-                    <p className={`text-xl font-bold mt-1 truncate ${stats.pnlAbs >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                    <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lucro / Prejuízo</p>
+                    <p className={`text-sm sm:text-xl font-bold mt-1 break-all leading-tight ${stats.pnlAbs >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
                         <BlurText privacyMode={privacyMode}>{formatCurrency(stats.pnlAbs)}</BlurText>
                     </p>
-                    <p className={`text-xs font-semibold mt-1 ${stats.pnlAbs >= 0 ? 'text-emerald-500' : 'text-rose-400'}`}>
+                    <p className={`text-[10px] sm:text-xs font-semibold mt-1 ${stats.pnlAbs >= 0 ? 'text-emerald-500' : 'text-rose-400'}`}>
                         {stats.totalCost > 0 ? formatPercent(stats.pnlPct) : '—'}
                     </p>
                 </div>
@@ -1460,6 +1528,20 @@ const Investments: React.FC<InvestmentsProps> = ({
                     onClose={() => setShowModal(false)}
                     onSave={handleSave}
                 />
+            )}
+
+            {/* New Feature Modals */}
+            {showSimulador && (
+                <SimuladorAportes onClose={() => setShowSimulador(false)} currentTotal={stats.totalCurrent} />
+            )}
+            {showMetas && (
+                <MetasAlocacao investments={investments} userId={user.id} onClose={() => setShowMetas(false)} />
+            )}
+            {showCalculadoraIR && (
+                <CalculadoraIR investments={investments} onClose={() => setShowCalculadoraIR(false)} />
+            )}
+            {showDividendos && (
+                <Dividendos investments={investments} userId={user.id} onClose={() => setShowDividendos(false)} />
             )}
 
             <ConfirmationModal

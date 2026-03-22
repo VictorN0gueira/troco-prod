@@ -116,6 +116,9 @@ export interface CreditCard {
   color: string;
   brand?: string;
   cashback_rate?: number;  // % de cashback (ex: 1.5 = 1,5%)
+  annual_fee_date?: string;
+  annual_fee_amount?: number;
+  virtual_cards?: { name: string; last4: string }[];
 }
 
 export interface InvestmentNews {

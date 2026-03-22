@@ -8,8 +8,8 @@ interface InvoiceViewerProps {
     viewingInvoice: CreditCard;
     transactions: Transaction[];
     currentInvoiceDate: Date;
-    invoiceTab: 'transactions' | 'history';
-    setInvoiceTab: React.Dispatch<React.SetStateAction<'transactions' | 'history'>>;
+    invoiceTab: 'transactions' | 'history' | 'subscriptions';
+    setInvoiceTab: React.Dispatch<React.SetStateAction<'transactions' | 'history' | 'subscriptions'>>;
     onClose: () => void;
     prevInvoice: () => void;
     nextInvoice: () => void;
@@ -160,10 +160,10 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({
                                 return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
                             });
 
-                            // Bar Chart Data (Last 6 months)
+                            // Bar Chart Data (1 month before, current, 4 months ahead)
                             const barData = Array.from({ length: 6 }).map((_, i) => {
                                 const d = new Date(currentInvoiceDate);
-                                d.setMonth(d.getMonth() - (5 - i));
+                                d.setMonth(d.getMonth() + (i - 1));
 
                                 const mtxs = transactions.filter(t => {
                                     if (t.cardId !== viewingInvoice.id || t.type !== 'expense') return false;
@@ -171,9 +171,14 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({
                                     return tInvDate.getTime() === d.getTime();
                                 });
 
+                                const isCurrent = i === 1;
+
                                 return {
                                     name: d.toLocaleDateString('pt-BR', { month: 'short' }),
-                                    amount: mtxs.reduce((sum, t) => sum + t.amount, 0)
+                                    fullName: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+                                    amount: mtxs.reduce((sum, t) => sum + t.amount, 0),
+                                    isCurrent,
+                                    fillColor: isCurrent ? viewingInvoice.color : '#94A3B8' // Destaque na fatura atual
                                 };
                             });
 
@@ -192,7 +197,7 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                                     {/* Evolution Bar Chart */}
                                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                        <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Evolução (6 meses)</h4>
+                                        <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Evolução & Projeção (6m)</h4>
                                         <div className="h-40">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -202,8 +207,13 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({
                                                         cursor={{ fill: 'rgba(51, 65, 85, 0.1)' }}
                                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                                         formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Fatura']}
+                                                        labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
                                                     />
-                                                    <Bar dataKey="amount" fill={viewingInvoice.color} radius={[4, 4, 0, 0]} />
+                                                    <Bar dataKey="amount" fill="#94A3B8" radius={[4, 4, 0, 0]}>
+                                                        {barData.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.fillColor} />
+                                                        ))}
+                                                    </Bar>
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -252,13 +262,20 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({
 
                         {/* Transaction List or History Tabs */}
                         <div>
-                            <div className="flex gap-4 mb-4 border-b border-slate-200 dark:border-slate-800 pb-2">
+                            <div className="flex gap-4 mb-4 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto custom-scrollbar whitespace-nowrap">
                                 <button
                                     onClick={() => setInvoiceTab('transactions')}
                                     className={`font-bold pb-2 border-b-2 transition-colors flex items-center gap-2 ${invoiceTab === 'transactions' ? 'text-primary-500 border-primary-500' : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
                                 >
                                     <TrendingUp className="w-4 h-4" />
                                     Fatura Atual
+                                </button>
+                                <button
+                                    onClick={() => setInvoiceTab('subscriptions')}
+                                    className={`font-bold pb-2 border-b-2 transition-colors flex items-center gap-2 ${invoiceTab === 'subscriptions' as any ? 'text-purple-500 border-purple-500' : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                >
+                                    <CalendarClock className="w-4 h-4" />
+                                    Assinaturas
                                 </button>
                                 <button
                                     onClick={() => setInvoiceTab('history')}
@@ -343,6 +360,51 @@ const InvoiceViewer: React.FC<InvoiceViewerProps> = ({
                                         })()}
                                     </div>
                                 </>
+                            ) : invoiceTab === 'subscriptions' ? (
+                                <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                    {/* Pega todas as transações recorrentes da fatura atual */}
+                                    {(() => {
+                                        const subTxs = transactions.filter(t => {
+                                            if (t.cardId !== viewingInvoice.id || t.type !== 'expense' || !t.isRecurring) return false;
+                                            const tInvoiceDate = getTransactionInvoiceDate(t.date, viewingInvoice.closing_day);
+                                            return tInvoiceDate.getTime() === currentInvoiceDate.getTime();
+                                        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                                        return (
+                                            <>
+                                                {subTxs.map(sub => (
+                                                    <div key={sub.id} className="flex justify-between items-center p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition-colors">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/10 flex items-center justify-center text-purple-500">
+                                                                <CalendarClock className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-slate-800 dark:text-white">{sub.description}</p>
+                                                                <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                                    Data da cobrança: {new Date(sub.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-bold text-slate-800 dark:text-white block mb-0.5">
+                                                                R$ {sub.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </span>
+                                                            <span className="text-[10px] uppercase font-bold text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded">
+                                                                RECORRENTE
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {subTxs.length === 0 && (
+                                                    <div className="text-center py-8 text-slate-400">
+                                                        <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                                        <p>Nenhuma assinatura ativa nesta fatura.</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </div>
                             ) : (
                                 <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
                                     {/* Pega todas as transações de pagamento de fatura deste cartão */}

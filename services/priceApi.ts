@@ -126,55 +126,71 @@ async function fetchBrapiQuotes(
     const results = new Map<string, Omit<PriceResult, 'investmentId'>>();
     if (tickers.length === 0) return results;
 
-    const joined = tickers.map(t => t.toUpperCase()).join(',');
+    const upperTickers = tickers.map(t => t.toUpperCase());
+    const joined = upperTickers.join(',');
+
+    const parseBrapiItem = (item: any): Omit<PriceResult, 'investmentId'> => ({
+        ticker: item.symbol,
+        price: Number(item.regularMarketPrice) || 0,
+        change: Number(item.regularMarketChangePercent) || 0,
+        changeAbs: Number(item.regularMarketChange) || 0,
+        high: Number(item.regularMarketDayHigh) || undefined,
+        low: Number(item.regularMarketDayLow) || undefined,
+        volume: Number(item.regularMarketVolume) || undefined,
+        source: 'brapi',
+    });
+
+    // Helper: fallback direto à Brapi (sem Edge Function), ticker por ticker
+    const fetchDirectSingle = async (ticker: string) => {
+        try {
+            const token = import.meta.env.VITE_BRAPI_TOKEN;
+            const url = `${BRAPI_BASE}/quote/${ticker}?currency=${currency}${token ? `&token=${token}` : ''}`;
+            const res = await fetchWithTimeout(url, { timeout: 8_000 });
+            if (!res.ok) return;
+            const json = await res.json();
+            for (const item of json?.results ?? []) {
+                results.set(item.symbol.toUpperCase(), parseBrapiItem(item));
+            }
+        } catch { /* ticker inválido — ignora */ }
+    };
 
     try {
-        // Tenta buscar via Edge Function no Supabase para não expor a chave publicamente
+        // 1. Tenta via Edge Function (aceita POST com body)
         const { data: json, error } = await supabase.functions.invoke('brapi', {
             body: { tickers: joined, currency }
         });
 
-        if (error || !json) {
-            // Fallback para uso direto consumindo do env localmente em modo dev ou se Edge function falhar/não existir
+        if (!error && json?.results?.length > 0) {
+            for (const item of json.results) {
+                results.set(item.symbol.toUpperCase(), parseBrapiItem(item));
+            }
+        } else {
+            // 2. Fallback: fetch direto batch
             const token = import.meta.env.VITE_BRAPI_TOKEN;
             const fallbackUrl = `${BRAPI_BASE}/quote/${joined}?currency=${currency}${token ? `&token=${token}` : ''}`;
             const res = await fetchWithTimeout(fallbackUrl, { timeout: 10_000 });
-            if (!res.ok) throw new Error(`Brapi HTTP ${res.status}`);
-            const fallbackJson = await res.json();
 
-            for (const item of fallbackJson?.results ?? []) {
-                results.set(item.symbol.toUpperCase(), {
-                    ticker: item.symbol,
-                    price: Number(item.regularMarketPrice) ?? 0,
-                    change: Number(item.regularMarketChangePercent) ?? 0,
-                    changeAbs: Number(item.regularMarketChange) ?? 0,
-                    high: Number(item.regularMarketDayHigh) ?? undefined,
-                    low: Number(item.regularMarketDayLow) ?? undefined,
-                    volume: Number(item.regularMarketVolume) ?? undefined,
-                    source: 'brapi',
-                });
+            if (res.ok) {
+                const fallbackJson = await res.json();
+                for (const item of fallbackJson?.results ?? []) {
+                    results.set(item.symbol.toUpperCase(), parseBrapiItem(item));
+                }
+            } else {
+                // 3. Fallback: cada ticker individualmente
+                await Promise.allSettled(upperTickers.map(fetchDirectSingle));
             }
-            return results;
         }
+    } catch {
+        // Última chance: individual
+        await Promise.allSettled(upperTickers.map(fetchDirectSingle));
+    }
 
-        for (const item of json?.results ?? []) {
-            results.set(item.symbol.toUpperCase(), {
-                ticker: item.symbol,
-                price: Number(item.regularMarketPrice) ?? 0,
-                change: Number(item.regularMarketChangePercent) ?? 0,
-                changeAbs: Number(item.regularMarketChange) ?? 0,
-                high: Number(item.regularMarketDayHigh) ?? undefined,
-                low: Number(item.regularMarketDayLow) ?? undefined,
-                volume: Number(item.regularMarketVolume) ?? undefined,
-                source: 'brapi',
-            });
-        }
-    } catch (err: any) {
-        // Mark each requested ticker as errored
-        for (const t of tickers) {
-            results.set(t.toUpperCase(), {
+    // Marcar tickers que não retornaram dado
+    for (const t of upperTickers) {
+        if (!results.has(t)) {
+            results.set(t, {
                 ticker: t, price: 0, change: 0, changeAbs: 0,
-                source: 'brapi', error: err.message,
+                source: 'brapi', error: 'Ticker não encontrado na Brapi',
             });
         }
     }
