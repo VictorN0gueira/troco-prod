@@ -49,6 +49,11 @@ const GamificationPanel: React.FC<GamificationPanelProps> = ({
   const levelData = useMemo(() => calculateLevel(profile.xp), [profile.xp]);
   const levelName = LEVEL_NAMES[levelData.level] || 'Aprendiz';
   const levelColors = LEVEL_COLORS[levelData.level] || LEVEL_COLORS[1];
+  const isAtFreeLimit = !isSuperPlan && levelData.level >= 5;
+
+  // Clampar XP visualmente para usuários free que excederam o limite por dados legados
+  const displayXP = isAtFreeLimit ? Math.min(profile.xp, levelData.nextLevelXP) : profile.xp;
+  const displayNextXP = levelData.nextLevelXP;
   const unlockedIds = useMemo(() => unlockedAchievements.map(a => a.achievement_id), [unlockedAchievements]);
 
   const freeAchievements = ACHIEVEMENTS_CATALOG.filter(a => a.tier === 'free');
@@ -128,26 +133,23 @@ const GamificationPanel: React.FC<GamificationPanelProps> = ({
 
             <div className="flex-1 w-full min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <div>
-                  {/* Nível atual e Cap Free badge */}
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-black uppercase tracking-widest ${levelColors.text}`}>
-                      {levelName}
-                    </span>
-                    {!isSuperPlan && levelData.level >= 5 && (
-                      <motion.span 
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="px-2.5 py-1 text-[9px] font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500 border border-amber-500/30 rounded-lg backdrop-blur-md uppercase tracking-tighter ring-1 ring-amber-500/10"
-                      >
-                        Limite Free Atingido
-                      </motion.span>
-                    )}
-                  </div>
-                </div>
-                <span className="text-sm text-slate-400 font-mono">
-                  {profile.xp} / {levelData.nextLevelXP} XP
+                <span className={`text-sm font-black uppercase tracking-widest ${levelColors.text}`}>
+                  {levelName}
                 </span>
+                <div className="flex flex-col items-end">
+                  <span className="text-sm text-slate-400 font-mono">
+                    {displayXP} / {displayNextXP} XP
+                  </span>
+                  {isAtFreeLimit && (
+                    <motion.span 
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-1 px-2 py-0.5 text-[8px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded ml-auto uppercase tracking-tighter"
+                    >
+                      Limite Free Atingido
+                    </motion.span>
+                  )}
+                </div>
               </div>
 
               {/* XP Progress Bar */}

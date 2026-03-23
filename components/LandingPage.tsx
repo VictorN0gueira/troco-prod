@@ -22,7 +22,10 @@ import {
     Repeat,
     XCircle,
     Building2,
-    Activity
+    Activity,
+    Trophy,
+    Medal,
+    Gift
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
@@ -341,6 +344,72 @@ const LandingPage: React.FC = () => {
                             <div className="relative z-10 w-full max-w-[380px]">
                                 <WhatsAppSimulation />
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* --- Gamification Showcase --- */}
+            <section id="gamification" className="py-24 relative overflow-hidden bg-white dark:bg-slate-950">
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <div className="flex flex-col lg:flex-row-reverse items-center gap-16">
+                        {/* Text Content */}
+                        <div className="flex-1 lg:pl-12">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 dark:bg-primary-500/10 border border-primary-100 dark:border-primary-500/20 text-primary-600 dark:text-primary-400 text-xs font-bold mb-8">
+                                <Trophy className="w-4 h-4" />
+                                <span>Revolução Financeira</span>
+                            </div>
+
+                            <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6 leading-tight">
+                                Ganhe enquanto <br />
+                                economiza <span className="text-primary-500 text-glow">dinheiro.</span>
+                            </h2>
+
+                            <p className="text-lg text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                                Transformamos suas finanças em um jogo de estratégia. Ganhe XP, suba 10 níveis de maestria e desbloqueie selos exclusivos que provam sua disciplina financeira.
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-12">
+                                {[
+                                    { icon: Star, title: 'Progressão de Nível', desc: 'De Iniciante a Magnata Supremo em uma jornada épica.' },
+                                    { icon: Zap, title: 'Desafios Reais', desc: 'Missões semanais que aceleram seus resultados.' },
+                                    { icon: ShieldCheck, title: 'Sistema Auditado', desc: 'Gamificação robusta e justa para todos.' },
+                                    { icon: Gift, title: 'Prêmios Visuais', desc: 'Personalize seu perfil com itens lendários.' }
+                                ].map((item, idx) => (
+                                    <div key={idx} className="flex gap-4">
+                                        <div className="w-12 h-12 shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center group-hover:bg-primary-500 transition-colors">
+                                            <item.icon className="w-6 h-6 text-primary-500" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1">{item.title}</h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => navigate('/login?mode=register')}
+                                className="group relative px-10 py-5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-black text-lg overflow-hidden transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                <span className="relative">Começar Jornada Grátis</span>
+                                <ArrowRight className="w-5 h-5 relative group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+
+                        {/* Visual Content (Lottie) */}
+                        <div className="flex-1 w-full lg:w-auto flex justify-center lg:justify-start">
+                           <div className="relative">
+                                {/* Glow behind animation */}
+                                <div className="absolute inset-0 bg-primary-500/10 blur-[100px] rounded-full scale-150" />
+                                {/* @ts-ignore */}
+                                 <dotlottie-wc
+                                     src="https://lottie.host/67b959c9-4869-44f0-b613-1f3c5cd3f7b0/biMq9VzSsw.lottie"
+                                     style={{ width: '300px', height: '300px' }}
+                                     autoplay
+                                     loop
+                                 />
+                           </div>
                         </div>
                     </div>
                 </div>
