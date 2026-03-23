@@ -283,7 +283,7 @@ const Layout: React.FC<LayoutProps> = ({
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-3 sm:gap-6 pl-2 sm:pl-6 border-l border-slate-200 dark:border-slate-700">
               {/* Gamification */}
               {gamificationProfile && gamificationProfile.user_id !== 0 && (
                 <div className="flex items-center gap-1 sm:gap-2 mr-1 sm:mr-2">
@@ -301,8 +301,10 @@ const Layout: React.FC<LayoutProps> = ({
                   onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')}
                 />
               )}
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-800 dark:text-white">{user.nome}</p>
+              <div className="text-right hidden sm:block pr-2">
+                <p className="text-sm font-semibold text-slate-800 dark:text-white max-w-[120px] lg:max-w-[200px] truncate">
+                  {user.nome}
+                </p>
               </div>
 
               <div className="cursor-pointer hover:scale-105 transition-transform">

@@ -109,11 +109,12 @@ const ProtectedLayout = ({
   budgets: Budget[];
   gamificationProfile: GamificationProfile;
 }) => {
+  const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return (
     // O container aplica a animação de entrada por padrão, ou a de saída se isExiting for true
-    <div className={isExiting ? "animate-fade-out-scale origin-center" : "animate-fade-in-up"}>
+    <div className={isExiting ? "animate-fade-out-scale origin-center" : "h-full w-full"}>
       <Layout
         darkMode={darkMode}
         toggleDarkMode={toggleDarkMode}
@@ -123,7 +124,18 @@ const ProtectedLayout = ({
         togglePrivacyMode={togglePrivacyMode}
         gamificationProfile={gamificationProfile}
       >
-        <Outlet />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="h-full w-full"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </Layout>
     </div>
   );
@@ -228,7 +240,7 @@ const AppRoutes = ({
 
   return (
     <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes location={location}>
         <Route
           path="/"
           element={
@@ -282,205 +294,177 @@ const AppRoutes = ({
           />
         }>
           <Route path="/dashboard" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Dashboard
-                transactions={transactions}
-                user={user}
-                privacyMode={privacyMode}
-                cards={cards}
-                budgets={budgets}
-                goals={goals} // Pass goals for HealthScore
-                accounts={accounts}
-                isLoadingData={isFetchingData}
-              />
-            </motion.div>
+            <Dashboard
+              transactions={transactions}
+              user={user}
+              privacyMode={privacyMode}
+              cards={cards}
+              budgets={budgets}
+              goals={goals} // Pass goals for HealthScore
+              accounts={accounts}
+              isLoadingData={isFetchingData}
+            />
           } />
 
           <Route path="/transactions" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Transactions
-                  transactions={transactions}
-                  onAdd={addTransaction}
-                  onEdit={updateTransaction}
-                  onDelete={deleteTransaction}
-                  cards={cards}
-                  onAddMultiple={addMultipleTransactions}
-                  user={user}
-                  budgets={budgets}
-                  accounts={accounts}
-                  isLoadingData={isFetchingData}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Transactions
+                transactions={transactions}
+                onAdd={addTransaction}
+                onEdit={updateTransaction}
+                onDelete={deleteTransaction}
+                cards={cards}
+                onAddMultiple={addMultipleTransactions}
+                user={user}
+                budgets={budgets}
+                accounts={accounts}
+                isLoadingData={isFetchingData}
+              />
+            </Suspense>
           } />
 
           <Route path="/budgets" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Budgets
-                  budgets={budgets}
-                  transactions={transactions}
-                  addBudget={addBudget}
-                  updateBudget={updateBudget}
-                  deleteBudget={deleteBudget}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Budgets
+                budgets={budgets}
+                transactions={transactions}
+                addBudget={addBudget}
+                updateBudget={updateBudget}
+                deleteBudget={deleteBudget}
+              />
+            </Suspense>
           } />
 
           <Route path="/reminders" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Reminders
-                  transactions={transactions}
-                  onAdd={addTransaction}
-                  onEdit={updateTransaction}
-                  onDelete={deleteTransaction}
-                  user={user}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Reminders
+                transactions={transactions}
+                onAdd={addTransaction}
+                onEdit={updateTransaction}
+                onDelete={deleteTransaction}
+                user={user}
+              />
+            </Suspense>
           } />
 
           <Route path="/calendar" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <CalendarView
-                  transactions={transactions}
-                  onAddTransaction={addTransaction}
-                  onUpdateTransaction={updateTransaction}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <CalendarView
+                transactions={transactions}
+                onAddTransaction={addTransaction}
+                onUpdateTransaction={updateTransaction}
+              />
+            </Suspense>
           } />
 
           <Route path="/cards" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <CreditCards
-                  user={user}
-                  cards={cards}
-                  transactions={transactions}
-                  accounts={accounts}
-                  fetchCards={fetchCards}
-                  payCardInvoice={payCardInvoice}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <CreditCards
+                user={user}
+                cards={cards}
+                transactions={transactions}
+                accounts={accounts}
+                fetchCards={fetchCards}
+                payCardInvoice={payCardInvoice}
+              />
+            </Suspense>
           } />
 
           <Route path="/accounts" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <BankAccounts
-                  accounts={accounts}
-                  transactions={transactions}
-                  onAdd={addAccount}
-                  onEdit={updateAccount}
-                  onDelete={deleteAccount}
-                  onAddTransaction={addTransaction}
-                  user={user}
-                  setIsLimitModalOpen={setIsLimitModalOpen}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <BankAccounts
+                accounts={accounts}
+                transactions={transactions}
+                onAdd={addAccount}
+                onEdit={updateAccount}
+                onDelete={deleteAccount}
+                onAddTransaction={addTransaction}
+                user={user}
+                setIsLimitModalOpen={setIsLimitModalOpen}
+              />
+            </Suspense>
           } />
 
           <Route path="/reports" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Reports transactions={transactions} accounts={accounts} user={user} />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Reports transactions={transactions} accounts={accounts} user={user} />
+            </Suspense>
           } />
 
           <Route path="/investments" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Investments
-                  investments={investments}
-                  onAdd={addInvestment}
-                  onEdit={updateInvestment}
-                  onDelete={deleteInvestment}
-                  onUpdatePrices={updateInvestmentPrices}
-                  user={user}
-                  privacyMode={privacyMode}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Investments
+                investments={investments}
+                onAdd={addInvestment}
+                onEdit={updateInvestment}
+                onDelete={deleteInvestment}
+                onUpdatePrices={updateInvestmentPrices}
+                user={user}
+                privacyMode={privacyMode}
+              />
+            </Suspense>
           } />
 
           <Route path="/insights" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <NewsFeed user={user} />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <NewsFeed user={user} />
+            </Suspense>
           } />
 
           <Route path="/goals" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Goals
-                  goals={goals}
-                  onAdd={addGoal}
-                  onEdit={updateGoal}
-                  onDelete={deleteGoal}
-                  onAddMoney={addMoneyToGoal}
-                  user={user}
-                  privacyMode={privacyMode}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Goals
+                goals={goals}
+                onAdd={addGoal}
+                onEdit={updateGoal}
+                onDelete={deleteGoal}
+                onAddMoney={addMoneyToGoal}
+                user={user}
+                privacyMode={privacyMode}
+              />
+            </Suspense>
           } />
 
           <Route path="/subscriptions" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Subscriptions
-                  transactions={transactions}
-                  user={user}
-                  onDeleteTransaction={deleteTransaction}
-                  onUpdateTransaction={updateTransaction}
-                  onAddTransaction={addTransaction}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Subscriptions
+                transactions={transactions}
+                user={user}
+                onDeleteTransaction={deleteTransaction}
+                onUpdateTransaction={updateTransaction}
+                onAddTransaction={addTransaction}
+              />
+            </Suspense>
           } />
 
           <Route path="/gamification" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <GamificationPanel
-                  profile={gamificationProfile}
-                  unlockedAchievements={unlockedAchievements}
-                  challenges={challenges}
-                  user={user}
-                  transactions={transactions}
-                  goals={goals}
-                  budgets={budgets}
-                  investments={investments}
-                  onEquip={equipCosmetic}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <GamificationPanel
+                profile={gamificationProfile}
+                unlockedAchievements={unlockedAchievements}
+                challenges={challenges}
+                user={user}
+                transactions={transactions}
+                goals={goals}
+                budgets={budgets}
+                investments={investments}
+                onEquip={equipCosmetic}
+              />
+            </Suspense>
           } />
 
           <Route path="/settings" element={
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
-              <Suspense fallback={<SuspenseLoader />}>
-                <Settings
-                  user={user}
-                  onUpdateUser={updateUser}
-                  budgets={budgets}
-                  transactions={transactions}
-                  addBudget={addBudget}
-                  updateBudget={updateBudget}
-                  deleteBudget={deleteBudget}
-                />
-              </Suspense>
-            </motion.div>
+            <Suspense fallback={<SuspenseLoader />}>
+              <Settings
+                user={user}
+                onUpdateUser={updateUser}
+                budgets={budgets}
+                transactions={transactions}
+                addBudget={addBudget}
+                updateBudget={updateBudget}
+                deleteBudget={deleteBudget}
+              />
+            </Suspense>
           } />
         </Route>
 
