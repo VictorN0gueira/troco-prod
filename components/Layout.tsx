@@ -21,10 +21,14 @@ import {
   Target,
   Repeat,
   Wallet,
-  Building2
+  Building2,
+  Trophy
 } from 'lucide-react';
 // ... other imports
-import { NavItem, UserProfile } from '../types';
+import { UserProfile, GamificationProfile, NavItem } from '../types';
+import LevelBadge from './gamification/LevelBadge';
+import StreakIndicator from './gamification/StreakIndicator';
+import CosmeticAvatar from './gamification/CosmeticAvatar';
 import { LOGO_URL } from '../constants';
 import { FreePlanBadge } from './FreePlanBadge';
 
@@ -38,11 +42,13 @@ interface LayoutProps {
   togglePrivacyMode?: () => void;
   privacyPlusMode?: boolean;
   togglePrivacyPlusMode?: () => void;
+  gamificationProfile?: GamificationProfile;
 }
 
 const NAV_ITEMS: NavItem[] = [
   // Visão Geral
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, category: 'Visão Geral' },
+  { label: 'Conquistas', path: '/gamification', icon: Trophy, category: 'Visão Geral' },
   { label: 'Insights', path: '/insights', icon: Newspaper, category: 'Visão Geral' },
   { label: 'Relatórios', path: '/reports', icon: PieChart, category: 'Visão Geral' },
 
@@ -72,7 +78,8 @@ const Layout: React.FC<LayoutProps> = ({
   privacyMode = false,
   togglePrivacyMode,
   privacyPlusMode = false,
-  togglePrivacyPlusMode
+  togglePrivacyPlusMode,
+  gamificationProfile
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
@@ -276,7 +283,17 @@ const Layout: React.FC<LayoutProps> = ({
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <div className="flex items-center gap-3 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
+              {/* Gamification */}
+              {gamificationProfile && gamificationProfile.user_id !== 0 && (
+                <div className="flex items-center gap-1 sm:gap-2 mr-1 sm:mr-2">
+                  <StreakIndicator streak={gamificationProfile.current_streak || 0} compact />
+                  <div className="hidden sm:block">
+                    <LevelBadge xp={gamificationProfile.xp || 0} compact />
+                  </div>
+                </div>
+              )}
+
               {/* Selo Free compacto no header */}
               {user.id !== 0 && user.status_assinatura !== 'active' && (
                 <FreePlanBadge
@@ -287,11 +304,13 @@ const Layout: React.FC<LayoutProps> = ({
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-slate-800 dark:text-white">{user.nome}</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-primary-500 to-emerald-300 p-0.5 shadow-lg shadow-emerald-500/20 cursor-pointer hover:scale-105 transition-transform overflow-hidden">
-                <img
+
+              <div className="cursor-pointer hover:scale-105 transition-transform">
+                <CosmeticAvatar 
                   src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nome || 'Visitante')}&background=10B981&color=fff&size=128&font-size=0.4`}
-                  alt="Avatar"
-                  className="w-full h-full rounded-full border-2 border-white dark:border-slate-900 object-cover"
+                  alt={user.nome || "Avatar"}
+                  frame={gamificationProfile?.avatar_frame || 'none'}
+                  size="sm"
                 />
               </div>
             </div>

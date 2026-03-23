@@ -52,10 +52,10 @@
           },
           colors: {
             primary: {
-              50: '#ecfdf5',
-              100: '#d1fae5',
-              500: '#10B981', // Emerald 500
-              600: '#059669',
+              50: 'rgb(var(--color-primary-50, 236 253 245) / <alpha-value>)',
+              100: 'rgb(var(--color-primary-100, 209 250 229) / <alpha-value>)',
+              500: 'rgb(var(--color-primary-500, 16 185 129) / <alpha-value>)', // Emerald 500
+              600: 'rgb(var(--color-primary-600, 5 150 105) / <alpha-value>)',
             },
             danger: {
               50: '#fff1f2',
@@ -70,6 +70,67 @@
     }
   </script>
   <style>
+    /* Themes */
+    body.theme-neon {
+      --color-primary-50: 236 254 255;
+      --color-primary-100: 207 250 254;
+      --color-primary-500: 6 182 212; /* cyan 500 */
+      --color-primary-600: 8 145 178;  /* cyan 600 */
+    }
+    body.theme-sunrise {
+      --color-primary-50: 255 247 237;
+      --color-primary-100: 255 237 213;
+      --color-primary-500: 249 115 22; /* orange 500 */
+      --color-primary-600: 234 88 12;  /* orange 600 */
+    }
+    body.theme-ocean {
+      --color-primary-50: 239 246 255;
+      --color-primary-100: 219 234 254;
+      --color-primary-500: 59 130 246;  /* blue 500 */
+      --color-primary-600: 37 99 235;   /* blue 600 */
+    }
+    body.theme-aurora {
+      --color-primary-50: 250 245 255;
+      --color-primary-100: 243 232 255;
+      --color-primary-500: 168 85 247;  /* purple 500 */
+      --color-primary-600: 147 51 234;  /* purple 600 */
+    }
+    body.theme-golden {
+      --color-primary-50: 255 251 235;
+      --color-primary-100: 254 243 199;
+      --color-primary-500: 245 158 11; /* amber 500 */
+      --color-primary-600: 217 119 6;  /* amber 600 */
+    }
+    body.theme-ruby {
+      --color-primary-50: 254 242 242;
+      --color-primary-100: 254 226 226;
+      --color-primary-500: 239 68 68; /* red 500 */
+      --color-primary-600: 220 38 38; /* red 600 */
+    }
+
+    /* Lightning Animation */
+    @keyframes lightning {
+      0%, 100% { opacity: 1; filter: brightness(1) drop-shadow(0 0 5px rgba(34,211,238,0.5)); transform: scale(1); }
+      92% { opacity: 1; filter: brightness(1) drop-shadow(0 0 5px rgba(34,211,238,0.5)); }
+      93% { opacity: 0.5; filter: brightness(2) drop-shadow(0 0 30px rgba(34,211,238,1)); transform: scale(1.02); }
+      94% { opacity: 1; filter: brightness(1); transform: scale(1); }
+      96% { opacity: 0.3; filter: brightness(3) drop-shadow(0 0 40px rgba(34,211,238,1)); transform: scale(1.05); }
+      98% { opacity: 1; filter: brightness(1.5) drop-shadow(0 0 10px rgba(34,211,238,0.8)); transform: scale(1); }
+    }
+    .animate-lightning {
+      animation: lightning 4s infinite;
+    }
+
+    /* Ice Animation */
+    @keyframes frost {
+      0% { box-shadow: 0 0 10px rgba(186, 230, 253, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.5); }
+      50% { box-shadow: 0 0 25px rgba(186, 230, 253, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.8); }
+      100% { box-shadow: 0 0 10px rgba(186, 230, 253, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.5); }
+    }
+    .animate-frost {
+      animation: frost 3s ease-in-out infinite;
+    }
+
     /* Smooth scrolling */
     html {
       scroll-behavior: smooth;

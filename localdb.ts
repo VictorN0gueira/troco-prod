@@ -49,6 +49,11 @@ export const syncQueueDB = localforage.createInstance({
     storeName: 'sync_queue'
 });
 
+export const gamificationDB = localforage.createInstance({
+    name: 'TrocoDB',
+    storeName: 'gamification'
+});
+
 // Helper for offline queue operations
 export const offlineQueueService = {
     async getQueue() {

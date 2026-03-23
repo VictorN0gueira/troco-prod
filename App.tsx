@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -19,6 +19,9 @@ const NewsFeed = lazy(() => import('./components/NewsFeed'));
 const Goals = lazy(() => import('./components/Goals'));
 const Subscriptions = lazy(() => import('./components/Subscriptions'));
 const Budgets = lazy(() => import('./components/Budgets'));
+const GamificationPanel = lazy(() => import('./components/GamificationPanel'));
+import XPToast from './components/gamification/XPToast';
+
 
 const SuspenseLoader = () => (
   <div className="flex h-full w-full min-h-[50vh] flex-col items-center justify-center">
@@ -27,8 +30,9 @@ const SuspenseLoader = () => (
   </div>
 );
 
-import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget, BankAccount } from './types';
+import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget, BankAccount, GamificationProfile, UnlockedAchievement, Challenge } from './types';
 import { supabase } from './supabaseClient';
+import { CHALLENGE_TEMPLATES, computeUserStats, getEligibleAchievements, XP_REWARDS } from './gamificationEngine';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet, Sun, Moon } from 'lucide-react';
 import { LOGO_URL } from './constants';
 import {
@@ -42,7 +46,7 @@ import {
   parseDateFromDB
 } from './utils';
 import { OfflineProvider, useOffline } from './components/OfflineContext';
-import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB, budgetsDB, accountsDB } from './localdb';
+import { userDB, transactionsDB, cardsDB, investmentsDB, goalsDB, budgetsDB, accountsDB, gamificationDB } from './localdb';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { useNotification } from './contexts/NotificationContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -88,7 +92,9 @@ const ProtectedLayout = ({
   privacyMode,
   togglePrivacyMode,
   transactions,
-  goals
+  goals,
+  budgets,
+  gamificationProfile
 }: {
   isAuthenticated: boolean;
   darkMode: boolean;
@@ -101,6 +107,7 @@ const ProtectedLayout = ({
   transactions: Transaction[];
   goals: Goal[];
   budgets: Budget[];
+  gamificationProfile: GamificationProfile;
 }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
@@ -114,6 +121,7 @@ const ProtectedLayout = ({
         user={user}
         privacyMode={privacyMode}
         togglePrivacyMode={togglePrivacyMode}
+        gamificationProfile={gamificationProfile}
       >
         <Outlet />
       </Layout>
@@ -163,6 +171,10 @@ interface AppRoutesProps {
   isFetchingData?: boolean;
   isLimitModalOpen: boolean;
   setIsLimitModalOpen: (open: boolean) => void;
+  gamificationProfile: GamificationProfile;
+  unlockedAchievements: UnlockedAchievement[];
+  challenges: Challenge[];
+  equipCosmetic: (type: 'theme' | 'title' | 'avatar_frame', value: string) => Promise<void>;
 }
 
 // Componente interno para gerenciar navegação baseado em eventos
@@ -206,7 +218,11 @@ const AppRoutes = ({
   deleteAccount,
   isFetchingData,
   isLimitModalOpen,
-  setIsLimitModalOpen
+  setIsLimitModalOpen,
+  gamificationProfile,
+  unlockedAchievements,
+  challenges,
+  equipCosmetic
 }: AppRoutesProps) => {
   const location = useLocation();
 
@@ -262,6 +278,7 @@ const AppRoutes = ({
             transactions={transactions}
             goals={goals}
             budgets={budgets}
+            gamificationProfile={gamificationProfile}
           />
         }>
           <Route path="/dashboard" element={
@@ -427,6 +444,24 @@ const AppRoutes = ({
                   onDeleteTransaction={deleteTransaction}
                   onUpdateTransaction={updateTransaction}
                   onAddTransaction={addTransaction}
+                />
+              </Suspense>
+            </motion.div>
+          } />
+
+          <Route path="/gamification" element={
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} className="h-full w-full">
+              <Suspense fallback={<SuspenseLoader />}>
+                <GamificationPanel
+                  profile={gamificationProfile}
+                  unlockedAchievements={unlockedAchievements}
+                  challenges={challenges}
+                  user={user}
+                  transactions={transactions}
+                  goals={goals}
+                  budgets={budgets}
+                  investments={investments}
+                  onEquip={equipCosmetic}
                 />
               </Suspense>
             </motion.div>
@@ -1015,6 +1050,63 @@ const AppContent: React.FC = () => {
         { event: '*', schema: 'public', table: 'contas_bancarias', filter: `user_id=eq.${user.id}` },
         () => fetchAccounts(user.id)
       )
+    const channelGamification = supabase
+      .channel(`realtime:gamification:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'gamification_profiles',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const data = payload.new;
+            const profile = {
+              user_id: data.user_id,
+              xp: data.xp,
+              level: data.level,
+              current_streak: data.current_streak,
+              longest_streak: data.longest_streak,
+              last_activity_date: data.last_activity_date,
+              title: data.title || 'Aprendiz',
+              theme: data.theme || 'default',
+              avatar_frame: data.avatar_frame || 'none'
+            };
+            setGamificationProfile(profile);
+            gamificationDB.setItem(`profile_${data.user_id}`, profile);
+          }
+        }
+      )
+      .subscribe();
+
+    const channelChallenges = supabase
+      .channel(`realtime:challenges:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'challenges',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => fetchGamification(user.id)
+      )
+      .subscribe();
+
+    const channelAchievements = supabase
+      .channel(`realtime:achievements:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'achievements_log',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => fetchGamification(user.id)
+      )
       .subscribe();
 
     return () => {
@@ -1023,6 +1115,9 @@ const AppContent: React.FC = () => {
       supabase.removeChannel(channelGoals);
       supabase.removeChannel(channelInvestments);
       supabase.removeChannel(channelAccounts);
+      supabase.removeChannel(channelGamification);
+      supabase.removeChannel(channelChallenges);
+      supabase.removeChannel(channelAchievements);
     };
   }, [user.id]);
 
@@ -1044,6 +1139,290 @@ const AppContent: React.FC = () => {
   // State for Accounts
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
 
+  // State for Gamification
+  const [gamificationProfile, setGamificationProfile] = useState<GamificationProfile>({
+    user_id: 0, xp: 0, level: 1, current_streak: 0, longest_streak: 0,
+    last_activity_date: null, title: 'Aprendiz', theme: 'default', avatar_frame: 'none'
+  });
+  const [unlockedAchievements, setUnlockedAchievements] = useState<UnlockedAchievement[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+
+  // Apply Global Theme
+  useEffect(() => {
+    document.body.classList.remove('theme-neon', 'theme-sunrise', 'theme-ocean', 'theme-aurora', 'theme-golden');
+    if (gamificationProfile.theme && gamificationProfile.theme !== 'default') {
+      document.body.classList.add(`theme-${gamificationProfile.theme}`);
+    }
+  }, [gamificationProfile.theme]);
+
+  // State for XP Toast
+  const [xpToast, setXpToast] = useState<{ xpGained: number; label: string; leveledUp?: boolean; newLevel?: number } | null>(null);
+
+  // Gamification XP Helper
+  const grantXp = async (amount: number, reason: string, actionType?: string) => {
+    if (user.id === 0) return;
+    try {
+      const { data, error } = await supabase.rpc('grant_xp', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_reason: reason,
+        p_action_type: actionType,
+        p_client_date: getTodayLocalDate() // Sincronia com fuso local
+      });
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const result = data[0];
+        setXpToast({
+          xpGained: actionType ? (XP_REWARDS[actionType]?.amount || amount) : amount,
+          label: reason,
+          leveledUp: result.leveled_up,
+          newLevel: result.new_level
+        });
+        
+        setGamificationProfile(prev => ({
+          ...prev,
+          xp: result.new_xp,
+          level: result.new_level,
+          title: result.new_title
+        }));
+
+        if (result.leveled_up) {
+           setTimeout(() => fetchGamification(user.id), 2000);
+        }
+      }
+    } catch (e) {
+      console.error('Error granting XP:', e);
+    }
+  };
+
+  // Sync Challenges Logic
+  const syncMissingChallenges = async (currentReq: Challenge[], userId: number) => {
+    if (userId === 0) return;
+    
+    const now = new Date();
+    // Correção Deep Scan: Checa qualquer desafio (mesmo completo) que ainda não expirou
+    const activeWeekly = currentReq.find(c => c.type === 'weekly' && new Date(c.ends_at) > now);
+    const activeMonthly = currentReq.find(c => c.type === 'monthly' && new Date(c.ends_at) > now);
+
+    const newChallengesToInsert: any[] = [];
+
+    if (!activeWeekly) {
+      const weeklyTpls = CHALLENGE_TEMPLATES.filter(t => t.type === 'weekly');
+      const tpl = weeklyTpls[Math.floor(Math.random() * weeklyTpls.length)];
+      const starts = new Date();
+      const ends = new Date();
+      ends.setDate(ends.getDate() + 7);
+      
+      newChallengesToInsert.push({
+        user_id: userId,
+        title: tpl.title,
+        description: tpl.description,
+        target_value: tpl.target_value,
+        current_value: 0,
+        reward_xp: tpl.reward_xp,
+        type: 'weekly',
+        starts_at: starts.toISOString().split('T')[0],
+        ends_at: ends.toISOString().split('T')[0],
+        completed: false
+      });
+    }
+
+    if (!activeMonthly) {
+      const monthlyTpls = CHALLENGE_TEMPLATES.filter(t => t.type === 'monthly');
+      const tpl = monthlyTpls[Math.floor(Math.random() * monthlyTpls.length)];
+      const starts = new Date();
+      const ends = new Date();
+      ends.setMonth(ends.getMonth() + 1);
+      
+      newChallengesToInsert.push({
+        user_id: userId,
+        title: tpl.title,
+        description: tpl.description,
+        target_value: tpl.target_value,
+        current_value: 0,
+        reward_xp: tpl.reward_xp,
+        type: 'monthly',
+        starts_at: starts.toISOString().split('T')[0],
+        ends_at: ends.toISOString().split('T')[0],
+        completed: false
+      });
+    }
+
+    if (newChallengesToInsert.length > 0) {
+      try {
+        const { data, error } = await supabase.from('challenges').insert(newChallengesToInsert).select();
+        if (!error && data) {
+          setChallenges(prev => [...data, ...prev]);
+        }
+      } catch (e) {
+        console.error('Error generating challenges:', e);
+      }
+    }
+  };
+
+  // Validador contínuo de desafios
+  useEffect(() => {
+    if (user.id === 0 || challenges.length === 0) return;
+    
+    const active = challenges.filter(c => !c.completed && new Date(c.ends_at + 'T23:59:59') >= new Date());
+    if (active.length === 0) return;
+
+    let hasUpdates = false;
+    const updated = [...challenges];
+    const toUpdateInDb: any[] = [];
+    const completedNow: any[] = [];
+
+    active.forEach(c => {
+      const tpl = CHALLENGE_TEMPLATES.find(t => t.title === c.title);
+      if (tpl) {
+        let progress = tpl.checkProgress(transactions, goals);
+        if (progress > c.target_value) progress = c.target_value;
+        
+        if (progress > c.current_value) {
+           const idx = updated.findIndex(ch => ch.id === c.id);
+           if (idx > -1) {
+             updated[idx] = { ...updated[idx], current_value: progress };
+             if (progress >= c.target_value) {
+               updated[idx].completed = true;
+               toUpdateInDb.push({ id: c.id, current_value: progress, completed: true });
+               completedNow.push(updated[idx]);
+             } else {
+               toUpdateInDb.push({ id: c.id, current_value: progress });
+             }
+             hasUpdates = true;
+           }
+        }
+      }
+    });
+
+    if (hasUpdates) {
+       setChallenges(updated);
+       toUpdateInDb.forEach(async (update) => {
+         await supabase.from('challenges').update(update).eq('id', update.id);
+       });
+       completedNow.forEach(c => {
+         grantXp(c.reward_xp, `Desafio concluído: ${c.title}`);
+       });
+    }
+  }, [transactions, goals, user.id, challenges.length]);
+
+    // 1. Memoizar estatísticas para evitar re-cálculo O(N) em cada render
+    const userStats = useMemo(() => {
+      if (user.id === 0) return null;
+      // Correção Ultra Scan: Passando contadores para meta-conquistas
+      const uniqueTypes = new Set(investments.map(i => i.type)).size;
+      const achievementsCount = unlockedAchievements.length;
+      const challengesCount = challenges.filter(c => c.completed).length;
+      
+      return computeUserStats(
+        transactions, 
+        goals, 
+        budgets, 
+        uniqueTypes,
+        achievementsCount,
+        challengesCount
+      );
+    }, [transactions, goals, budgets, investments, unlockedAchievements.length, challenges, user.id]);
+
+    // 2. Validador contínuo de conquistas (Sincronização Retroativa / Integrações)
+    useEffect(() => {
+      if (!userStats || user.id === 0) return;
+
+      const eligible = getEligibleAchievements(
+        userStats, 
+        unlockedAchievements.map(a => a.achievement_id), 
+        user.status_assinatura === 'active'
+      );
+    
+      if (eligible.length > 0) {
+        eligible.forEach(async (ach) => {
+          try {
+            const { data } = await supabase.rpc('unlock_achievement', {
+              p_user_id: user.id,
+              p_achievement_id: ach.id
+            });
+            
+            // O retorno agora é uma lista [{ success, xp_rewarded }]
+            if (data && data.length > 0 && data[0].success) {
+              setUnlockedAchievements(prev => [...prev, { achievement_id: ach.id, unlocked_at: new Date().toISOString() }]);
+              // O XP agora é concedido ATOMICAMENTE pelo banco de dados no unlock_achievement.
+              // Não chamamos grantXp aqui para evitar duplicidade.
+              
+              setXpToast({
+                xpGained: data[0].xp_rewarded,
+                label: `Conquista: ${ach.name}`,
+                leveledUp: false // O perfil será atualizado via realtime ou fetch
+              });
+            }
+          } catch(e) { 
+             console.error('Error unlocking achievement', e) 
+          }
+        });
+      }
+    }, [userStats, user.id, unlockedAchievements, user.status_assinatura]);
+
+  // Fetch Gamification Data
+  const fetchGamification = async (userId: number) => {
+    try {
+      // 1. Load from cache first for zero-flicker UI
+      const cached = await gamificationDB.getItem(`profile_${userId}`) as GamificationProfile | null;
+      if (cached) setGamificationProfile(cached);
+
+      const [profileRes, achievementsRes, challengesRes] = await Promise.all([
+        supabase.from('gamification_profiles').select('*').eq('user_id', userId).single(),
+        supabase.from('achievements_log').select('achievement_id, unlocked_at').eq('user_id', userId),
+        supabase.from('challenges').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      ]);
+
+      if (profileRes.data) {
+        const profile = {
+          user_id: profileRes.data.user_id,
+          xp: profileRes.data.xp,
+          level: profileRes.data.level,
+          current_streak: profileRes.data.current_streak,
+          longest_streak: profileRes.data.longest_streak,
+          last_activity_date: profileRes.data.last_activity_date,
+          title: profileRes.data.title || 'Aprendiz',
+          theme: profileRes.data.theme || 'default',
+          avatar_frame: profileRes.data.avatar_frame || 'none'
+        };
+        setGamificationProfile(profile);
+        await gamificationDB.setItem(`profile_${userId}`, profile);
+      }
+
+      if (achievementsRes.data) setUnlockedAchievements(achievementsRes.data);
+      if (challengesRes.data) {
+        setChallenges(challengesRes.data);
+        syncMissingChallenges(challengesRes.data, userId);
+      }
+    } catch (error) {
+      console.error('Error fetching gamification:', error);
+    }
+  };
+
+  const equipCosmetic = async (type: 'theme' | 'title' | 'avatar_frame', value: string) => {
+    if (user.id === 0) return;
+    try {
+      const { error } = await supabase
+        .from('gamification_profiles')
+        .update({ [type]: value })
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      const updatedProfile = {
+        ...gamificationProfile,
+        [type]: value
+      };
+      
+      setGamificationProfile(updatedProfile);
+      await gamificationDB.setItem(`profile_${user.id}`, updatedProfile);
+    } catch (e) {
+      console.error('Error equipping cosmetic:', e);
+    }
+  };
+
   // Fetch Budgets Function
   const fetchBudgets = async (userId: number) => {
     try {
@@ -1064,6 +1443,7 @@ const AppContent: React.FC = () => {
       console.error('Error fetching budgets:', error);
     }
   };
+
 
   // Fetch Accounts
   const fetchAccounts = async (userId: number) => {
@@ -1242,11 +1622,12 @@ const AppContent: React.FC = () => {
         setIsFetchingData(true);
         await Promise.all([
           fetchTransactions(data.id),
-          fetchCards(data.id), // Fetch Cards too!
-          fetchInvestments(data.id), // Fetch Investments too!
-          fetchGoals(data.id), // Fetch Goals too!
-          fetchBudgets(data.id), // Fetch Budgets too!
-          fetchAccounts(data.id) // Fetch Accounts too!
+          fetchCards(data.id),
+          fetchInvestments(data.id),
+          fetchGoals(data.id),
+          fetchBudgets(data.id),
+          fetchAccounts(data.id),
+          fetchGamification(data.id)
         ]);
         setIsFetchingData(false);
 
@@ -1418,6 +1799,7 @@ const AppContent: React.FC = () => {
           message: 'Não foi possível marcar as transações como pagas. Tente novamente.',
           type: 'error'
         });
+        // XP via Trigger
       }
 
       // Inserir Rolagem (caso o valor pago seja menor que a fatura)
@@ -1544,6 +1926,8 @@ const AppContent: React.FC = () => {
           message: `Erro ao salvar no banco de dados: ${msg}`,
           type: 'error'
         });
+      } else {
+        // XP concedido via Trigger do Supabase! (trg_grant_xp_transacao)
       }
     }
   };
@@ -1817,6 +2201,7 @@ const AppContent: React.FC = () => {
       // Update with the real ID from DB
       if (data) {
         setGoals(prev => prev.map(g => g.id === tempId ? { ...g, id: data.id.toString() } : g));
+        // XP concedido via Trigger do Supabase!
       }
     }
   };
@@ -2041,6 +2426,15 @@ const AppContent: React.FC = () => {
           onAccept={() => setUser(prev => ({ ...prev, contrato_assinado: true }))}
         />
       )}
+      {xpToast && (
+        <XPToast
+          xpGained={xpToast.xpGained}
+          label={xpToast.label}
+          leveledUp={xpToast.leveledUp}
+          newLevel={xpToast.newLevel}
+          onDone={() => setXpToast(null)}
+        />
+      )}
       <AppRoutes
         isAuthenticated={isAuthenticated}
         loading={loading}
@@ -2082,6 +2476,10 @@ const AppContent: React.FC = () => {
         isFetchingData={isFetchingData}
         isLimitModalOpen={isLimitModalOpen}
         setIsLimitModalOpen={setIsLimitModalOpen}
+        gamificationProfile={gamificationProfile}
+        unlockedAchievements={unlockedAchievements}
+        challenges={challenges}
+        equipCosmetic={equipCosmetic}
       />
 
       {/* TrocoBot Global V2 - Outside of Layout transform wrappers */}

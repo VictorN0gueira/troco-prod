@@ -154,3 +154,47 @@ export interface Budget {
   mes: number;
   ano: number;
 }
+
+// ── Gamificação ──
+
+export interface GamificationProfile {
+  user_id: number;
+  xp: number;
+  level: number;
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+  title: string;
+  theme: string;
+  avatar_frame: string;
+}
+
+export interface AchievementDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  xp_reward: number;
+  tier: 'free' | 'super';
+  category: 'consistency' | 'savings' | 'goals' | 'exploration' | 'social';
+}
+
+export interface UnlockedAchievement {
+  achievement_id: string;
+  unlocked_at: string;
+}
+
+export interface Challenge {
+  id: string; // uuid in DB
+  user_id: number;
+  type: 'weekly' | 'monthly';
+  title: string;
+  description: string;
+  target_value: number;
+  current_value: number;
+  reward_xp: number;
+  starts_at: string; // YYYY-MM-DD
+  ends_at: string;   // YYYY-MM-DD
+  completed: boolean;
+  created_at?: string;
+}
