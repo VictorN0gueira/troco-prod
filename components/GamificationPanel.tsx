@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Target, Gift, Flame, Zap, Lock, ChevronRight, Sparkles } from 'lucide-react';
+import { Trophy, Target, Gift, Flame, Zap, Lock, ChevronRight, Sparkles, RefreshCw } from 'lucide-react';
 import { GamificationProfile, AchievementDefinition, UnlockedAchievement, Challenge, Transaction, Goal, Budget, Investment, UserProfile } from '../types';
 import {
   calculateLevel,
@@ -27,6 +27,7 @@ interface GamificationPanelProps {
   budgets: Budget[];
   investments: Investment[];
   onEquip: (type: 'theme' | 'title' | 'avatar_frame', value: string) => Promise<void>;
+  isFetchingData?: boolean;
 }
 
 type TabKey = 'achievements' | 'challenges' | 'rewards';
@@ -41,6 +42,7 @@ const GamificationPanel: React.FC<GamificationPanelProps> = ({
   budgets,
   investments,
   onEquip,
+  isFetchingData = false,
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('achievements');
   const isSuperPlan = user.status_assinatura === 'active';
@@ -111,6 +113,16 @@ const GamificationPanel: React.FC<GamificationPanelProps> = ({
               <h2 className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
                 <Trophy className={`w-7 h-7 ${levelColors.text}`} />
                 Sua Jornada
+                {isFetchingData && (
+                  <motion.span 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-1.5 ml-2 overflow-hidden"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                    <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-tighter">Sincronizando...</span>
+                  </motion.span>
+                )}
               </h2>
               <p className="text-slate-400 text-sm mt-1">
                 Continue evoluindo suas finanças!

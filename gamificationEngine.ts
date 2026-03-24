@@ -264,34 +264,49 @@ export function computeUserStats(
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  const today = now.toISOString().slice(0, 10);
+  
+  let income = 0;
+  let expense = 0;
+  let billsPaidOnTime = 0;
+  let allInvoicesPaid = true;
+  let hasCreditCardTransactions = false;
 
-  const thisMonthTxs = transactions.filter(t => {
+  // Mapa para acelerar o check de budgets (categoria -> total gasto no mês)
+  const categorySpent: Record<string, number> = {};
+
+  // Processo em única passagem O(N)
+  for (const t of transactions) {
     const d = new Date(t.date + 'T12:00:00Z');
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
+    const isThisMonth = d.getMonth() === currentMonth && d.getFullYear() === currentYear;
 
-  const income = thisMonthTxs
-    .filter(t => t.type === 'income')
-    .reduce((s, t) => s + t.amount, 0);
-  const expense = thisMonthTxs
-    .filter(t => t.type === 'expense')
-    .reduce((s, t) => s + t.amount, 0);
+    if (isThisMonth) {
+      if (t.type === 'income') income += t.amount;
+      if (t.type === 'expense') {
+        expense += t.amount;
+        // Acumular gastos por categoria para o check de budgets posterior
+        categorySpent[t.category] = (categorySpent[t.category] || 0) + t.amount;
+      }
+    }
 
-  const billsPaidOnTime = transactions.filter(t => {
-    const isBill = t.type === 'expense' && (t.category === 'Contas' || t.category === 'Fixo');
-    const isPaid = t.status === 'completed';
-    return isBill && isPaid;
-  }).length;
+    // Check de contas pagas (global)
+    if (t.type === 'expense' && (t.category === 'Contas' || t.category === 'Fixo')) {
+      if (t.status === 'completed') billsPaidOnTime++;
+    }
+
+    // Check de faturas de cartão
+    if (t.category === 'Cartão de Crédito') {
+      hasCreditCardTransactions = true;
+      if (t.status !== 'completed') allInvoicesPaid = false;
+    }
+  }
 
   const goalsReached = goals.filter(g => g.current_amount >= g.target_amount).length;
 
+  // Check de budgets O(M) onde M é o número de categorias com orçamento
   const viewMonth = currentMonth + 1;
   const currentBudgets = budgets.filter(b => b.mes === viewMonth && b.ano === currentYear);
   const allBudgetsUnder = currentBudgets.length > 0 && currentBudgets.every(b => {
-    const spent = thisMonthTxs
-      .filter(t => t.category === b.categoria && t.type === 'expense')
-      .reduce((s, t) => s + t.amount, 0);
+    const spent = categorySpent[b.categoria] || 0;
     return spent <= b.valor_limite;
   });
 
@@ -305,7 +320,7 @@ export function computeUserStats(
     goalsReached,
     monthSavings: income - expense,
     allBudgetsUnder,
-    allInvoicesPaid: transactions.filter(t => t.category === 'Cartão de Crédito').every(t => t.status === 'completed'), 
+    allInvoicesPaid: hasCreditCardTransactions ? allInvoicesPaid : true, 
     investmentTypes: investmentTypesCount,
     totalAchievements: achievementsCount,
     totalChallenges: challengesCount

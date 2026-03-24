@@ -10,7 +10,7 @@ interface AchievementCardProps {
   isLocked?: boolean; // locked = Super only e user é free
 }
 
-const AchievementCard: React.FC<AchievementCardProps> = ({
+const AchievementCard: React.FC<AchievementCardProps> = React.memo(({
   achievement,
   unlocked,
   unlockedAt,
@@ -144,7 +144,7 @@ const AchievementCard: React.FC<AchievementCardProps> = ({
       )}
     </motion.div>
   );
-};
+});
 
 export default AchievementCard;
 

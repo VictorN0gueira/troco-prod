@@ -24,9 +24,23 @@ import XPToast from './components/gamification/XPToast';
 
 
 const SuspenseLoader = () => (
-  <div className="flex h-full w-full min-h-[50vh] flex-col items-center justify-center">
-    {/* @ts-ignore */}
-    <dotlottie-wc src="https://lottie.host/819d44c8-37c2-4886-905c-e7a9e1026038/pWSp1vR54T.lottie" style={{ width: '150px', height: '150px' }} autoplay loop></dotlottie-wc>
+  <div className="flex h-full w-full min-h-[60vh] flex-col items-center justify-center gap-4">
+    <div className="relative">
+      {/* Spinner CSS de fallback ultra-rápido */}
+      <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+      
+      {/* Lottie sobreposto com delay sutil para evitar flash se carregar rápido */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {/* @ts-ignore */}
+        <dotlottie-wc 
+          src="https://lottie.host/819d44c8-37c2-4886-905c-e7a9e1026038/pWSp1vR54T.lottie" 
+          style={{ width: '150px', height: '150px' }} 
+          autoplay 
+          loop
+        ></dotlottie-wc>
+      </div>
+    </div>
+    <p className="text-slate-400 text-sm font-medium animate-pulse">Carregando sua jornada...</p>
   </div>
 );
 
@@ -449,6 +463,7 @@ const AppRoutes = ({
                 budgets={budgets}
                 investments={investments}
                 onEquip={equipCosmetic}
+                isFetchingData={isFetchingData}
               />
             </Suspense>
           } />
@@ -1309,42 +1324,43 @@ const AppContent: React.FC = () => {
       );
     }, [transactions, goals, budgets, investments, unlockedAchievements.length, challenges, user.id]);
 
-    // 2. Validador contínuo de conquistas (Sincronização Retroativa / Integrações)
+    // 2. Validador de conquistas otimizado com DEBOUNCE
     useEffect(() => {
-      if (!userStats || user.id === 0) return;
+      if (!userStats || user.id === 0 || isFetchingData) return;
 
-      const eligible = getEligibleAchievements(
-        userStats, 
-        unlockedAchievements.map(a => a.achievement_id), 
-        user.status_assinatura === 'active'
-      );
-    
-      if (eligible.length > 0) {
-        eligible.forEach(async (ach) => {
-          try {
-            const { data } = await supabase.rpc('unlock_achievement', {
-              p_user_id: user.id,
-              p_achievement_id: ach.id
-            });
-            
-            // O retorno agora é uma lista [{ success, xp_rewarded }]
-            if (data && data.length > 0 && data[0].success) {
-              setUnlockedAchievements(prev => [...prev, { achievement_id: ach.id, unlocked_at: new Date().toISOString() }]);
-              // O XP agora é concedido ATOMICAMENTE pelo banco de dados no unlock_achievement.
-              // Não chamamos grantXp aqui para evitar duplicidade.
-              
-              setXpToast({
-                xpGained: data[0].xp_rewarded,
-                label: `Conquista: ${ach.name}`,
-                leveledUp: false // O perfil será atualizado via realtime ou fetch
+      // Debounce de 2 segundos para evitar rodar durante rajadas de updates (ex: login)
+      const timer = setTimeout(() => {
+        const eligible = getEligibleAchievements(
+          userStats, 
+          unlockedAchievements.map(a => a.achievement_id), 
+          user.status_assinatura === 'active'
+        );
+      
+        if (eligible.length > 0) {
+          eligible.forEach(async (ach) => {
+            try {
+              const { data } = await supabase.rpc('unlock_achievement', {
+                p_user_id: user.id,
+                p_achievement_id: ach.id
               });
+              
+              if (data && data.length > 0 && data[0].success) {
+                setUnlockedAchievements(prev => [...prev, { achievement_id: ach.id, unlocked_at: new Date().toISOString() }]);
+                setXpToast({
+                  xpGained: data[0].xp_rewarded,
+                  label: `Conquista: ${ach.name}`,
+                  leveledUp: false
+                });
+              }
+            } catch(e) { 
+               console.error('Error unlocking achievement', e) 
             }
-          } catch(e) { 
-             console.error('Error unlocking achievement', e) 
-          }
-        });
-      }
-    }, [userStats, user.id, unlockedAchievements, user.status_assinatura]);
+          });
+        }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }, [userStats, user.id, unlockedAchievements.length, user.status_assinatura, isFetchingData]);
 
   // Fetch Gamification Data
   const fetchGamification = async (userId: number) => {

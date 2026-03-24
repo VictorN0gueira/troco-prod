@@ -8,7 +8,7 @@ interface ChallengeCardProps {
   isSuper: boolean;
 }
 
-const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, isSuper }) => {
+const ChallengeCard: React.FC<ChallengeCardProps> = React.memo(({ challenge, isSuper }) => {
   const progress = Math.min((challenge.current_value / challenge.target_value) * 100, 100);
   const isCompleted = challenge.completed;
   const daysLeft = Math.max(0, Math.ceil(
@@ -144,6 +144,6 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge, isSuper }) => 
       </div>
     </motion.div>
   );
-};
+});
 
 export default ChallengeCard;
