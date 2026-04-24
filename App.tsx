@@ -5,7 +5,6 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import LandingPage from './components/LandingPage';
 import Legal from './components/Legal';
-import { Trophy } from 'lucide-react';
 
 // Lazy loaded modules (Code Splitting)
 const Transactions = lazy(() => import('./components/Transactions'));
@@ -1206,17 +1205,13 @@ const AppContent: React.FC = () => {
   const [unlockedAchievements, setUnlockedAchievements] = useState<UnlockedAchievement[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
 
-  // Apply Global Theme (corrigido: limpa tema ao sair da rota de gamificação)
-  const location = useLocation();
+  // Apply Global Theme
   useEffect(() => {
-    const themeClasses = ['theme-neon', 'theme-sunrise', 'theme-ocean', 'theme-aurora', 'theme-golden'];
-    // Sempre remove temas cosméticos
-    document.body.classList.remove(...themeClasses);
-    // Só aplica tema se estiver na rota de gamificação
-    if (location.pathname === '/gamification' && gamificationProfile.theme && gamificationProfile.theme !== 'default') {
+    document.body.classList.remove('theme-neon', 'theme-sunrise', 'theme-ocean', 'theme-aurora', 'theme-golden');
+    if (gamificationProfile.theme && gamificationProfile.theme !== 'default') {
       document.body.classList.add(`theme-${gamificationProfile.theme}`);
     }
-  }, [gamificationProfile.theme, location.pathname]);
+  }, [gamificationProfile.theme]);
 
   // State for XP Toast
   const [xpToast, setXpToast] = useState<{ xpGained: number; label: string; leveledUp?: boolean; newLevel?: number } | null>(null);
