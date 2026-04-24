@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import LandingPage from './components/LandingPage';
 import Legal from './components/Legal';
+import { Trophy } from 'lucide-react';
 
 // Lazy loaded modules (Code Splitting)
 const Transactions = lazy(() => import('./components/Transactions'));
