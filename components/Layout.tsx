@@ -325,7 +325,9 @@ const Layout: React.FC<LayoutProps> = ({
         {/* Page Content - Adjusted Padding for Mobile */}
         <div className="flex-1 p-4 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden">
           <div className="max-w-7xl mx-auto animate-fade-in pb-20 lg:pb-0">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
         </div>
       </main>

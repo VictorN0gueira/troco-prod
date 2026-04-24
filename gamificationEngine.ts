@@ -44,21 +44,29 @@ export const LEVEL_COLORS: Record<number, { gradient: string; text: string; bg: 
 };
 
 export function calculateLevel(xp: number): { level: number; currentXP: number; nextLevelXP: number; progress: number } {
+  // Garantir que xp seja um número válido
+  const safeXP = typeof xp === 'number' && !isNaN(xp) ? Math.max(0, xp) : 0;
+  
   let level = 1;
   for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (xp >= LEVEL_THRESHOLDS[i]) {
+    if (safeXP >= LEVEL_THRESHOLDS[i]) {
       level = i + 1;
       break;
     }
   }
 
   const currentThreshold = LEVEL_THRESHOLDS[level - 1] || 0;
-  const nextThreshold = LEVEL_THRESHOLDS[level] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
-  const xpInLevel = xp - currentThreshold;
-  const xpNeeded = nextThreshold - currentThreshold;
-  const progress = Math.min((xpInLevel / xpNeeded) * 100, 100);
+  const nextThreshold = LEVEL_THRESHOLDS[level] || (currentThreshold + 1000);
+  const xpInLevel = safeXP - currentThreshold;
+  const xpNeeded = Math.max(1, nextThreshold - currentThreshold);
+  const progress = Math.min(Math.max(0, (xpInLevel / xpNeeded) * 100), 100);
 
-  return { level, currentXP: xp, nextLevelXP: nextThreshold, progress };
+  return { 
+    level, 
+    currentXP: safeXP, 
+    nextLevelXP: nextThreshold, 
+    progress: isNaN(progress) ? 0 : progress 
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

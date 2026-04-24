@@ -25,23 +25,21 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 
 const SuspenseLoader = () => (
-  <div className="flex h-full w-full min-h-[60vh] flex-col items-center justify-center gap-4">
-    <div className="relative">
-      {/* Spinner CSS de fallback ultra-rápido */}
-      <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
-      
-      {/* Lottie sobreposto com delay sutil para evitar flash se carregar rápido */}
+  <div className="flex h-full w-full min-h-[60vh] flex-col items-center justify-center gap-6">
+    <div className="relative w-20 h-20">
+      {/* Círculo externo pulsante */}
+      <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20 animate-ping"></div>
+      {/* Spinner principal */}
+      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-500 border-r-emerald-500/30 animate-spin"></div>
+      {/* Ícone central */}
       <div className="absolute inset-0 flex items-center justify-center">
-        {/* @ts-ignore */}
-        <dotlottie-wc 
-          src="https://lottie.host/819d44c8-37c2-4886-905c-e7a9e1026038/pWSp1vR54T.lottie" 
-          style={{ width: '150px', height: '150px' }} 
-          autoplay 
-          loop
-        ></dotlottie-wc>
+        <Trophy className="w-8 h-8 text-emerald-500/50" />
       </div>
     </div>
-    <p className="text-slate-400 text-sm font-medium animate-pulse">Carregando sua jornada...</p>
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-slate-800 dark:text-white text-base font-bold tracking-tight">Carregando...</p>
+      <p className="text-slate-400 text-xs font-medium animate-pulse">Sincronizando sua jornada financeira</p>
+    </div>
   </div>
 );
 
