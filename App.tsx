@@ -46,7 +46,7 @@ const SuspenseLoader = () => (
 import { Transaction, UserProfile, CreditCard, Investment, Goal, Budget, BankAccount, GamificationProfile, UnlockedAchievement, Challenge } from './types';
 import { supabase } from './supabaseClient';
 import { CHALLENGE_TEMPLATES, computeUserStats, getEligibleAchievements, XP_REWARDS } from './gamificationEngine';
-import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet, Sun, Moon } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle2, AlertTriangle, Wallet, Sun, Moon, Trophy } from 'lucide-react';
 import { LOGO_URL } from './constants';
 import {
   getTodayLocalDate,
