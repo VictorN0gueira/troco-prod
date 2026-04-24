@@ -239,6 +239,97 @@ export const ACHIEVEMENTS_CATALOG: AchievementDefinition[] = [
     tier: 'super',
     category: 'exploration',
   },
+  // ── TITÃ TIER (End-Game / Exclusivos) ──
+  {
+    id: 'streak_180',
+    name: 'Meio Ano Constante',
+    description: '180 dias consecutivos usando o app',
+    icon: '⏳',
+    xp_reward: 1500,
+    tier: 'super',
+    category: 'consistency',
+  },
+  {
+    id: 'streak_365',
+    name: 'Um Ano de Foco',
+    description: '365 dias consecutivos usando o app',
+    icon: '📅',
+    xp_reward: 3000,
+    tier: 'super',
+    category: 'consistency',
+  },
+  {
+    id: 'transaction_1000',
+    name: 'Mestre do Registro',
+    description: 'Registre 1.000 transações no total',
+    icon: '📖',
+    xp_reward: 1200,
+    tier: 'super',
+    category: 'consistency',
+  },
+  {
+    id: 'transaction_5000',
+    name: 'Titã Financeiro',
+    description: 'Registre 5.000 transações no total',
+    icon: '🌋',
+    xp_reward: 5000,
+    tier: 'super',
+    category: 'consistency',
+  },
+  {
+    id: 'goals_10',
+    name: 'Arquiteto de Riquezas',
+    description: 'Atinja 100% em 10 metas diferentes',
+    icon: '🏰',
+    xp_reward: 2000,
+    tier: 'super',
+    category: 'goals',
+  },
+  {
+    id: 'goals_50',
+    name: 'Mestre Realizador',
+    description: 'Atinja 100% em 50 metas diferentes',
+    icon: '🌌',
+    xp_reward: 5000,
+    tier: 'super',
+    category: 'goals',
+  },
+  {
+    id: 'challenge_100',
+    name: 'Lenda dos Desafios',
+    description: 'Complete 100 desafios na plataforma',
+    icon: '🐉',
+    xp_reward: 4000,
+    tier: 'super',
+    category: 'exploration',
+  },
+  {
+    id: 'savings_10k',
+    name: 'Magnata Poupador',
+    description: 'Economize R$10.000 em um único mês',
+    icon: '💸',
+    xp_reward: 3500,
+    tier: 'super',
+    category: 'savings',
+  },
+  {
+    id: 'achievements_50',
+    name: 'Colecionador Divino',
+    description: 'Desbloqueie 50 conquistas diferentes',
+    icon: '🌟',
+    xp_reward: 5000,
+    tier: 'super',
+    category: 'exploration',
+  },
+  {
+    id: 'investment_10',
+    name: 'Lobo de Wall Street',
+    description: 'Tenha 10 tipos de investimentos diferentes',
+    icon: '🏢',
+    xp_reward: 2000,
+    tier: 'super',
+    category: 'exploration',
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -401,6 +492,18 @@ export function getEligibleAchievements(
 
     if (qualifies) eligible.push(ach);
   }
+
+  // End-Game Achievements
+  if (stats.totalTransactions >= 1000) eligible.push('transaction_1000');
+  if (stats.totalTransactions >= 5000) eligible.push('transaction_5000');
+  if (stats.longestStreak >= 180) eligible.push('streak_180');
+  if (stats.longestStreak >= 365) eligible.push('streak_365');
+  if (stats.goalsReached >= 10) eligible.push('goals_10');
+  if (stats.goalsReached >= 50) eligible.push('goals_50');
+  if (stats.totalChallenges >= 100) eligible.push('challenge_100');
+  if (stats.monthSavings >= 10000) eligible.push('savings_10k');
+  if (stats.totalAchievements >= 50) eligible.push('achievements_50');
+  if (stats.investmentTypes >= 10) eligible.push('investment_10');
 
   return eligible;
 }
