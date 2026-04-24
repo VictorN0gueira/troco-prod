@@ -848,8 +848,23 @@ const AppContent: React.FC = () => {
     setTimeout(async () => {
       await supabase.auth.signOut();
       setIsAuthenticated(false);
+      
+      // Reset TODOS os estados para evitar dados stale no re-login
       setTransactions([]);
       setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'canceled' });
+      setCards([]);
+      setInvestments([]);
+      setGoals([]);
+      setBudgets([]);
+      setAccounts([]);
+      setGamificationProfile({
+        user_id: 0, xp: 0, level: 1, current_streak: 0, longest_streak: 0,
+        last_activity_date: null, title: 'Aprendiz', theme: 'default', avatar_frame: 'none'
+      });
+      setUnlockedAchievements([]);
+      setChallenges([]);
+      setIsFetchingData(false);
+      
       setIsExiting(false); // Reset exiting state
       console.log("Sessão encerrada com animação.");
     }, 400); // 400ms matches CSS animation duration
