@@ -1281,9 +1281,9 @@ const AppContent: React.FC = () => {
         title: tpl.title,
         description: tpl.description,
         reward_xp: tpl.reward_xp,
-        type: 'weekly', // WORKAROUND DB CONSTRAINT: salva como weekly para o banco aceitar
+        type: 'daily',
         starts_at: todayStr,
-        ends_at: todayStr, // Expira no mesmo dia (frontend usa isso para saber que é daily)
+        ends_at: todayStr, // Expira no mesmo dia
         completed: false
       });
     }
@@ -1475,14 +1475,8 @@ const AppContent: React.FC = () => {
 
       if (achievementsRes.data) setUnlockedAchievements(achievementsRes.data);
       if (challengesRes.data) {
-        // Workaround DB: Desafios salvos como weekly mas que terminam no mesmo dia que começam são 'daily'
-        const normalizedChallenges = challengesRes.data.map(c => ({
-          ...c,
-          type: (c.starts_at === c.ends_at) ? 'daily' : c.type
-        })) as Challenge[];
-        
-        setChallenges(normalizedChallenges);
-        syncMissingChallenges(normalizedChallenges, userId);
+        setChallenges(challengesRes.data);
+        syncMissingChallenges(challengesRes.data, userId);
       }
     } catch (error) {
       console.error('Error fetching gamification:', error);
