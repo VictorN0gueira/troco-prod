@@ -187,7 +187,7 @@ export interface UnlockedAchievement {
 export interface Challenge {
   id: string; // uuid in DB
   user_id: number;
-  type: 'weekly' | 'monthly';
+  type: 'daily' | 'weekly' | 'monthly';
   title: string;
   description: string;
   target_value: number;

@@ -1266,10 +1266,29 @@ const AppContent: React.FC = () => {
     }
 
     // Checa qualquer desafio ativo (mesmo os completos que ainda não expiraram) usando a lista válida
+    const activeDaily = validChallenges.find(c => c.type === 'daily' && c.ends_at >= todayStr);
     const activeWeekly = validChallenges.find(c => c.type === 'weekly' && c.ends_at >= todayStr);
     const activeMonthly = validChallenges.find(c => c.type === 'monthly' && c.ends_at >= todayStr);
 
     const newChallengesToInsert: any[] = [];
+
+    if (!activeDaily) {
+      const dailyTpls = CHALLENGE_TEMPLATES.filter(t => t.type === 'daily');
+      const tpl = dailyTpls[Math.floor(Math.random() * dailyTpls.length)];
+      
+      newChallengesToInsert.push({
+        user_id: userId,
+        title: tpl.title,
+        description: tpl.description,
+        target_value: tpl.target_value,
+        current_value: 0,
+        reward_xp: tpl.reward_xp,
+        type: 'daily',
+        starts_at: todayStr,
+        ends_at: todayStr, // Expira no mesmo dia
+        completed: false
+      });
+    }
 
     if (!activeWeekly) {
       const weeklyTpls = CHALLENGE_TEMPLATES.filter(t => t.type === 'weekly');

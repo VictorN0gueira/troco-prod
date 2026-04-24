@@ -430,7 +430,7 @@ export function calculateStreak(lastActivityDate: string | null, today: string):
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ChallengeTemplate {
-  type: 'weekly' | 'monthly';
+  type: 'daily' | 'weekly' | 'monthly';
   title: string;
   description: string;
   target_value: number;
@@ -439,6 +439,50 @@ export interface ChallengeTemplate {
 }
 
 export const CHALLENGE_TEMPLATES: ChallengeTemplate[] = [
+  {
+    type: 'daily',
+    title: 'Pequeno Passo',
+    description: 'Registre 1 transação hoje',
+    target_value: 1,
+    reward_xp: 10,
+    checkProgress: (txs) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return txs.filter(t => t.date.startsWith(todayStr)).length;
+    },
+  },
+  {
+    type: 'daily',
+    title: 'Controle Diário',
+    description: 'Registre 2 transações hoje',
+    target_value: 2,
+    reward_xp: 15,
+    checkProgress: (txs) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return txs.filter(t => t.date.startsWith(todayStr)).length;
+    },
+  },
+  {
+    type: 'daily',
+    title: 'Dia de Renda',
+    description: 'Registre uma entrada de dinheiro hoje',
+    target_value: 1,
+    reward_xp: 15,
+    checkProgress: (txs) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return txs.filter(t => t.date.startsWith(todayStr) && t.type === 'income').length;
+    },
+  },
+  {
+    type: 'daily',
+    title: 'Gasto Controlado',
+    description: 'Registre uma despesa hoje',
+    target_value: 1,
+    reward_xp: 10,
+    checkProgress: (txs) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return txs.filter(t => t.date.startsWith(todayStr) && t.type === 'expense').length;
+    },
+  },
   {
     type: 'weekly',
     title: 'Registrador Semanal',

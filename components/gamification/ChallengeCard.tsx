@@ -11,10 +11,12 @@ interface ChallengeCardProps {
 const ChallengeCard: React.FC<ChallengeCardProps> = React.memo(({ challenge, isSuper }) => {
   const progress = Math.min((challenge.current_value / challenge.target_value) * 100, 100);
   const isCompleted = challenge.completed;
-  const daysLeft = Math.max(0, Math.ceil(
-    (new Date(challenge.ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  ));
-  const isExpired = daysLeft <= 0 && !isCompleted;
+  
+  // Ajusta o fim do dia para calcular corretamente
+  const endsAtTime = new Date(challenge.ends_at + 'T23:59:59').getTime();
+  const daysLeft = Math.max(0, Math.ceil((endsAtTime - Date.now()) / (1000 * 60 * 60 * 24)));
+  
+  const isExpired = endsAtTime < Date.now() && !isCompleted;
 
   if (!isSuper) {
     return (
@@ -77,12 +79,14 @@ const ChallengeCard: React.FC<ChallengeCardProps> = React.memo(({ challenge, isS
             </h4>
             <span className={`
               text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0
-              ${challenge.type === 'weekly'
-                ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-500'
-                : 'bg-violet-50 dark:bg-violet-500/10 text-violet-500'
+              ${challenge.type === 'daily'
+                ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500'
+                : challenge.type === 'weekly'
+                  ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-500'
+                  : 'bg-violet-50 dark:bg-violet-500/10 text-violet-500'
               }
             `}>
-              {challenge.type === 'weekly' ? 'SEMANAL' : 'MENSAL'}
+              {challenge.type === 'daily' ? 'DIÁRIA' : challenge.type === 'weekly' ? 'SEMANAL' : 'MENSAL'}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -106,7 +110,7 @@ const ChallengeCard: React.FC<ChallengeCardProps> = React.memo(({ challenge, isS
             ) : isExpired ? (
               <>Expirado</>
             ) : (
-              <><Clock className="w-3 h-3" /> {daysLeft}d restantes</>
+              <><Clock className="w-3 h-3" /> {daysLeft === 1 ? 'Expira hoje' : `${daysLeft}d restantes`}</>
             )}
           </span>
         </div>
