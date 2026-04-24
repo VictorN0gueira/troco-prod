@@ -488,22 +488,41 @@ export function getEligibleAchievements(
       case 'challenge_master':
         qualifies = stats.totalChallenges >= 20;
         break;
+      // ── TITÃ TIER (End-Game) ──
+      case 'streak_180':
+        qualifies = stats.longestStreak >= 180;
+        break;
+      case 'streak_365':
+        qualifies = stats.longestStreak >= 365;
+        break;
+      case 'transaction_1000':
+        qualifies = stats.totalTransactions >= 1000;
+        break;
+      case 'transaction_5000':
+        qualifies = stats.totalTransactions >= 5000;
+        break;
+      case 'goals_10':
+        qualifies = stats.goalsReached >= 10;
+        break;
+      case 'goals_50':
+        qualifies = stats.goalsReached >= 50;
+        break;
+      case 'challenge_100':
+        qualifies = stats.totalChallenges >= 100;
+        break;
+      case 'savings_10k':
+        qualifies = stats.monthSavings >= 10000;
+        break;
+      case 'achievements_50':
+        qualifies = stats.totalAchievements >= 50;
+        break;
+      case 'investment_10':
+        qualifies = stats.investmentTypes >= 10;
+        break;
     }
 
     if (qualifies) eligible.push(ach);
   }
-
-  // End-Game Achievements
-  if (stats.totalTransactions >= 1000) eligible.push('transaction_1000');
-  if (stats.totalTransactions >= 5000) eligible.push('transaction_5000');
-  if (stats.longestStreak >= 180) eligible.push('streak_180');
-  if (stats.longestStreak >= 365) eligible.push('streak_365');
-  if (stats.goalsReached >= 10) eligible.push('goals_10');
-  if (stats.goalsReached >= 50) eligible.push('goals_50');
-  if (stats.totalChallenges >= 100) eligible.push('challenge_100');
-  if (stats.monthSavings >= 10000) eligible.push('savings_10k');
-  if (stats.totalAchievements >= 50) eligible.push('achievements_50');
-  if (stats.investmentTypes >= 10) eligible.push('investment_10');
 
   return eligible;
 }
