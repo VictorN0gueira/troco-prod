@@ -1280,6 +1280,8 @@ const AppContent: React.FC = () => {
         user_id: userId,
         title: tpl.title,
         description: tpl.description,
+        target_value: tpl.target_value,
+        current_value: 0,
         reward_xp: tpl.reward_xp,
         type: 'daily',
         starts_at: todayStr,
