@@ -252,7 +252,7 @@ const AppRoutes = ({
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
+    <>
       <Routes location={location}>
         <Route
           path="/"
@@ -261,7 +261,6 @@ const AppRoutes = ({
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
                 className="h-full w-full"
               >
@@ -278,7 +277,6 @@ const AppRoutes = ({
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
                 className="h-full w-full"
               >
@@ -500,7 +498,7 @@ const AppRoutes = ({
         description="Você atingiu o limite do plano gratuito. Faça upgrade para o Super Trocô para continuar."
         userEmail={user.email}
       />
-    </AnimatePresence>
+    </>
   );
 };
 
