@@ -1,4 +1,3 @@
-import { useLocation } from 'react-router-dom';
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
