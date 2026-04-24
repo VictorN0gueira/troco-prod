@@ -668,6 +668,10 @@ const AppContent: React.FC = () => {
     status_assinatura: 'canceled', // Changed from 'active' to enforce Paywall by default
   });
 
+  // Ref para evitar closure stale no onAuthStateChange
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
+
   // Offline Hook
   const { addToQueue, isOnline, queue, removeFromQueue } = useOffline();
 
@@ -1003,7 +1007,7 @@ const AppContent: React.FC = () => {
 
       if (session) {
         setIsAuthenticated(true);
-        if (user.id === 0 && session.user.email) {
+        if (userRef.current.id === 0 && session.user.email) {
           fetchUserProfileByEmail(session.user.email);
         }
       } else {
