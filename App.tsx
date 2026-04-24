@@ -1245,10 +1245,29 @@ const AppContent: React.FC = () => {
   const syncMissingChallenges = async (currentReq: Challenge[], userId: number) => {
     if (userId === 0) return;
     
+    // Configura "hoje" considerando apenas a data local para evitar problemas de fuso horário
     const now = new Date();
-    // Correção Deep Scan: Checa qualquer desafio (mesmo completo) que ainda não expirou
-    const activeWeekly = currentReq.find(c => c.type === 'weekly' && new Date(c.ends_at) > now);
-    const activeMonthly = currentReq.find(c => c.type === 'monthly' && new Date(c.ends_at) > now);
+    const todayStr = now.toISOString().split('T')[0];
+    
+    // Identifica e remove missões expiradas não concluídas
+    const expiredUncompleted = currentReq.filter(c => !c.completed && c.ends_at < todayStr);
+    
+    let validChallenges = [...currentReq];
+
+    if (expiredUncompleted.length > 0) {
+      const expiredIds = expiredUncompleted.map(c => c.id);
+      try {
+        await supabase.from('challenges').delete().in('id', expiredIds);
+        validChallenges = currentReq.filter(c => !expiredIds.includes(c.id));
+        setChallenges(validChallenges);
+      } catch (e) {
+        console.error('Error deleting expired challenges:', e);
+      }
+    }
+
+    // Checa qualquer desafio ativo (mesmo os completos que ainda não expiraram) usando a lista válida
+    const activeWeekly = validChallenges.find(c => c.type === 'weekly' && c.ends_at >= todayStr);
+    const activeMonthly = validChallenges.find(c => c.type === 'monthly' && c.ends_at >= todayStr);
 
     const newChallengesToInsert: any[] = [];
 
