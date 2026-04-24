@@ -929,13 +929,46 @@ const AppContent: React.FC = () => {
   }, [isAuthenticated, updateActivityTime, checkInactivity]);
 
 
+  // --- PRE-HYDRATE: Carregar dados do cache antes mesmo do Supabase ---
+  const preHydrateFromCache = async (userId: number) => {
+    try {
+      const [cachedTx, cachedCards, cachedInvestments, cachedGoals, cachedBudgets, cachedAccounts, cachedGamification] = await Promise.all([
+        transactionsDB.getItem(`tx_${userId}`) as Promise<Transaction[] | null>,
+        cardsDB.getItem(`cards_${userId}`) as Promise<CreditCard[] | null>,
+        investmentsDB.getItem(`investments_${userId}`) as Promise<Investment[] | null>,
+        goalsDB.getItem(`goals_${userId}`) as Promise<Goal[] | null>,
+        budgetsDB.getItem(`budgets_${userId}`) as Promise<Budget[] | null>,
+        accountsDB.getItem(`accounts_${userId}`) as Promise<BankAccount[] | null>,
+        gamificationDB.getItem(`profile_${userId}`) as Promise<GamificationProfile | null>,
+      ]);
+
+      if (cachedTx && cachedTx.length > 0) setTransactions(cachedTx);
+      if (cachedCards) setCards(cachedCards);
+      if (cachedInvestments) setInvestments(cachedInvestments);
+      if (cachedGoals) setGoals(cachedGoals);
+      if (cachedBudgets) setBudgets(cachedBudgets);
+      if (cachedAccounts) setAccounts(cachedAccounts);
+      if (cachedGamification) setGamificationProfile(cachedGamification);
+    } catch (e) {
+      console.warn('[PreHydrate] Falha ao carregar cache local:', e);
+    }
+  };
+
   // --- SUPABASE AUTH & DATA LISTENER ---
   useEffect(() => {
     // 1. Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         setIsAuthenticated(true);
         if (session.user.email) {
+          // Carrega o perfil do cache IMEDIATAMENTE para evitar tela branca
+          const cachedUser = await userDB.getItem('last_user') as UserProfile | null;
+          if (cachedUser && cachedUser.email === session.user.email && cachedUser.id !== 0) {
+            setUser(cachedUser);
+            // Pré-hidratar todos os dados do cache para render instantâneo
+            await preHydrateFromCache(cachedUser.id);
+          }
+          // Em seguida busca dados frescos do servidor (background update)
           fetchUserProfileByEmail(session.user.email);
         }
       } else {
@@ -1423,14 +1456,15 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Fetch Budgets Function
+  // Fetch Budgets Function (Cache-First)
   const fetchBudgets = async (userId: number) => {
     try {
-      if (!navigator.onLine) {
-        const cached = await budgetsDB.getItem(`budgets_${userId}`) as Budget[] | null;
-        if (cached) setBudgets(cached);
-        return;
-      }
+      // Cache-first: mostra dados locais imediatamente
+      const cached = await budgetsDB.getItem(`budgets_${userId}`) as Budget[] | null;
+      if (cached) setBudgets(cached);
+
+      if (!navigator.onLine) return;
+
       const { data, error } = await supabase
         .from('orcamentos')
         .select('*')
@@ -1445,14 +1479,15 @@ const AppContent: React.FC = () => {
   };
 
 
-  // Fetch Accounts
+  // Fetch Accounts (Cache-First)
   const fetchAccounts = async (userId: number) => {
     try {
-      if (!navigator.onLine) {
-        const cached = await accountsDB.getItem(`accounts_${userId}`) as BankAccount[] | null;
-        if (cached) setAccounts(cached);
-        return;
-      }
+      // Cache-first: mostra dados locais imediatamente
+      const cached = await accountsDB.getItem(`accounts_${userId}`) as BankAccount[] | null;
+      if (cached) setAccounts(cached);
+
+      if (!navigator.onLine) return;
+
       const { data, error } = await supabase
         .from('contas_bancarias')
         .select('*')
@@ -1477,14 +1512,14 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Fetch Goals Function
+  // Fetch Goals Function (Cache-First)
   const fetchGoals = async (userId: number) => {
     try {
-      if (!navigator.onLine) {
-        const cached = await goalsDB.getItem(`goals_${userId}`) as Goal[] | null;
-        if (cached) setGoals(cached);
-        return;
-      }
+      // Cache-first: mostra dados locais imediatamente
+      const cached = await goalsDB.getItem(`goals_${userId}`) as Goal[] | null;
+      if (cached) setGoals(cached);
+
+      if (!navigator.onLine) return;
 
       const { data, error } = await supabase
         .from('metas')
@@ -1512,14 +1547,14 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Fetch Investments Function
+  // Fetch Investments Function (Cache-First)
   const fetchInvestments = async (userId: number) => {
     try {
-      if (!navigator.onLine) {
-        const cached = await investmentsDB.getItem(`investments_${userId}`) as Investment[] | null;
-        if (cached) setInvestments(cached);
-        return;
-      }
+      // Cache-first: mostra dados locais imediatamente
+      const cached = await investmentsDB.getItem(`investments_${userId}`) as Investment[] | null;
+      if (cached) setInvestments(cached);
+
+      if (!navigator.onLine) return;
 
       const { data, error } = await supabase
         .from('investments')
@@ -1550,14 +1585,14 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Fetch Cards Function
+  // Fetch Cards Function (Cache-First)
   const fetchCards = async (userId: number) => {
     try {
-      if (!navigator.onLine) {
-        const cached = await cardsDB.getItem(`cards_${userId}`) as CreditCard[] | null;
-        if (cached) setCards(cached);
-        return;
-      }
+      // Cache-first: mostra dados locais imediatamente
+      const cached = await cardsDB.getItem(`cards_${userId}`) as CreditCard[] | null;
+      if (cached) setCards(cached);
+
+      if (!navigator.onLine) return;
 
       const { data, error } = await supabase
         .from('credit_cards')
@@ -1619,7 +1654,10 @@ const AppContent: React.FC = () => {
         setUser(mappedUser);
         await userDB.setItem('last_user', mappedUser);
 
-        setIsFetchingData(true);
+        // Só mostra skeletons se não houver dados em cache (primeira visita)
+        const hasAnyCache = transactions.length > 0;
+        if (!hasAnyCache) setIsFetchingData(true);
+
         await Promise.all([
           fetchTransactions(data.id),
           fetchCards(data.id),
@@ -1650,11 +1688,11 @@ const AppContent: React.FC = () => {
     if (!numericUserId || numericUserId === 0) return;
 
     try {
-      if (!navigator.onLine) {
-        const cached = await transactionsDB.getItem(`tx_${numericUserId}`) as Transaction[] | null;
-        if (cached) setTransactions(cached);
-        return;
-      }
+      // Cache-first: mostra dados locais imediatamente
+      const cached = await transactionsDB.getItem(`tx_${numericUserId}`) as Transaction[] | null;
+      if (cached && cached.length > 0) setTransactions(cached);
+
+      if (!navigator.onLine) return;
 
       const { data, error } = await supabase
         .from('transacoes')
