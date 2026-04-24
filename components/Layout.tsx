@@ -29,6 +29,7 @@ import { UserProfile, GamificationProfile, NavItem } from '../types';
 import LevelBadge from './gamification/LevelBadge';
 import StreakIndicator from './gamification/StreakIndicator';
 import CosmeticAvatar from './gamification/CosmeticAvatar';
+import ErrorBoundary from './ErrorBoundary';
 import { LOGO_URL } from '../constants';
 import { FreePlanBadge } from './FreePlanBadge';
 
@@ -308,12 +309,14 @@ const Layout: React.FC<LayoutProps> = ({
               </div>
 
               <div className="cursor-pointer hover:scale-105 transition-transform">
-                <CosmeticAvatar 
-                  src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nome || 'Visitante')}&background=10B981&color=fff&size=128&font-size=0.4`}
-                  alt={user.nome || "Avatar"}
-                  frame={gamificationProfile?.avatar_frame || 'none'}
-                  size="sm"
-                />
+                <ErrorBoundary silent>
+                  <CosmeticAvatar 
+                    src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nome || 'Visitante')}&background=10B981&color=fff&size=128&font-size=0.4`}
+                    alt={user.nome || "Avatar"}
+                    frame={gamificationProfile?.avatar_frame || 'none'}
+                    size="sm"
+                  />
+                </ErrorBoundary>
               </div>
             </div>
           </div>

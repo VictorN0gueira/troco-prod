@@ -21,6 +21,7 @@ const Subscriptions = lazy(() => import('./components/Subscriptions'));
 const Budgets = lazy(() => import('./components/Budgets'));
 const GamificationPanel = lazy(() => import('./components/GamificationPanel'));
 import XPToast from './components/gamification/XPToast';
+import ErrorBoundary from './components/ErrorBoundary';
 
 
 const SuspenseLoader = () => (
@@ -400,29 +401,35 @@ const AppRoutes = ({
           } />
 
           <Route path="/reports" element={
-            <Suspense fallback={<SuspenseLoader />}>
-              <Reports transactions={transactions} accounts={accounts} user={user} />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<SuspenseLoader />}>
+                <Reports transactions={transactions} accounts={accounts} user={user} />
+              </Suspense>
+            </ErrorBoundary>
           } />
 
           <Route path="/investments" element={
-            <Suspense fallback={<SuspenseLoader />}>
-              <Investments
-                investments={investments}
-                onAdd={addInvestment}
-                onEdit={updateInvestment}
-                onDelete={deleteInvestment}
-                onUpdatePrices={updateInvestmentPrices}
-                user={user}
-                privacyMode={privacyMode}
-              />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<SuspenseLoader />}>
+                <Investments
+                  investments={investments}
+                  onAdd={addInvestment}
+                  onEdit={updateInvestment}
+                  onDelete={deleteInvestment}
+                  onUpdatePrices={updateInvestmentPrices}
+                  user={user}
+                  privacyMode={privacyMode}
+                />
+              </Suspense>
+            </ErrorBoundary>
           } />
 
           <Route path="/insights" element={
-            <Suspense fallback={<SuspenseLoader />}>
-              <NewsFeed user={user} />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<SuspenseLoader />}>
+                <NewsFeed user={user} />
+              </Suspense>
+            </ErrorBoundary>
           } />
 
           <Route path="/goals" element={
@@ -452,20 +459,22 @@ const AppRoutes = ({
           } />
 
           <Route path="/gamification" element={
-            <Suspense fallback={<SuspenseLoader />}>
-              <GamificationPanel
-                profile={gamificationProfile}
-                unlockedAchievements={unlockedAchievements}
-                challenges={challenges}
-                user={user}
-                transactions={transactions}
-                goals={goals}
-                budgets={budgets}
-                investments={investments}
-                onEquip={equipCosmetic}
-                isFetchingData={isFetchingData}
-              />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<SuspenseLoader />}>
+                <GamificationPanel
+                  profile={gamificationProfile}
+                  unlockedAchievements={unlockedAchievements}
+                  challenges={challenges}
+                  user={user}
+                  transactions={transactions}
+                  goals={goals}
+                  budgets={budgets}
+                  investments={investments}
+                  onEquip={equipCosmetic}
+                  isFetchingData={isFetchingData}
+                />
+              </Suspense>
+            </ErrorBoundary>
           } />
 
           <Route path="/settings" element={
