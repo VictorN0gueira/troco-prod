@@ -26,11 +26,38 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[ErrorBoundary] Componente crashou:', error, errorInfo);
+
+    // Tratamento automático para ChunkLoadError (falha ao importar módulos via lazy load no Vite)
+    const isChunkLoadError = error.name === 'ChunkLoadError' || 
+                             error.message.includes('dynamically imported module') || 
+                             error.message.includes('Failed to fetch');
+
+    if (isChunkLoadError) {
+      const chunkFailed = sessionStorage.getItem('troco_chunk_failed');
+      if (!chunkFailed) {
+        sessionStorage.setItem('troco_chunk_failed', 'true');
+        console.warn('Detectado erro de módulo dinâmico. Recarregando a página automaticamente para buscar nova versão...');
+        window.location.reload();
+        return;
+      }
+    }
+
     this.props.onError?.(error, errorInfo);
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    // Para erros de carregamento, forçamos o recarregamento total da página 
+    // para limpar cache do navegador e trazer novos JS
+    const isChunkLoadError = this.state.error?.name === 'ChunkLoadError' || 
+                             this.state.error?.message.includes('dynamically imported module') ||
+                             this.state.error?.message.includes('Failed to fetch');
+                             
+    if (isChunkLoadError) {
+      sessionStorage.removeItem('troco_chunk_failed');
+      window.location.reload();
+    } else {
+      this.setState({ hasError: false, error: null });
+    }
   };
 
   render() {
