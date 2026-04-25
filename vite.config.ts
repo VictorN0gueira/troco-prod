@@ -50,7 +50,16 @@ export default defineConfig({
       workbox: {
         importScripts: ['sw-push.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/],
+        // Nunca cachear conexões WebSocket/Realtime do Supabase
         runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/realtime\/.*/i,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',

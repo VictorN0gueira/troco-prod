@@ -1018,75 +1018,79 @@ const AppContent: React.FC = () => {
   }, [isExiting]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  // --- REALTIME LISTENER FOR TRANSACTIONS ---
+  // --- REALTIME LISTENERS (Canais individuais por tabela) ---
   useEffect(() => {
     if (user.id === 0) return;
 
-    // --- Canais Realtime para sincronização multi-aba ---
-    // Utilizando Multiplexing (um único canal) para evitar limite de conexões simultâneas do Supabase
-    const userChannel = supabase.channel(`realtime:user:${user.id}`);
+    const channels: ReturnType<typeof supabase.channel>[] = [];
 
-    userChannel
+    const logStatus = (name: string) => (status: string, err?: Error) => {
+      console.log(`[Realtime:${name}] ${status}`, err || '');
+    };
+
+    // Canal 1: Transações
+    const txChannel = supabase
+      .channel(`tx-${user.id}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transacoes',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: '*', schema: 'public', table: 'transacoes', filter: `user_id=eq.${user.id}` },
         (payload) => {
+          console.log('[Realtime] Evento transacoes:', payload.eventType, payload);
           if (payload.eventType === 'INSERT') {
             const newTx = formatTransaction(payload.new);
             setTransactions((prev) => {
               if (prev.some(t => t.id === newTx.id)) return prev;
               return [newTx, ...prev];
             });
-          }
-          else if (payload.eventType === 'UPDATE') {
+          } else if (payload.eventType === 'UPDATE') {
             const updatedTx = formatTransaction(payload.new);
             setTransactions((prev) =>
               prev.map((t) => t.id === updatedTx.id ? updatedTx : t)
             );
-          }
-          else if (payload.eventType === 'DELETE') {
+          } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.identificador || payload.old.id.toString();
-            setTransactions((prev) =>
-              prev.filter((t) => t.id !== deletedId)
-            );
+            setTransactions((prev) => prev.filter((t) => t.id !== deletedId));
           }
-          // Recarregar os saldos das contas sempre que houver mudança nas transações
           fetchAccounts(user.id);
         }
       )
+      .subscribe(logStatus('transacoes'));
+    channels.push(txChannel);
+
+    // Canal 2: Cartões
+    const cardsChannel = supabase
+      .channel(`cards-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'credit_cards', filter: `user_id=eq.${user.id}` }, () => fetchCards(user.id))
+      .subscribe(logStatus('credit_cards'));
+    channels.push(cardsChannel);
+
+    // Canal 3: Metas
+    const goalsChannel = supabase
+      .channel(`goals-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'metas', filter: `user_id=eq.${user.id}` }, () => fetchGoals(user.id))
+      .subscribe(logStatus('metas'));
+    channels.push(goalsChannel);
+
+    // Canal 4: Investimentos
+    const investChannel = supabase
+      .channel(`invest-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'investments', filter: `user_id=eq.${user.id}` }, () => fetchInvestments(user.id))
+      .subscribe(logStatus('investments'));
+    channels.push(investChannel);
+
+    // Canal 5: Contas Bancárias
+    const accountsChannel = supabase
+      .channel(`accounts-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contas_bancarias', filter: `user_id=eq.${user.id}` }, () => fetchAccounts(user.id))
+      .subscribe(logStatus('contas_bancarias'));
+    channels.push(accountsChannel);
+
+    // Canal 6: Gamificação (profile)
+    const gamifChannel = supabase
+      .channel(`gamif-${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'credit_cards', filter: `user_id=eq.${user.id}` },
-        () => fetchCards(user.id)
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'metas', filter: `user_id=eq.${user.id}` },
-        () => fetchGoals(user.id)
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'investments', filter: `user_id=eq.${user.id}` },
-        () => fetchInvestments(user.id)
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'contas_bancarias', filter: `user_id=eq.${user.id}` },
-        () => fetchAccounts(user.id)
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'gamification_profiles',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: '*', schema: 'public', table: 'gamification_profiles', filter: `user_id=eq.${user.id}` },
         (payload) => {
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const data = payload.new;
@@ -1106,30 +1110,24 @@ const AppContent: React.FC = () => {
           }
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'challenges',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => fetchGamification(user.id)
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'achievements_log',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => fetchGamification(user.id)
-      )
-      .subscribe();
+      .subscribe(logStatus('gamification'));
+    channels.push(gamifChannel);
+
+    // Canal 7: Challenges + Achievements
+    const challengesChannel = supabase
+      .channel(`challenges-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'challenges', filter: `user_id=eq.${user.id}` }, () => fetchGamification(user.id))
+      .subscribe(logStatus('challenges'));
+    channels.push(challengesChannel);
+
+    const achievChannel = supabase
+      .channel(`achiev-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'achievements_log', filter: `user_id=eq.${user.id}` }, () => fetchGamification(user.id))
+      .subscribe(logStatus('achievements'));
+    channels.push(achievChannel);
 
     return () => {
-      supabase.removeChannel(userChannel);
+      channels.forEach(ch => supabase.removeChannel(ch));
     };
   }, [user.id]);
 
