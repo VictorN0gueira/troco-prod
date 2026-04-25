@@ -1023,10 +1023,10 @@ const AppContent: React.FC = () => {
     if (user.id === 0) return;
 
     // --- Canais Realtime para sincronização multi-aba ---
+    // Utilizando Multiplexing (um único canal) para evitar limite de conexões simultâneas do Supabase
+    const userChannel = supabase.channel(`realtime:user:${user.id}`);
 
-    // Canal de Transações
-    const channelTx = supabase
-      .channel(`realtime:transactions:${user.id}`)
+    userChannel
       .on(
         'postgres_changes',
         {
@@ -1059,44 +1059,26 @@ const AppContent: React.FC = () => {
           fetchAccounts(user.id);
         }
       )
-      .subscribe();
-
-    const channelCards = supabase
-      .channel(`realtime:cards:${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'credit_cards', filter: `user_id=eq.${user.id}` },
         () => fetchCards(user.id)
       )
-      .subscribe();
-
-    const channelGoals = supabase
-      .channel(`realtime:goals:${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'metas', filter: `user_id=eq.${user.id}` },
         () => fetchGoals(user.id)
       )
-      .subscribe();
-
-    const channelInvestments = supabase
-      .channel(`realtime:investments:${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'investments', filter: `user_id=eq.${user.id}` },
         () => fetchInvestments(user.id)
       )
-      .subscribe();
-
-    const channelAccounts = supabase
-      .channel(`realtime:accounts:${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'contas_bancarias', filter: `user_id=eq.${user.id}` },
         () => fetchAccounts(user.id)
       )
-    const channelGamification = supabase
-      .channel(`realtime:gamification:${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -1124,10 +1106,6 @@ const AppContent: React.FC = () => {
           }
         }
       )
-      .subscribe();
-
-    const channelChallenges = supabase
-      .channel(`realtime:challenges:${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -1138,10 +1116,6 @@ const AppContent: React.FC = () => {
         },
         () => fetchGamification(user.id)
       )
-      .subscribe();
-
-    const channelAchievements = supabase
-      .channel(`realtime:achievements:${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -1155,14 +1129,7 @@ const AppContent: React.FC = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channelTx);
-      supabase.removeChannel(channelCards);
-      supabase.removeChannel(channelGoals);
-      supabase.removeChannel(channelInvestments);
-      supabase.removeChannel(channelAccounts);
-      supabase.removeChannel(channelGamification);
-      supabase.removeChannel(channelChallenges);
-      supabase.removeChannel(channelAchievements);
+      supabase.removeChannel(userChannel);
     };
   }, [user.id]);
 
