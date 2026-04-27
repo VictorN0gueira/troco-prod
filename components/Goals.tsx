@@ -689,10 +689,10 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
 
             {/* Limit Reached Modal */}
             <LimitPaywallModal
-                isOpen={showLimitPaywall}
-                onClose={() => setShowLimitPaywall(false)}
+                isOpen={isLimitModalOpen}
+                onClose={() => setIsLimitModalOpen(false)}
                 title="Limite de Metas Atingido"
-                description={`No plano gratuito você pode gerenciar até ${FREE_GOALS_LIMIT} metas financeiras ativas. Assine o Super Trocô para criar metas ilimitadas e realizar todos os seus sonhos.`}
+                description={`No plano gratuito você pode gerenciar até 3 metas financeiras ativas. Assine o Super Trocô para criar metas ilimitadas e realizar todos os seus sonhos.`}
                 userEmail={user?.email}
                 currentPlan={user?.plano}
             />

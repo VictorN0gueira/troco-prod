@@ -70,6 +70,7 @@ const LimitPaywallModal: React.FC<LimitPaywallModalProps> = ({ isOpen, onClose, 
                                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{benefit}</p>
                                     </div>
                                 </div>
+                            ))}
                         </div>
 
                         <div className="flex flex-col gap-3">

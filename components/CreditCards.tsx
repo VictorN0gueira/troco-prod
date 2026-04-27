@@ -713,10 +713,9 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
                 type="danger"
             />
 
-            {/* Limit Reached Modal */}
             <LimitPaywallModal
-                isOpen={showLimitPaywall}
-                onClose={() => setShowLimitPaywall(false)}
+                isOpen={isLimitModalOpen}
+                onClose={() => setIsLimitModalOpen(false)}
                 title="Funcionalidade Premium"
                 description="O Trocô permite que você gerencie seus cartões de crédito e faturas. Assine o Super Trocô para liberar esta e outras dezenas de funcionalidades ilimitadas."
                 userEmail={user?.email}
