@@ -152,7 +152,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
 
   const handleOpenCreate = () => {
     // Limit check for free tier: max 5 active reminders
-    if (user && user.status_assinatura !== 'active') {
+    if (user && user.plano === 'FREE') {
       const activeReminders = transactions.filter(t => t.status === 'pending').length;
       if (activeReminders >= 5) {
         setIsLimitModalOpen(true);
@@ -279,7 +279,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
   return (
     <div className="space-y-6">
       {/* Over-limit banner — grandfathering */}
-      {user && user.status_assinatura !== 'active' && (() => {
+      {user && user.plano === 'FREE' && (() => {
         const pending = transactions.filter(t => t.status === 'pending').length;
         return pending > 5 ? <OverLimitBanner label="lembretes pendentes" current={pending} limit={5} /> : null;
       })()}
@@ -312,7 +312,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
           </div>
           <p className="text-emerald-100 text-xs">Agendar pagamento ou recebimento</p>
           {/* Indicador de uso para plano free */}
-          {user && user.status_assinatura !== 'active' && (() => {
+          {user && user.plano === 'FREE' && (() => {
             const activeCount = transactions.filter(t => t.status === 'pending').length;
             return (
               <div className="mt-2 w-full bg-white/20 rounded-full h-1.5 overflow-hidden">
@@ -785,6 +785,7 @@ const Reminders: React.FC<RemindersProps> = ({ transactions, onAdd, onEdit, onDe
         title="Limite de Lembretes Atingido"
         description="No plano gratuito você pode ter até 5 lembretes ativos simultaneamente. Assine o Super Trocô para criar lembretes ilimitados e nunca mais esquecer uma conta."
         userEmail={user?.email}
+        currentPlan={user?.plano}
       />
 
       <ConfirmationModal

@@ -52,13 +52,17 @@ export interface Investment {
 
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due';
 
+export type PlanType = 'FREE' | 'ESSENCIAL' | 'INTELIGENTE' | 'PREMIUM';
+
 export interface UserProfile {
   id: number; // Matches BIGINT from public.usuarios
   nome: string;
   email: string;
   telefone: string;
   avatarUrl: string;
-  status_assinatura?: SubscriptionStatus; // Mapped from 'tem_plano'
+  plano?: PlanType; // Source of truth para os limites
+  ai_messages_month?: number;
+  last_ai_message_date?: string;
   // Campos de Notificação
   notificacoes_email?: boolean;
   notificacoes_push?: boolean;

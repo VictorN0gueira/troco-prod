@@ -93,7 +93,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
     };
 
     const openAddModal = () => {
-        if (user && user.status_assinatura !== 'active') {
+        if (user && user.plano === 'FREE') {
             if (goals.length >= 3) {
                 setIsLimitModalOpen(true);
                 return;
@@ -259,7 +259,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
     return (
         <div className="space-y-6 animate-fade-in pb-20 lg:pb-0">
             {/* Over-limit banner — grandfathering: dados herdados do Pro são preservados */}
-            {user && user.status_assinatura !== 'active' && goals.length > 3 && (
+            {user && user.plano === 'FREE' && goals.length > 3 && (
                 <OverLimitBanner label="metas financeiras" current={goals.length} limit={3} />
             )}
 
@@ -271,7 +271,7 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Defina seus objetivos e acompanhe seu progresso.</p>
                     {/* Indicador de uso para plano free */}
-                    {user.status_assinatura !== 'active' && (
+                    {user.plano === 'FREE' && (
                         <div className="mt-2 max-w-xs">
                             <UsageMeter current={goals.length} max={3} label="metas" />
                         </div>
@@ -689,11 +689,12 @@ export default function Goals({ goals, onAdd, onEdit, onDelete, onAddMoney, user
 
             {/* Limit Reached Modal */}
             <LimitPaywallModal
-                isOpen={isLimitModalOpen}
-                onClose={() => setIsLimitModalOpen(false)}
-                title="Limite Atingido"
-                description="No plano gratuito você pode criar até 3 metas. Assine o Super Trocô para criar metas ilimitadas e realizar seus sonhos mais rápido."
+                isOpen={showLimitPaywall}
+                onClose={() => setShowLimitPaywall(false)}
+                title="Limite de Metas Atingido"
+                description={`No plano gratuito você pode gerenciar até ${FREE_GOALS_LIMIT} metas financeiras ativas. Assine o Super Trocô para criar metas ilimitadas e realizar todos os seus sonhos.`}
                 userEmail={user?.email}
+                currentPlan={user?.plano}
             />
         </div >
     );

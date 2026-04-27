@@ -160,7 +160,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
     };
 
     const handleOpenModal = (card?: CreditCard) => {
-        const isSuper = user?.status_assinatura === 'active';
+        const isSuper = user?.plano !== 'FREE';
         if (!card && !isSuper && cards.length >= 2) { setIsLimitModalOpen(true); return; }
 
         if (card) {
@@ -346,7 +346,7 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
                 <div>
                     <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">Meus Cartões</h2>
                     <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Gerencie seus limites e vencimentos</p>
-                    {user.status_assinatura !== 'active' && (
+                    {user.plano === 'FREE' && (
                         <div className="mt-2 max-w-[200px]"><UsageMeter current={cards.length} max={2} label="cartões" /></div>
                     )}
                 </div>
@@ -715,11 +715,12 @@ const CreditCards: React.FC<CreditCardsProps> = ({ user, cards, transactions, ac
 
             {/* Limit Reached Modal */}
             <LimitPaywallModal
-                isOpen={isLimitModalOpen}
-                onClose={() => setIsLimitModalOpen(false)}
-                title="Limite Atingido"
-                description="No plano gratuito você pode ter até 2 cartões. Assine o Super Trocô para cadastrar cartões ilimitados e ter controle total."
+                isOpen={showLimitPaywall}
+                onClose={() => setShowLimitPaywall(false)}
+                title="Funcionalidade Premium"
+                description="O Trocô permite que você gerencie seus cartões de crédito e faturas. Assine o Super Trocô para liberar esta e outras dezenas de funcionalidades ilimitadas."
                 userEmail={user?.email}
+                currentPlan={user?.plano}
             />
 
             {/* Pay Invoice Confirmation Modal */}

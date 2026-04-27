@@ -296,7 +296,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
 
   const handleOpenCreate = () => {
     // Limit check for free tier: max 15 transactions
-    if (user && user.status_assinatura !== 'active') {
+    if (user && user.plano === 'FREE') {
       if (transactions.length >= 15) {
         setLimitModalMessage({
           title: 'Limite de Transações Atingido',
@@ -409,7 +409,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         };
 
         // Free plan limit checks before saving
-        if (user && user.status_assinatura !== 'active') {
+        if (user && user.plano === 'FREE') {
           if (newTransaction.isRecurring && newTransaction.type === 'expense') {
             // Group into unique subscriptions
             const uniqueSubscriptions = new Set(transactions.filter(t => t.type === 'expense' && t.isRecurring).map(t => t.description.trim().toLowerCase()));
@@ -483,7 +483,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
   return (
     <div className="space-y-6">
       {/* Cabeçalho com indicador de uso para plano free */}
-      {user && user.status_assinatura !== 'active' && (
+      {user && user.plano === 'FREE' && (
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
@@ -498,7 +498,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
       )}
 
       {/* Over-limit banner — grandfathering: dados herdados do Pro são preservados */}
-      {user && user.status_assinatura !== 'active' && transactions.length > 30 && (
+      {user && user.plano === 'FREE' && transactions.length > 30 && (
         <OverLimitBanner label="transações" current={transactions.length} limit={30} />
       )}
 
@@ -1477,6 +1477,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onAddM
         title={limitModalMessage.title || 'Limite Atingido'}
         description={limitModalMessage.description || 'No plano gratuito você pode ter até 15 lançamentos. Assine o Super Trocô para lançamentos ilimitados e controle total.'}
         userEmail={user?.email}
+        currentPlan={user?.plano}
       />
 
       {/* Import Statement Modal (OFX / CSV) */}

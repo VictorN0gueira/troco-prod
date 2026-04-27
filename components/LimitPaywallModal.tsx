@@ -1,6 +1,8 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, ShieldCheck, Sparkles, TrendingUp, CreditCard, BellRing } from 'lucide-react';
+import { X, ShieldCheck, Sparkles, TrendingUp, CreditCard, BellRing, ChevronUp } from 'lucide-react';
+import { PlanType } from '../types';
+import { getNextPlan } from '../utils/plansConfig';
 
 interface LimitPaywallModalProps {
     isOpen: boolean;
@@ -8,10 +10,13 @@ interface LimitPaywallModalProps {
     title: string;
     description: string;
     userEmail?: string;
+    currentPlan?: PlanType;
 }
 
-const LimitPaywallModal: React.FC<LimitPaywallModalProps> = ({ isOpen, onClose, title, description, userEmail }) => {
+const LimitPaywallModal: React.FC<LimitPaywallModalProps> = ({ isOpen, onClose, title, description, userEmail, currentPlan = 'FREE' }) => {
     if (!isOpen) return null;
+
+    const nextPlan = getNextPlan(currentPlan);
 
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -52,51 +57,31 @@ const LimitPaywallModal: React.FC<LimitPaywallModalProps> = ({ isOpen, onClose, 
                     {/* Body */}
                     <div className="px-6 py-6 sm:px-8 mt-2">
                         <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4 uppercase tracking-wider">
-                            Benefícios do Super Trocô:
+                            Benefícios do {nextPlan.name}:
                         </h4>
 
                         <div className="space-y-4 mb-8">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg shrink-0">
-                                    <CreditCard className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                            {nextPlan.benefits.map((benefit, idx) => (
+                                <div key={idx} className="flex items-center gap-3">
+                                    <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg shrink-0">
+                                        <ChevronUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{benefit}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Cartões e Lançamentos Ilimitados</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Nunca mais se preocupe com limites no app.</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg shrink-0">
-                                    <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Gestão de Investimentos</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Acompanhe sua carteira e cotações em tempo real.</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg shrink-0">
-                                    <BellRing className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Notificações Inteligentes</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Receba alertas de vencimento via WhatsApp e Email.</p>
-                                </div>
-                            </div>
                         </div>
 
                         <div className="flex flex-col gap-3">
                             <a
-                                href={userEmail ? `https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d?email=${encodeURIComponent(userEmail)}` : "https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d"}
+                                href={userEmail && nextPlan.checkoutUrl ? `${nextPlan.checkoutUrl}?email=${encodeURIComponent(userEmail)}` : (nextPlan.checkoutUrl || "https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d")}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={onClose}
                                 className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20"
                             >
                                 <ShieldCheck className="w-5 h-5" />
-                                Fazer Upgrade Agora
+                                Fazer Upgrade para o {nextPlan.name}
                             </a>
                             <button
                                 onClick={onClose}

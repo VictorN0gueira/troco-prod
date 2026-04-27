@@ -486,17 +486,17 @@ const LandingPage: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-12">
                         <h2 className="text-xs font-black text-primary-500 uppercase tracking-widest mb-4">Planos e Preços</h2>
-                        <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4">Investimento que se paga.</h3>
-                        <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Comece grátis e faça upgrade quando precisar de mais poder.</p>
+                        <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4">A evolução da sua gestão.</h3>
+                        <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Comece grátis e escale conforme suas necessidades. Escolha o plano perfeito para o seu momento.</p>
                     </div>
 
-                    {/* ── MOBILE: 3 Plan Cards ─────────────────────────────── */}
-                    <div className="md:hidden space-y-4 max-w-sm mx-auto">
-                        {/* Grátis */}
+                    {/* ── MOBILE: 4 Plan Cards ─────────────────────────────── */}
+                    <div className="md:hidden space-y-6 max-w-sm mx-auto">
+                        {/* Free */}
                         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Grátis</p>
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Free</p>
                                     <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">R$ 0</p>
                                     <p className="text-xs text-slate-400">para sempre</p>
                                 </div>
@@ -505,21 +505,13 @@ const LandingPage: React.FC = () => {
                                 </button>
                             </div>
                             <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                {[
-                                    '15 lançamentos/mês',
-                                    '2 contas bancárias',
-                                    '3 assinaturas recorrentes',
-                                    '5 lembretes pendentes',
-                                    '3 metas financeiras',
-                                    'Cartões (básico)',
-                                    'Relatórios básicos',
-                                ].map((f, i) => (
+                                {['Até 15 lançamentos/mês', 'Até 2 contas bancárias', 'Até 3 assinaturas', 'Até 5 lembretes'].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                                         {f}
                                     </div>
                                 ))}
-                                {['Investimentos', 'Agente WhatsApp IA', 'Suporte prioritário', 'Relatórios avançados'].map((f, i) => (
+                                {['Lançamentos ilimitados', 'Agente de IA', 'Investimentos', 'Suporte Prioritário'].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-slate-400">
                                         <XCircle className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
                                         {f}
@@ -528,11 +520,11 @@ const LandingPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Mensal */}
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                        {/* Essencial */}
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xl shadow-slate-200/50 dark:shadow-none">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Mensal</p>
+                                    <p className="text-xs font-black text-primary-500 uppercase tracking-widest">Essencial</p>
                                     <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">R$ 34,90</p>
                                     <p className="text-xs text-slate-400">/mês</p>
                                 </div>
@@ -541,16 +533,7 @@ const LandingPage: React.FC = () => {
                                 </button>
                             </div>
                             <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                {[
-                                    'Lançamentos ilimitados',
-                                    'Assinaturas ilimitadas',
-                                    'Lembretes ilimitados',
-                                    'Metas ilimitadas',
-                                    'Cartões e Investimentos',
-                                    'Relatórios avançados',
-                                    'Agente WhatsApp IA',
-                                    'Suporte prioritário',
-                                ].map((f, i) => (
+                                {['Lançamentos ilimitados', 'Cartões de crédito ilimitados', 'Metas ilimitadas', 'Até 100 interações com IA', 'Relatórios melhores'].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                                         {f}
@@ -559,30 +542,48 @@ const LandingPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Anual — destaque */}
+                        {/* Inteligente — destaque */}
                         <div className="relative rounded-2xl bg-gradient-to-br from-primary-600 to-emerald-600 p-6 text-white overflow-hidden shadow-2xl shadow-primary-500/30">
                             <div className="border-beam" />
                             <div className="absolute -top-3 right-6 px-3 py-1 bg-amber-400 text-amber-900 text-[9px] font-black uppercase tracking-widest rounded-full">
-                                Melhor oferta
+                                Mais Popular
                             </div>
                             <div className="flex items-center justify-between mb-4 relative z-10">
                                 <div>
-                                    <p className="text-xs font-black uppercase tracking-widest opacity-80">Anual</p>
-                                    <p className="text-3xl font-black mt-1">R$ 29,90<span className="text-base font-medium opacity-70">/mês</span></p>
-                                    <p className="text-xs opacity-60">R$ 358,80/ano · 14% off</p>
+                                    <p className="text-xs font-black uppercase tracking-widest opacity-80">Inteligente</p>
+                                    <p className="text-3xl font-black mt-1">R$ 59,90</p>
+                                    <p className="text-xs opacity-80">/mês</p>
                                 </div>
-                                <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="px-4 py-2 rounded-xl bg-white/20 backdrop-blur text-white text-sm font-bold border border-white/30 hover:bg-white/30 transition-all">
+                                <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="px-4 py-2 rounded-xl bg-white text-primary-600 text-sm font-bold hover:scale-105 transition-all">
                                     Assinar
                                 </button>
                             </div>
                             <div className="space-y-2.5 pt-4 border-t border-white/20 relative z-10">
-                                {[
-                                    'Tudo do plano Mensal',
-                                    'Suporte prioritário',
-                                    '14% de economia no ano',
-                                ].map((f, i) => (
+                                {['Tudo do Essencial', 'Agente WhatsApp IA', 'Gestão de Investimentos', 'Até 400 interações com IA'].map((f, i) => (
                                     <div key={i} className="flex items-center gap-2.5 text-sm text-white/90">
                                         <CheckCircle2 className="w-4 h-4 text-white flex-shrink-0" />
+                                        {f}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Premium */}
+                        <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl border border-slate-800 p-6 text-white">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <p className="text-xs font-black text-amber-500 uppercase tracking-widest">Premium</p>
+                                    <p className="text-3xl font-black mt-1">R$ 99,90</p>
+                                    <p className="text-xs text-slate-400">/mês</p>
+                                </div>
+                                <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="px-4 py-2 rounded-xl bg-amber-500 text-slate-900 text-sm font-bold hover:bg-amber-400 transition-all">
+                                    Assinar
+                                </button>
+                            </div>
+                            <div className="space-y-2.5 pt-4 border-t border-slate-800">
+                                {['Tudo liberado', 'Até 1.000 interações com IA', 'Atendimento Premium', 'Recursos e relatórios exclusivos'].map((f, i) => (
+                                    <div key={i} className="flex items-center gap-2.5 text-sm text-slate-300">
+                                        <CheckCircle2 className="w-4 h-4 text-amber-500 flex-shrink-0" />
                                         {f}
                                     </div>
                                 ))}
@@ -591,64 +592,85 @@ const LandingPage: React.FC = () => {
                     </div>
 
                     {/* ── DESKTOP: Comparison Table ────────────────────────── */}
-                    <div className="hidden md:block max-w-5xl mx-auto">
-                        {/* Header */}
-                        <div className="grid grid-cols-4 gap-4 mb-4 text-center">
-                            <div className="text-left text-sm font-bold text-slate-500 dark:text-slate-400 px-4 self-end pb-4">Funcionalidade</div>
-                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                <p className="font-black text-slate-800 dark:text-white text-lg">Grátis</p>
-                                <p className="text-3xl font-black text-slate-900 dark:text-white mt-2">R$ 0</p>
-                                <p className="text-xs text-slate-400 mt-1">para sempre</p>
-                                <button onClick={() => navigate('/login')} className="mt-4 w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
-                                    Entrar Grátis
-                                </button>
-                            </div>
-                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                <p className="font-black text-slate-800 dark:text-white text-lg">Mensal</p>
-                                <p className="text-3xl font-black text-slate-900 dark:text-white mt-2">R$ 34,90</p>
-                                <p className="text-xs text-slate-400 mt-1">/mês</p>
-                                <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="mt-4 w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold hover:scale-105 transition-all">
-                                    Assinar Mensal
-                                </button>
-                            </div>
-                            <div className="p-5 rounded-2xl bg-gradient-to-br from-primary-600 to-emerald-600 text-white relative overflow-hidden">
-                                <div className="border-beam" />
-                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-amber-400 text-amber-900 text-[9px] font-black uppercase tracking-widest rounded-full z-10">Melhor oferta</div>
-                                <p className="font-black text-lg relative z-10">Anual</p>
-                                <p className="text-3xl font-black mt-2 relative z-10">R$ 29,90</p>
-                                <p className="text-xs opacity-70 mt-1 relative z-10">/mês (14% off)</p>
-                                <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="mt-4 w-full py-2.5 rounded-xl bg-white/20 border border-white/30 text-white text-sm font-bold hover:bg-white/30 transition-all relative z-10">
-                                    Aproveitar 14% Off
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Feature Rows */}
-                        <div className="mt-2 space-y-1">
-                            {[
-                                { feature: 'Lançamentos / mês', free: '15', monthly: 'Ilimitados', annual: 'Ilimitados' },
-                                { feature: 'Contas Bancárias', free: '2', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
-                                { feature: 'Assinaturas recorrentes', free: '3', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
-                                { feature: 'Lembretes pendentes', free: '5', monthly: 'Ilimitados', annual: 'Ilimitados' },
-                                { feature: 'Metas financeiras', free: '3', monthly: 'Ilimitadas', annual: 'Ilimitadas' },
-                                { feature: 'Gestão de Cartões', free: 'Básica', monthly: true, annual: true },
-                                { feature: 'Investimentos', free: false, monthly: true, annual: true },
-                                { feature: 'Relatórios avançados', free: false, monthly: true, annual: true },
-                                { feature: 'Agente WhatsApp IA', free: false, monthly: true, annual: true },
-                                { feature: 'Gestor de Assinaturas', free: true, monthly: true, annual: true },
-                                { feature: 'Suporte prioritário', free: false, monthly: true, annual: true },
-                            ].map((row, i) => (
-                                <div key={i} className={`grid grid-cols-4 gap-4 items-center px-4 py-3 rounded-xl ${i % 2 === 0 ? 'bg-white dark:bg-slate-800/60' : ''}`}>
-                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{row.feature}</p>
-                                    {[row.free, row.monthly, row.annual].map((val, j) => (
-                                        <div key={j} className={`text-center text-sm font-bold ${j === 2 ? 'text-primary-500 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>
-                                            {typeof val === 'boolean' ? (
-                                                val ? <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto" /> : <XCircle className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto" />
-                                            ) : val}
-                                        </div>
-                                    ))}
+                    <div className="hidden md:block max-w-6xl mx-auto overflow-x-auto pb-8">
+                        <div className="min-w-[800px]">
+                            {/* Header */}
+                            <div className="grid grid-cols-5 gap-4 mb-4 text-center">
+                                <div className="text-left text-sm font-bold text-slate-500 dark:text-slate-400 px-4 self-end pb-4">Funcionalidade</div>
+                                
+                                <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                                    <div>
+                                        <p className="font-black text-slate-500 text-sm uppercase tracking-widest">Free</p>
+                                        <p className="text-3xl font-black text-slate-900 dark:text-white mt-2">R$ 0</p>
+                                        <p className="text-xs text-slate-400 mt-1 mb-4">para sempre</p>
+                                    </div>
+                                    <button onClick={() => navigate('/login')} className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                                        Entrar Grátis
+                                    </button>
                                 </div>
-                            ))}
+                                
+                                <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col justify-between">
+                                    <div>
+                                        <p className="font-black text-primary-500 text-sm uppercase tracking-widest">Essencial</p>
+                                        <p className="text-3xl font-black text-slate-900 dark:text-white mt-2">R$ 34,90</p>
+                                        <p className="text-xs text-slate-400 mt-1 mb-4">/mês</p>
+                                    </div>
+                                    <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold hover:scale-105 transition-all">
+                                        Assinar Essencial
+                                    </button>
+                                </div>
+                                
+                                <div className="p-5 rounded-2xl bg-gradient-to-br from-primary-600 to-emerald-600 text-white relative overflow-hidden flex flex-col justify-between">
+                                    <div className="border-beam" />
+                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-amber-400 text-amber-900 text-[9px] font-black uppercase tracking-widest rounded-full z-10">Mais Popular</div>
+                                    <div className="relative z-10">
+                                        <p className="font-black text-white/80 text-sm uppercase tracking-widest">Inteligente</p>
+                                        <p className="text-3xl font-black mt-2">R$ 59,90</p>
+                                        <p className="text-xs text-white/80 mt-1 mb-4">/mês</p>
+                                    </div>
+                                    <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="w-full py-2.5 rounded-xl bg-white text-primary-600 text-sm font-bold hover:scale-105 transition-all relative z-10">
+                                        Assinar Inteligente
+                                    </button>
+                                </div>
+                                
+                                <div className="p-5 rounded-2xl bg-slate-900 dark:bg-slate-950 border border-slate-800 flex flex-col justify-between text-white">
+                                    <div>
+                                        <p className="font-black text-amber-500 text-sm uppercase tracking-widest">Premium</p>
+                                        <p className="text-3xl font-black mt-2">R$ 99,90</p>
+                                        <p className="text-xs text-slate-400 mt-1 mb-4">/mês</p>
+                                    </div>
+                                    <button onClick={() => window.open('https://pay.kirvano.com/5e032963-787d-49de-b407-c3d1c4724c9d', '_blank')} className="w-full py-2.5 rounded-xl bg-amber-500 text-slate-900 text-sm font-bold hover:bg-amber-400 transition-all">
+                                        Assinar Premium
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Feature Rows */}
+                            <div className="mt-2 space-y-1">
+                                {[
+                                    { feature: 'Lançamentos', free: '15/mês', essencial: 'Ilimitados', inteligente: 'Ilimitados', premium: 'Ilimitados' },
+                                    { feature: 'Contas Bancárias', free: '2', essencial: 'Ilimitadas', inteligente: 'Ilimitadas', premium: 'Ilimitadas' },
+                                    { feature: 'Assinaturas e Lembretes', free: 'Limitados', essencial: 'Ilimitados', inteligente: 'Ilimitados', premium: 'Ilimitados' },
+                                    { feature: 'Gestão de Cartões', free: 'Básica', essencial: true, inteligente: true, premium: true },
+                                    { feature: 'Metas Financeiras', free: '3', essencial: 'Ilimitadas', inteligente: 'Ilimitadas', premium: 'Ilimitadas' },
+                                    { feature: 'Interações com IA', free: false, essencial: '100/mês', inteligente: '400/mês', premium: '1.000/mês' },
+                                    { feature: 'Agente WhatsApp IA', free: false, essencial: false, inteligente: true, premium: true },
+                                    { feature: 'Investimentos', free: false, essencial: false, inteligente: true, premium: true },
+                                    { feature: 'Relatórios', free: 'Básicos', essencial: 'Melhores', inteligente: 'Avançados', premium: 'Exclusivos' },
+                                    { feature: 'Suporte', free: 'Comunidade', essencial: 'Padrão', inteligente: 'Padrão', premium: 'Premium Prioritário' },
+                                ].map((row, i) => (
+                                    <div key={i} className={`grid grid-cols-5 gap-4 items-center px-4 py-3 rounded-xl ${i % 2 === 0 ? 'bg-white dark:bg-slate-800/60' : ''}`}>
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{row.feature}</p>
+                                        {[row.free, row.essencial, row.inteligente, row.premium].map((val, j) => (
+                                            <div key={j} className={`text-center text-sm font-bold ${j === 2 ? 'text-primary-500 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                                                {typeof val === 'boolean' ? (
+                                                    val ? <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto" /> : <XCircle className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto" />
+                                                ) : val}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

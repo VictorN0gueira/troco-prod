@@ -518,10 +518,10 @@ const Investments: React.FC<InvestmentsProps> = ({
     user,
     privacyMode = false
 }) => {
-    const isSuper = user?.status_assinatura === 'active';
+    const isSuper = user?.plano !== 'FREE';
 
     if (!isSuper) {
-        return <SuperPaywall feature="Investimentos" userEmail={user?.email} />;
+        return <SuperPaywall feature="Investimentos" userEmail={user?.email} currentPlan={user?.plano} />;
     }
 
     const [search, setSearch] = useState('');
@@ -554,8 +554,8 @@ const Investments: React.FC<InvestmentsProps> = ({
             setMarketLoading(true);
             try {
                 if (user?.id) {
-                    const { data: dbUser } = await supabase.from('usuarios').select('tem_plano').eq('id', user.id).single();
-                    if (!dbUser?.tem_plano) {
+                    const { data: dbUser } = await supabase.from('usuarios').select('plano').eq('id', user.id).single();
+                    if (dbUser?.plano === 'FREE') {
                         setMarketLoading(false);
                         return;
                     }
@@ -607,8 +607,8 @@ const Investments: React.FC<InvestmentsProps> = ({
         try {
             // BACKEND SECURITY CHECK: Prevent React State Spoofing
             if (user?.id) {
-                const { data: dbUser } = await supabase.from('usuarios').select('tem_plano').eq('id', user.id).single();
-                if (!dbUser?.tem_plano) {
+                const { data: dbUser } = await supabase.from('usuarios').select('plano').eq('id', user.id).single();
+                if (dbUser?.plano === 'FREE') {
                     setUpdateError('Assinatura inválida no servidor.');
                     setUpdatingPrices(false);
                     return;

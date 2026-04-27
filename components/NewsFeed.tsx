@@ -497,10 +497,10 @@ const SavedDrawer = ({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const NewsFeed = ({ user }: { user: UserProfile }) => {
-    const isSuper = user?.status_assinatura === 'active';
+    const isSuper = user?.plano !== 'FREE';
 
     if (!isSuper) {
-        return <SuperPaywall feature="Insights de Mercado" userEmail={user?.email} />;
+        return <SuperPaywall feature="Insights de Mercado" userEmail={user?.email} currentPlan={user?.plano} />;
     }
 
     const [news, setNews] = useState<InvestmentNews[]>([]);
@@ -602,8 +602,8 @@ const NewsFeed = ({ user }: { user: UserProfile }) => {
         setError(null);
         try {
             // BACKEND SECURITY CHECK: Prevent React State Spoofing for Premium Features
-            const { data: dbUser } = await supabase.from('usuarios').select('tem_plano').eq('id', user.id).single();
-            if (!dbUser?.tem_plano) {
+            const { data: dbUser } = await supabase.from('usuarios').select('plano').eq('id', user.id).single();
+            if (dbUser?.plano === 'FREE') {
                 setError('Assinatura inválida no servidor. Atualize a página.');
                 setNews([]);
                 setLoading(false);

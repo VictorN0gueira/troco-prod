@@ -458,7 +458,7 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
         return n;
     });
 
-    const isFree = user?.status_assinatura !== 'active';
+    const isFree = user?.plano === 'FREE';
 
     // ── Over-limit banner (Grandfathering) ───────────────────
     const overLimitBanner = isFree && subscriptions.length > FREE_SUBSCRIPTION_LIMIT ? (
@@ -870,6 +870,7 @@ const Subscriptions: React.FC<SubscriptionsProps> = ({
                 title="Limite de Assinaturas Atingido"
                 description={`No plano gratuito você pode gerenciar até ${FREE_SUBSCRIPTION_LIMIT} assinaturas recorrentes. Assine o Super Trocô para adicionar assinaturas ilimitadas e ter controle total dos seus gastos fixos.`}
                 userEmail={user?.email}
+                currentPlan={user?.plano}
             />
         </div>
     );

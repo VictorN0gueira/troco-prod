@@ -63,7 +63,7 @@ export default function BankAccounts({ accounts, transactions, onAdd, onEdit, on
     const [accountToDeleteId, setAccountToDeleteId] = useState<string | null>(null);
 
     const openModal = (acc?: BankAccount) => {
-        const isSuper = user?.status_assinatura === 'active';
+        const isSuper = user?.plano !== 'FREE';
         if (!acc && !isSuper && accounts.length >= 2) {
             setIsLimitModalOpen?.(true);
             return;

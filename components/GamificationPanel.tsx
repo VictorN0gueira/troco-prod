@@ -45,7 +45,7 @@ const GamificationPanel: React.FC<GamificationPanelProps> = ({
   isFetchingData = false,
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('achievements');
-  const isSuperPlan = user.status_assinatura === 'active';
+  const isSuperPlan = user.plano !== 'FREE';
   const limits = getGamificationLimits(isSuperPlan);
 
   const levelData = useMemo(() => calculateLevel(profile.xp), [profile.xp]);

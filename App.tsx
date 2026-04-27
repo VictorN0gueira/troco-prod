@@ -484,8 +484,9 @@ const AppRoutes = ({
         isOpen={isLimitModalOpen}
         onClose={() => setIsLimitModalOpen(false)}
         title="Limite Atingido"
-        description="Você atingiu o limite do plano gratuito. Faça upgrade para o Super Trocô para continuar."
+        description="Você atingiu o limite do seu plano atual. Faça upgrade para o próximo nível e continue a escalar."
         userEmail={user.email}
+        currentPlan={user?.plano}
       />
     </>
   );
@@ -659,7 +660,7 @@ const AppContent: React.FC = () => {
     email: '',
     telefone: '',
     avatarUrl: '',
-    status_assinatura: 'canceled', // Changed from 'active' to enforce Paywall by default
+    plano: 'FREE',
   });
 
   // Ref para evitar closure stale no onAuthStateChange
@@ -849,7 +850,7 @@ const AppContent: React.FC = () => {
       
       // Reset TODOS os estados para evitar dados stale no re-login
       setTransactions([]);
-      setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'canceled' });
+      setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', plano: 'FREE' });
       setCards([]);
       setInvestments([]);
       setGoals([]);
@@ -1008,7 +1009,7 @@ const AppContent: React.FC = () => {
         if (!isExiting) {
           setIsAuthenticated(false);
           setTransactions([]);
-          setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', status_assinatura: 'canceled' });
+          setUser({ id: 0, nome: '', email: '', telefone: '', avatarUrl: '', plano: 'FREE' });
         }
       }
       setLoading(false);
@@ -1382,7 +1383,7 @@ const AppContent: React.FC = () => {
         const eligible = getEligibleAchievements(
           userStats, 
           unlockedAchievements.map(a => a.achievement_id), 
-          user.status_assinatura === 'active'
+          user.plano !== 'FREE'
         );
       
         if (eligible.length > 0) {
@@ -1409,7 +1410,7 @@ const AppContent: React.FC = () => {
       }, 2000);
 
       return () => clearTimeout(timer);
-    }, [userStats, user.id, unlockedAchievements.length, user.status_assinatura, isFetchingData]);
+    }, [userStats, user.id, unlockedAchievements.length, user.plano, isFetchingData]);
 
   // Fetch Gamification Data
   const fetchGamification = async (userId: number) => {
@@ -1653,7 +1654,7 @@ const AppContent: React.FC = () => {
           email: data.email,
           telefone: data.telefone || '',
           avatarUrl: data.avatar_url || 'https://ui-avatars.com/api/?name=User&background=random',
-          status_assinatura: data.tem_plano ? 'active' : 'canceled',
+          plano: data.plano || 'FREE',
           notificacoes_email: data.notificacoes_email ?? true,
           notificacoes_push: data.notificacoes_push ?? false,
           notificacoes_marketing: data.notificacoes_marketing ?? false,
@@ -1916,7 +1917,7 @@ const AppContent: React.FC = () => {
   };
 
   const checkTransactionLimit = (countToAdd: number = 1): boolean => {
-    const isSuper = user?.status_assinatura === 'active';
+    const isSuper = user?.plano !== 'FREE';
     if (isSuper || user.id === 0) return true;
 
     // Count transactions in the current month

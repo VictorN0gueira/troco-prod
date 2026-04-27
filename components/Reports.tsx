@@ -21,10 +21,10 @@ interface ReportsProps {
 type DateRangeType = 'today' | '7_days' | '6_months' | 'ytd' | '1_year' | 'all';
 
 const Reports: React.FC<ReportsProps> = ({ transactions, accounts, user }) => {
-  const isSuper = user?.status_assinatura === 'active';
+  const isSuper = user?.plano !== 'FREE';
 
   if (!isSuper) {
-    return <SuperPaywall feature="Relatórios Avançados" userEmail={user?.email} />;
+    return <SuperPaywall feature="Relatórios Avançados" userEmail={user?.email} currentPlan={user?.plano} />;
   }
   const [dateRange, setDateRange] = useState<DateRangeType>('6_months');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
